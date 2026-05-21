@@ -125,6 +125,14 @@ def test_v11_registry_render_browser_html(tmp_path):
     assert "__KLICKDUMMIES_JSON__" not in html  # Template-Marker ersetzt
 
 
-def test_v11_version_bumped():
+def test_version_consistency():
+    """__version__ ist Single-Source via importlib.metadata — kein Mismatch zu pyproject."""
     import iil_klickdummy
-    assert iil_klickdummy.__version__ == "1.1.0"
+    from importlib.metadata import version as pkg_version
+    # Wenn als installiertes Paket: muss übereinstimmen.
+    # Wenn als Source-Checkout ohne install: __version__ = '0.0.0+unknown'.
+    if iil_klickdummy.__version__ != "0.0.0+unknown":
+        assert iil_klickdummy.__version__ == pkg_version("iil-klickdummy"), (
+            f"Mismatch: __init__={iil_klickdummy.__version__} vs "
+            f"metadata={pkg_version('iil-klickdummy')}"
+        )

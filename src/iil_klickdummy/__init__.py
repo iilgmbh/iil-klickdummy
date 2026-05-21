@@ -14,8 +14,14 @@ Snippets shipped as package_data; consumers install them via
 `klickdummy-install-snippets` console-script.
 """
 
-__version__ = "1.1.0"
-__author__ = "Achim Dehnert"
+# Single source of truth: pyproject.toml → importlib.metadata.
+# Vermeidet Mismatch wie in v1.1.0/v1.1.1 (pyproject != __init__).
+try:
+    from importlib.metadata import version as _pkg_version
+    __version__ = _pkg_version("iil-klickdummy")
+except Exception:                              # noqa: BLE001
+    __version__ = "0.0.0+unknown"
+__author__ = "iil GmbH"
 
 from . import (  # noqa: F401
     check_i1, check_i2, check_i3, check_i4,
