@@ -7,7 +7,10 @@ Public surface:
     install_snippets                        — copy/symlink HTML+JS+templates into a repo
     registry                                — Klickdummy-Discovery + Browser (v1.1, Cross-Repo v1.3)
     sync_to_orchestrator                    — Push Klickdummy-Meta in pgvector-Memory (v1.2)
-    manage                                  — Verwaltungs-CLI (list/status/topics/versions/diff, v1.4)
+
+Console-Script (kein __init__-Roundtrip, vermeidet Circular Import):
+    klickdummy-manage                       — Verwaltungs-CLI (list/status/topics/versions/diff, v1.4)
+    Modul direkt importierbar via:  from iil_klickdummy import manage
 
 Distribution: pip via public PyPI (v1.1+) oder Git-URL (Fallback).
 ADR-211 Rev 14 §Distribution.
@@ -28,5 +31,8 @@ __author__ = "iil GmbH"
 from . import (  # noqa: F401
     check_i1, check_i2, check_i3, check_i4,
     extract_requirements, inventory, install_snippets, registry,
-    sync_to_orchestrator, manage,
+    sync_to_orchestrator,
 )
+# manage wird NICHT eager importiert — vermeidet Circular Import via
+# manage→registry. Console-Script `klickdummy-manage` (pyproject.toml
+# [project.scripts]) lädt manage.py direkt, kein __init__-Roundtrip.
