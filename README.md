@@ -144,3 +144,40 @@ $ klickdummy-sync --cross-repo --dry-run
   · ttz-hub:     2 KD · 0 Iter · 2 ADRs
   Total: 18 Entries
 ```
+
+## v1.4 — klickdummy-manage (Repo + Topic + Version)
+
+CLI für die einheitliche Verwaltungs-Sicht über alle Klickdummies:
+
+```bash
+klickdummy-manage list                          # Tabelle aller cross-repo
+klickdummy-manage list --org iilgmbh --class mock
+klickdummy-manage status --sunset-due-in 30     # Health-Check
+klickdummy-manage topics                        # Topic-Cluster
+klickdummy-manage versions <spec_id>            # Git-History 1 KD
+klickdummy-manage diff <spec_id> v0.1 v0.2      # Versions-Diff
+```
+
+**Neues optionales Spec-Feld** `meta.topic` (freier String):
+
+```yaml
+spec_id: meiki:klickdummy-spec-fristenmanagement
+spec_version: "0.1"
+title: ...
+class: mock
+meta:
+  topic: fristen          # ← NEU, optional, frei wählbar
+  # weitere meta-Felder hier denkbar
+screens: [...]
+```
+
+`klickdummy-manage topics` aggregiert Klickdummies nach diesem Feld. Specs
+ohne `meta.topic` landen unter „(kein topic)" — kein Bruch zu v1.3.
+
+**Status-Check** prüft:
+- `sunset_after`-Datum überschritten? → Warnung
+- `sunset_after` in <N Tagen fällig? → Warnung
+- `class` in 4-Pattern (mock|stub-demo|story|spec-demo)? → sonst Warnung
+- ADR-Frontmatter vollständig? → fehlt sunset_after → Warnung
+
+Exit 1 bei Warnings (für CI-Hooks).

@@ -8,7 +8,7 @@ from importlib.resources import files
 def test_package_version():
     import iil_klickdummy
     # Major bleibt 1; Minor wandert v1.0 → v1.1 → v1.2 …
-    assert iil_klickdummy.__version__.startswith("1.")
+    assert iil_klickdummy.__version__.startswith(("1.", "0.0.0+unknown"))
 
 
 def test_all_modules_present():
@@ -222,4 +222,30 @@ def test_v13_cross_repo_render(tmp_path):
 def test_v13_version_bumped():
     """Smoke-Test, dass v1.3.x installiert."""
     import iil_klickdummy
-    assert iil_klickdummy.__version__.startswith(("1.3", "0.0.0+unknown"))
+    assert iil_klickdummy.__version__.startswith(("1.", "0.0.0+unknown"))
+
+
+# --- v1.4 ------------------------------------------------------------------
+
+def test_v14_manage_module_present():
+    from iil_klickdummy import manage
+    assert hasattr(manage, "cmd_list")
+    assert hasattr(manage, "cmd_status")
+    assert hasattr(manage, "cmd_topics")
+    assert hasattr(manage, "cmd_versions")
+    assert hasattr(manage, "cmd_diff")
+    assert hasattr(manage, "main_cli")
+
+
+def test_v14_topic_reader(tmp_path):
+    from iil_klickdummy import manage
+    p = tmp_path / "spec.yaml"
+    p.write_text("spec_id: x\nspec_version: '0.1'\nclass: mock\nmeta:\n  topic: fristen\nscreens:\n  - {id: x, title: X, parity_acceptance: []}\n")
+    assert manage._spec_topic(p) == "fristen"
+
+
+def test_v14_topic_missing(tmp_path):
+    from iil_klickdummy import manage
+    p = tmp_path / "spec.yaml"
+    p.write_text("spec_id: x\nspec_version: '0.1'\nclass: mock\nscreens: []\n")
+    assert manage._spec_topic(p) is None
