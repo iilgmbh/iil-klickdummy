@@ -146,15 +146,48 @@ def discover_versions(spec_path: pathlib.Path, repo_root: pathlib.Path) -> list[
     return versions
 
 
+def discover_cross_repo(
+    base: pathlib.Path,
+    repos: list[str],
+) -> list[tuple[str, str, KlickdummyMeta]]:
+    """Stufe-3 (v1.3): scan über mehrere Repos.
+
+    Returns list of (org, repo_name, klickdummy) tuples.
+    org wird aus git remote URL detektiert (Fallback: 'unknown-org').
+    """
+    import re as _re
+    import subprocess as _sp
+    out: list[tuple[str, str, KlickdummyMeta]] = []
+    for repo in repos:
+        repo_root = base / repo
+        if not repo_root.exists() or not repo_root.is_dir():
+            continue
+        # org-Detect
+        org = "unknown-org"
+        try:
+            res = _sp.run(
+                ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if res.returncode == 0:
+                m = _re.search(r"github\.com[:/]([^/]+)/", res.stdout)
+                if m:
+                    org = m.group(1)
+        except (OSError, _sp.SubprocessError):
+            pass
+        for km in discover_klickdummies(repo_root):
+            out.append((org, repo, km))
+    return out
+
+
 def render_browser_html(
     klickdummies: list[KlickdummyMeta],
     output: pathlib.Path,
     repo_label: str = "(current repo)",
 ) -> None:
-    """Schreibt statische Browser-HTML mit Listbox + iframe."""
+    """Schreibt statische Browser-HTML mit Listbox + iframe (Single-Repo)."""
     template = files("iil_klickdummy.snippets") / "browser" / "browser.html.tmpl"
     tmpl_text = template.read_text(encoding="utf-8")
-    # Klickdummy-Daten als JSON inline embedden (kein externer fetch nötig)
     data = [
         {
             "name": k.name,
@@ -175,38 +208,135 @@ def render_browser_html(
     output.write_text(html, encoding="utf-8")
 
 
+def render_cross_repo_browser_html(
+    triples: list[tuple[str, str, KlickdummyMeta]],
+    output: pathlib.Path,
+    base_label: str = "cross-repo",
+) -> None:
+    """v1.3: Browser-HTML aus mehreren Repos. shell_path wird absolut/repo-prefixed.
+
+    Klickdummy-Daten enthalten zusätzlich `org` und `repo` für UI-Gruppierung.
+    """
+    template = files("iil_klickdummy.snippets") / "browser" / "browser.html.tmpl"
+    tmpl_text = template.read_text(encoding="utf-8")
+    data = [
+        {
+            "name": k.name,
+            "org": org,
+            "repo": repo,
+            "path": f"{repo}/{k.path}",
+            # shell_path bleibt relative zum repo — iframe braucht ggf. file://-Präfix
+            # bei Cross-Repo: kein direkter iframe-Link, stattdessen GitHub-Link
+            "shell_path": k.shell_path,
+            "github_shell_url": f"https://github.com/{org}/{repo}/blob/main/{k.shell_path}" if k.shell_path else None,
+            "github_spec_url": f"https://github.com/{org}/{repo}/blob/main/{k.path}",
+            "spec_id": k.spec_id,
+            "spec_version": k.spec_version,
+            "class": k.klickdummy_class,
+            "title": k.title,
+            "adr_local": k.adr_local,
+            "sister_of": k.sister_of,
+        }
+        for org, repo, k in triples
+    ]
+    html = tmpl_text.replace("__KLICKDUMMIES_JSON__", json.dumps(data, ensure_ascii=False, indent=2))
+    html = html.replace("__REPO_LABEL__", f"cross-repo · {base_label} · {len(data)} Klickdummies")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html, encoding="utf-8")
+
+
 # -- CLI ---------------------------------------------------------------------
+
+DEFAULT_CROSS_REPOS = ["meiki-hub", "writing-hub", "risk-hub", "ttz-hub", "pptx-hub", "dev-hub"]
+
+
+def _serve(html_path: pathlib.Path, port: int) -> int:
+    """v1.3: lokaler HTTP-Server, öffnet Browser-HTML in nem Verzeichnis."""
+    import http.server, socketserver, os, sys
+    os.chdir(html_path.parent)
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        url = f"http://localhost:{port}/{html_path.name}"
+        print(f"== Klickdummy-Browser (serve) ==", file=sys.stderr)
+        print(f"  URL: {url}", file=sys.stderr)
+        print(f"  Ctrl-C zum Beenden", file=sys.stderr)
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\n  Server beendet.", file=sys.stderr)
+    return 0
+
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repo", default=".", help="Repo-Root (Default: .)")
+    parser.add_argument("--repo", default=".", help="Repo-Root (single-repo modus)")
     parser.add_argument("--output", default="./klickdummy-browser.html",
                         help="Output-Pfad für Browser-HTML")
     parser.add_argument("--cross-repo", action="store_true",
-                        help="(v1.2 — noch nicht implementiert) alle Repos unter --base scannen")
+                        help="v1.3: aggregiere mehrere Repos unter --base")
     parser.add_argument("--base", default="~/github",
                         help="Cross-Repo Base (default ~/github)")
+    parser.add_argument("--repos", default=",".join(DEFAULT_CROSS_REPOS),
+                        help="Komma-Liste der Repo-Namen für --cross-repo")
     parser.add_argument("--json", action="store_true",
                         help="Statt HTML JSON-Inventory auf stdout")
+    parser.add_argument("--serve", type=int, default=None, metavar="PORT",
+                        help="v1.3: HTML schreiben und HTTP-Server auf PORT starten")
     args = parser.parse_args(argv)
 
     if args.cross_repo:
-        print("WARN: --cross-repo ist v1.2-Feature, hier noch nicht implementiert.")
-        print("      Aktuell wird --repo verwendet.")
+        base = pathlib.Path(args.base).expanduser().resolve()
+        repos = [r.strip() for r in args.repos.split(",") if r.strip()]
+        triples = discover_cross_repo(base, repos)
+        print(f"== Klickdummy-Registry Cross-Repo (v1.3) ==", file=sys.stderr)
+        print(f"  Base : {base}", file=sys.stderr)
+        print(f"  Repos: {len(repos)} configured · {len({r for _,r,_ in triples})} found Klickdummies", file=sys.stderr)
+        # Gruppierung nach Repo für Output
+        by_repo: dict = {}
+        for org, repo, km in triples:
+            by_repo.setdefault((org, repo), []).append(km)
+        for (org, repo), kms in sorted(by_repo.items()):
+            print(f"  · {org}/{repo} ({len(kms)} KD)", file=sys.stderr)
+            if not args.json:
+                for k in kms:
+                    print(f"      - {k.name:30s}  v{k.spec_version}  [{k.klickdummy_class}]",
+                          file=sys.stderr)
+        print(f"  Total: {len(triples)} Klickdummies cross-repo", file=sys.stderr)
 
+        if args.json:
+            out = [{"org": o, "repo": r, "name": k.name, "spec_id": k.spec_id,
+                    "spec_version": k.spec_version, "class": k.klickdummy_class,
+                    "title": k.title, "adr_local": k.adr_local,
+                    "sister_of": k.sister_of,
+                    "shell_path": k.shell_path, "path": k.path}
+                   for o, r, k in triples]
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0
+
+        if not triples:
+            print(f"  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
+            return 0
+
+        out_path = pathlib.Path(args.output).expanduser().resolve()
+        render_cross_repo_browser_html(triples, out_path, base_label=base.name)
+        print(f"  → Cross-Repo-Browser: {out_path}", file=sys.stderr)
+        if args.serve is not None:
+            return _serve(out_path, args.serve)
+        return 0
+
+    # Single-Repo-Modus (v1.1-Stand)
     repo_root = pathlib.Path(args.repo).expanduser().resolve()
     if not repo_root.exists():
-        print(f"FAIL: Repo-Root nicht gefunden: {repo_root}")
+        print(f"FAIL: Repo-Root nicht gefunden: {repo_root}", file=sys.stderr)
         return 2
 
-    print(f"== Klickdummy-Registry (v1.1.0) ==")
-    print(f"  Repo : {repo_root}")
+    print(f"== Klickdummy-Registry (v1.3) ==", file=sys.stderr)
+    print(f"  Repo : {repo_root}", file=sys.stderr)
     klickdummies = discover_klickdummies(repo_root)
-    print(f"  Gefunden: {len(klickdummies)} Klickdummy(ies)")
+    print(f"  Gefunden: {len(klickdummies)} Klickdummy(ies)", file=sys.stderr)
     for k in klickdummies:
-        # Versions-Discovery ist teuer; nur in non-JSON-Modus
         if not args.json:
-            print(f"    · {k.name:35s}  v{k.spec_version}  [{k.klickdummy_class}]  ({k.adr_local or 'kein ADR-Ref'})")
+            print(f"    · {k.name:35s}  v{k.spec_version}  [{k.klickdummy_class}]  ({k.adr_local or 'kein ADR-Ref'})", file=sys.stderr)
 
     if args.json:
         out = [
@@ -220,12 +350,14 @@ def main(argv: list[str]) -> int:
         return 0
 
     if not klickdummies:
-        print(f"  → keine Klickdummies — keine Browser-HTML generiert.")
+        print(f"  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
         return 0
 
     out_path = pathlib.Path(args.output).expanduser().resolve()
     render_browser_html(klickdummies, out_path, repo_label=repo_root.name)
-    print(f"  → Browser geschrieben: {out_path}")
+    print(f"  → Browser geschrieben: {out_path}", file=sys.stderr)
+    if args.serve is not None:
+        return _serve(out_path, args.serve)
     return 0
 
 
