@@ -228,7 +228,7 @@ def test_v13_version_bumped():
 # --- v1.4 ------------------------------------------------------------------
 
 def test_v14_manage_module_present():
-    from iil_klickdummy import manage
+    import iil_klickdummy.manage as manage
     assert hasattr(manage, "cmd_list")
     assert hasattr(manage, "cmd_status")
     assert hasattr(manage, "cmd_topics")
@@ -238,14 +238,14 @@ def test_v14_manage_module_present():
 
 
 def test_v14_topic_reader(tmp_path):
-    from iil_klickdummy import manage
+    import iil_klickdummy.manage as manage
     p = tmp_path / "spec.yaml"
     p.write_text("spec_id: x\nspec_version: '0.1'\nclass: mock\nmeta:\n  topic: fristen\nscreens:\n  - {id: x, title: X, parity_acceptance: []}\n")
     assert manage._spec_topic(p) == "fristen"
 
 
 def test_v14_topic_missing(tmp_path):
-    from iil_klickdummy import manage
+    import iil_klickdummy.manage as manage
     p = tmp_path / "spec.yaml"
     p.write_text("spec_id: x\nspec_version: '0.1'\nclass: mock\nscreens: []\n")
     assert manage._spec_topic(p) is None
