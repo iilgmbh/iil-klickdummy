@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iil-klickdummy"
-version = "1.1.0"
+version = "1.1.1"
 description = "Shared infrastructure for platform:ADR-211 Klickdummy conformance — invariants, requirements bridge, co-creation widget, multi-klickdummy browser"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Achim Dehnert", email = "achim.dehnert@iil.gmbh" }]
+authors = [{ name = "iil GmbH", email = "achim.dehnert@iil.gmbh" }]
+maintainers = [{ name = "Achim Dehnert", email = "achim.dehnert@iil.gmbh" }]
 keywords = ["klickdummy", "adr-211", "spec-driven-ui", "mockup", "requirements"]
 dependencies = ["pyyaml>=6.0", "jsonschema>=4.0"]
 
@@ -17,8 +18,11 @@ dependencies = ["pyyaml>=6.0", "jsonschema>=4.0"]
 dev = ["pytest>=7.0", "pytest-cov>=4.0"]
 
 [project.urls]
-"Homepage" = "https://github.com/achimdehnert/platform"
-"ADR-211" = "https://github.com/achimdehnert/platform/blob/main/docs/adr/ADR-211-klickdummy-benutzeranforderungen-entwicklungsprozess.md"
+"Homepage"      = "https://github.com/iilgmbh/iil-klickdummy"
+"Repository"    = "https://github.com/iilgmbh/iil-klickdummy"
+"Bug Tracker"   = "https://github.com/iilgmbh/iil-klickdummy/issues"
+"Documentation" = "https://github.com/iilgmbh/iil-klickdummy#readme"
+"ADR-211"       = "https://github.com/achimdehnert/platform/blob/main/docs/adr/ADR-211-klickdummy-benutzeranforderungen-entwicklungsprozess.md"
 
 [project.scripts]
 klickdummy-i1 = "iil_klickdummy.check_i1:main_cli"
