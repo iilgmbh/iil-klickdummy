@@ -184,3 +184,42 @@ def test_v12_sync_empty_repo_no_entries(tmp_path):
     from iil_klickdummy import sync_to_orchestrator as s
     entries = s.sync_repo(tmp_path)
     assert entries == []
+
+
+# --- v1.3 ------------------------------------------------------------------
+
+def test_v13_discover_cross_repo_present():
+    from iil_klickdummy import registry
+    assert hasattr(registry, "discover_cross_repo")
+    assert hasattr(registry, "render_cross_repo_browser_html")
+
+
+def test_v13_cross_repo_empty(tmp_path):
+    from iil_klickdummy import registry
+    # nonexistent repos → leere Liste
+    triples = registry.discover_cross_repo(tmp_path, ["does-not-exist"])
+    assert triples == []
+
+
+def test_v13_cross_repo_render(tmp_path):
+    from iil_klickdummy import registry
+    fake = registry.KlickdummyMeta(
+        name="x", path="klickdummy/x/screens-spec.yaml",
+        shell_path="klickdummy/x/shell.html",
+        spec_id="iilgmbh:klickdummy-spec-x", spec_version="0.1",
+        klickdummy_class="mock", title="X",
+        adr_local="iilgmbh:ADR-100", sister_of=[],
+    )
+    triples = [("iilgmbh", "test-repo", fake)]
+    out = tmp_path / "cross.html"
+    registry.render_cross_repo_browser_html(triples, out, base_label="test")
+    html = out.read_text(encoding="utf-8")
+    assert "cross-repo" in html
+    assert "iilgmbh" in html
+    assert "github.com/iilgmbh/test-repo" in html   # Cross-Repo-GitHub-Links
+
+
+def test_v13_version_bumped():
+    """Smoke-Test, dass v1.3.x installiert."""
+    import iil_klickdummy
+    assert iil_klickdummy.__version__.startswith(("1.3", "0.0.0+unknown"))
