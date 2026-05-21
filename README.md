@@ -93,3 +93,54 @@ schema = json.loads(files("iil_klickdummy.schemas").joinpath("screens-spec.schem
 - `platform:ADR-211` Rev 13 — Konvention + Distribution + Co-Creation-Pfade
 - `platform:ADR-212` — Traefik-Ingress (für künftige PyPI-Selbsthost)
 - `platform:ADR-213` — Cross-Repo-Ref-Format (was `klickdummy-i4` prüft)
+
+## v1.2 — klickdummy-sync (Stufe 2)
+
+Per `platform:ADR-211` Rev 14 §Multi-Klickdummy-Browser Stufe 3 (Cross-Repo): pushe Klickdummy-Metadaten + Iterations-Logs + ADR-Bodies in den **Orchestrator pgvector-Memory** für semantische Cross-Repo-Suche.
+
+### CLI
+
+```bash
+klickdummy-sync --repo .                   # repo-lokal, NDJSON auf stdout
+klickdummy-sync --cross-repo               # alle 6 Klickdummy-Repos
+klickdummy-sync --cross-repo --output sync.ndjson
+klickdummy-sync --repo . --dry-run         # nur Listen
+```
+
+### Architektur — NDJSON-getrennt vom Push
+
+Das Sync-Modul produziert **NDJSON** (eine Zeile pro Memory-Entry). Der eigentliche Push an Orchestrator-pgvector erfolgt in einem zweiten Schritt — entweder:
+
+- via `claude-policy push --ndjson sync.ndjson` (SSH+docker-exec, kein MCP nötig)
+- via CC/Cascade-Session mit gebundenem `orchestrator__agent_memory_upsert`
+- via nightly GitHub-Action mit Orchestrator-API-Token
+
+**Warum getrennt:** das Paket bleibt MCP-frei und unter PyPI-Standards. Auth zum Orchestrator ist Sache des Konsumenten (Org-spezifisch).
+
+### Entry-Typen
+
+| was | entry_type | entry_key-Schema |
+|---|---|---|
+| Klickdummy-Spec | `repo_context` | `klickdummy:<org>:<repo>:<name>` |
+| Iteration (feedback-log) | `lesson_learned` | `klickdummy-iter:<org>:<repo>:<name>:<n>` |
+| Klickdummy-ADR | `decision` | `klickdummy-adr:<org>:<repo>:ADR-<NNN>` |
+
+### Tags (Multi-Tenant + Filter)
+
+- `klickdummy` (alle)
+- `klickdummy:class:<mock|stub-demo|story|spec-demo>`
+- `klickdummy:org:<iilgmbh|achimdehnert|ttz-lif|meiki-lra>`
+- `klickdummy:repo:<name>`
+- `gov-data` für ttz-lif / meiki-lra-Workloads
+
+### Dogfood
+
+```
+$ klickdummy-sync --cross-repo --dry-run
+== Klickdummy-Sync → Orchestrator (v1.2) ==
+  · meiki-hub:   1 KD · 7 Iter · 3 ADRs
+  · writing-hub: 1 KD · 0 Iter · 1 ADR
+  · risk-hub:    0 KD · 0 Iter · 1 ADR
+  · ttz-hub:     2 KD · 0 Iter · 2 ADRs
+  Total: 18 Entries
+```

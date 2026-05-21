@@ -136,3 +136,51 @@ def test_version_consistency():
             f"Mismatch: __init__={iil_klickdummy.__version__} vs "
             f"metadata={pkg_version('iil-klickdummy')}"
         )
+
+
+# --- v1.2 ------------------------------------------------------------------
+
+def test_v12_sync_module_present():
+    from iil_klickdummy import sync_to_orchestrator
+    assert hasattr(sync_to_orchestrator, "sync_repo")
+    assert hasattr(sync_to_orchestrator, "klickdummy_entry")
+    assert hasattr(sync_to_orchestrator, "main_cli")
+
+
+def test_v12_sync_entry_schema(tmp_path):
+    """klickdummy_entry produziert valides Memory-Entry-Dict."""
+    from iil_klickdummy import sync_to_orchestrator as s, registry
+    fake = registry.KlickdummyMeta(
+        name="demo", path="klickdummy/demo/screens-spec.yaml",
+        shell_path="klickdummy/demo/shell.html",
+        spec_id="repo:klickdummy-spec-demo", spec_version="0.1",
+        klickdummy_class="mock", title="Demo",
+        adr_local="repo:ADR-100", sister_of=["other:ADR-099"],
+    )
+    entry = s.klickdummy_entry(fake, org="iilgmbh", repo="test-repo",
+                                repo_root=tmp_path)
+    assert entry["entry_key"] == "klickdummy:iilgmbh:test-repo:demo"
+    assert entry["entry_type"] == "repo_context"
+    assert entry["title"].startswith("test-repo:demo")
+    assert "klickdummy" in entry["tags"]
+    assert "klickdummy:class:mock" in entry["tags"]
+    assert "klickdummy:org:iilgmbh" in entry["tags"]
+    assert "gov-data" not in entry["tags"]   # iilgmbh ist nicht-gov
+
+
+def test_v12_sync_gov_tag(tmp_path):
+    """Gov-Orgs (ttz-lif, meiki-lra) bekommen 'gov-data' tag."""
+    from iil_klickdummy import sync_to_orchestrator as s, registry
+    fake = registry.KlickdummyMeta(
+        name="x", path="x/spec.yaml", shell_path=None,
+        spec_id="x:spec", spec_version="0.1", klickdummy_class="mock",
+        title="X", adr_local=None,
+    )
+    entry = s.klickdummy_entry(fake, org="ttz-lif", repo="ttz-hub", repo_root=tmp_path)
+    assert "gov-data" in entry["tags"]
+
+
+def test_v12_sync_empty_repo_no_entries(tmp_path):
+    from iil_klickdummy import sync_to_orchestrator as s
+    entries = s.sync_repo(tmp_path)
+    assert entries == []
