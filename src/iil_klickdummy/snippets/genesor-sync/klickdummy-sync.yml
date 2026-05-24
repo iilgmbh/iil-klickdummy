@@ -69,8 +69,8 @@ jobs:
             ARGS="$ARGS --dry-run"
           fi
           python3 .github/scripts/klickdummy_sync.py $ARGS
-
-      - name: Hinweis bei fehlendem Project-Token
-        if: ${{ !secrets.GENESOR_PROJECT_TOKEN && vars.GENESOR_PROJECT_URL != '' }}
-        run: |
-          echo "::warning::GENESOR_PROJECT_URL ist gesetzt, aber kein GENESOR_PROJECT_TOKEN — Project-Sync wurde geskippt. Setze einen Org-PAT mit 'project'-Scope als Repo-Secret, damit Issues in das Genesor-Project aufgenommen werden."
+          # Hinweis bei fehlendem Project-Token: Project-Add ist optional —
+          # wenn GENESOR_PROJECT_URL gesetzt aber kein GENESOR_PROJECT_TOKEN-
+          # Secret existiert, läuft der Sync trotzdem (Issues werden angelegt,
+          # aber dem Project nicht hinzugefügt). Setup-Hinweise im snippet-
+          # README (iil-klickdummy/snippets/genesor-sync/).
