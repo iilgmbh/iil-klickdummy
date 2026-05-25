@@ -222,23 +222,40 @@ def upsert_issue(kd_name: str, spec_path: Path, data: dict, dry_run: bool = Fals
         return num
 
 
+import re as _re
+_PROJECT_URL_RE = _re.compile(r"https://github\.com/orgs/([^/]+)/projects/(\d+)")
+
+
 def add_to_project(issue_number: int, dry_run: bool = False) -> None:
-    """Fügt Issue zum Org-Project hinzu (wenn PROJECT_URL gesetzt)."""
+    """Fügt Issue zum Org-Project hinzu (wenn PROJECT_URL gesetzt).
+
+    Owner + Project-Number werden AUS PROJECT_URL extrahiert — NICHT aus
+    REPO (Bug-Fix: Issue-Repo-Owner kann ein anderer Org sein als
+    Project-Owner, z. B. Issues in meiki-lra/* → Project in iilgmbh).
+    """
     if not PROJECT_URL:
         return
     if dry_run:
         print(f"[dry-run] add-to-project #{issue_number} → {PROJECT_URL}")
         return
-    try:
-        gh("project", "item-add", PROJECT_URL,
-           "--owner", REPO.split("/")[0],
-           "--url", f"https://github.com/{REPO}/issues/{issue_number}",
-           check=False)
-        print(f"  → added #{issue_number} to project")
-    except subprocess.CalledProcessError as e:
-        # Idempotent: ok wenn schon hinzugefügt
-        if "already" not in (e.stderr or "").lower():
-            print(f"WARN: project item-add: {e.stderr}", file=sys.stderr)
+    m = _PROJECT_URL_RE.match(PROJECT_URL)
+    if not m:
+        print(f"WARN: PROJECT_URL '{PROJECT_URL}' nicht im Format https://github.com/orgs/<owner>/projects/<n>",
+              file=sys.stderr)
+        return
+    project_owner = m.group(1)
+    project_num = m.group(2)
+    issue_url = f"https://github.com/{REPO}/issues/{issue_number}"
+    result = gh("project", "item-add", project_num,
+                "--owner", project_owner,
+                "--url", issue_url,
+                check=False)
+    if result.returncode == 0:
+        print(f"  → added #{issue_number} to project ({project_owner}/projects/{project_num})")
+    else:
+        stderr = (result.stderr or "")[:200]
+        if "already" not in stderr.lower():
+            print(f"WARN: project item-add failed for #{issue_number}: {stderr}", file=sys.stderr)
 
 
 # ---- main -------------------------------------------------------------------
