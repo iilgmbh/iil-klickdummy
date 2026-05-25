@@ -1,0 +1,24 @@
+/* ============================================================================
+ * arriba-look.css — Skin für AVA-Suiten im Bauwesen (ARRIBA / iTWO / MWM)
+ * Tabellen-zentriert, kompakt, Engineering-Look. Rechtlich frei.
+ * ============================================================================ */
+:root {
+  --accent: #c8531a !important;
+  --accent-bg: #fce8dc !important;
+  --font-h: "Verdana", "Arial", sans-serif !important;
+}
+body { background: #ebe9e3 !important; font-family: "Verdana", Arial, sans-serif !important; font-size: 11px !important; }
+.app-frame { border: 1px solid #807466 !important; border-radius: 0 !important; box-shadow: 1px 1px 2px rgba(0,0,0,.12) !important; }
+.app-bar { background: linear-gradient(180deg, #5c4a3c 0%, #3d2f24 100%) !important; padding: 4px 10px !important; font-family: Verdana, sans-serif !important; }
+.app-bar .traffic { display: none !important; }
+.app-bar .app-name { font-size: 12px !important; font-weight: 700 !important; }
+.app-toolbar { background: #d4cdb8 !important; border-bottom: 1px solid #807466 !important; padding: 4px 10px !important; }
+.app-toolbar h2 { font-size: 12px !important; font-weight: 700 !important; color: #3d2f24 !important; }
+.sub-tabs { background: #d4cdb8 !important; border-bottom: 1px solid #807466 !important; }
+.sub-tabs button { background: #c5beaa !important; font-size: 10px !important; }
+.sub-tabs button.active { background: #fff !important; border-bottom-color: #c8531a !important; font-weight: 700 !important; }
+table.entity { border: 1px solid #807466 !important; font-size: 10px !important; }
+table.entity th { background: #807466 !important; color: #fff !important; padding: 3px 6px !important; font-size: 10px !important; font-weight: 700 !important; }
+table.entity td { border-right: 1px solid #d4cdb8 !important; padding: 2px 6px !important; }
+.app-actionbar .actions button { background: linear-gradient(180deg, #e8b89c 0%, #c8531a 100%) !important; color: #fff !important; border: 1px solid #803010 !important; font-size: 10px !important; font-weight: 700 !important; }
+.app-actionbar .actions button.secondary { background: linear-gradient(180deg, #fafafa 0%, #d4cdb8 100%) !important; color: #3d2f24 !important; }

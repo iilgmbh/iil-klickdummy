@@ -1,0 +1,26 @@
+/* ============================================================================
+ * bayernid-look.css — Skin für moderne Bürger-Portale (BayernID/BundID-Stil)
+ * Klar, modern, mit Bayerisch-Weiß-Blau-Anlehnung (rechtlich frei: keine Logos).
+ * ============================================================================ */
+:root {
+  --accent: #0c5cab !important;
+  --accent-bg: #e6f0fa !important;
+  --font-h: "Inter", "Helvetica Neue", "Arial", sans-serif !important;
+}
+body { background: #fafbfd !important; font-family: "Inter", "Helvetica Neue", Arial, sans-serif !important; }
+.app-frame { border: 1px solid #d1dce8 !important; border-radius: 12px !important; box-shadow: 0 4px 16px rgba(12,92,171,.08) !important; }
+.app-bar { background: #fff !important; color: #0c5cab !important; border-bottom: 2px solid #0c5cab !important; padding: 14px 20px !important; }
+.app-bar .traffic { display: none !important; }
+.app-bar .app-icon { color: #0c5cab !important; }
+.app-bar .app-name { color: #0c5cab !important; font-weight: 700 !important; font-size: 15px !important; }
+.app-bar .info-btn { background: #0c5cab !important; color: #fff !important; border: 0 !important; }
+.app-bar .app-user { background: #e6f0fa !important; color: #0c5cab !important; }
+.app-toolbar { background: #f4f7fb !important; border-bottom: 1px solid #d1dce8 !important; padding: 14px 20px !important; }
+.app-toolbar h2 { font-family: "Inter", sans-serif !important; font-size: 20px !important; color: #0c5cab !important; font-weight: 600 !important; }
+.card { border: 1px solid #d1dce8 !important; border-radius: 10px !important; padding: 18px !important; box-shadow: 0 1px 2px rgba(0,0,0,.03) !important; }
+table.entity th { background: #e6f0fa !important; color: #0c5cab !important; }
+.app-actionbar { background: #fff !important; padding: 16px 20px !important; }
+.app-actionbar .actions button { background: #0c5cab !important; border-radius: 6px !important; padding: 10px 20px !important; font-weight: 600 !important; font-size: 14px !important; }
+.app-actionbar .actions button.secondary { background: transparent !important; color: #0c5cab !important; border: 2px solid #0c5cab !important; }
+.app-statusbar { background: #f4f7fb !important; border-top: 1px solid #d1dce8 !important; }
+.persona-chip { background: #e6f0fa !important; color: #0c5cab !important; border-radius: 12px !important; }

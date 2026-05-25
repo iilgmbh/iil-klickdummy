@@ -1,0 +1,202 @@
+/* ============================================================================
+ * okwobis-look.css — Skin-Library Beispiel (Bestand-System-Look)
+ * ----------------------------------------------------------------------------
+ * Adaptiert generisch den Look von Windows-Forms-Verwaltungssoftware
+ * (graue Toolbars, dichte Tabellen, Arial/Tahoma). Rechtlich frei — keine
+ * Logos, Wortmarken oder spezifischen Farben. Wer es deutlicher als das
+ * Bestandsystem haben will, baut shell.html manuell ODER ergänzt diese CSS.
+ *
+ * Anwendung in einer screens-spec.yaml:
+ *   app_skin:
+ *     base: greenfield
+ *     custom_css: docs/skins/okwobis-look.css     # relativ zum Repo
+ *
+ * Der Render lädt dieses Stylesheet ZUSÄTZLICH zum inline-CSS — Override-Reihenfolge:
+ * inline-Style < custom_css < !important
+ * ============================================================================ */
+
+:root {
+  --accent: #1f4e79 !important;          /* dunkelblau, klassisch Verwaltung */
+  --accent-bg: #dde7f1 !important;
+  --font-h: "Tahoma", "Arial", sans-serif !important;
+}
+
+body {
+  background: #c0c0c0 !important;        /* Windows-95-Grau */
+  font-family: "Tahoma", "Arial", sans-serif !important;
+  font-size: 12px !important;
+}
+
+/* App-Frame: kantig, dichte Borders, kein Schatten */
+.app-frame {
+  border: 2px solid #808080 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #808080 !important;
+}
+
+/* App-Bar: kompakter, klassische Win-Titel-Leiste */
+.app-bar {
+  background: linear-gradient(180deg, #2e5f8b 0%, #1f4e79 100%) !important;
+  padding: 4px 8px !important;
+  border-bottom: 1px solid #1a3f63 !important;
+}
+.app-bar .app-name {
+  font-family: "Tahoma", sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+.app-bar .traffic {
+  display: none !important;              /* Windows-Stil ohne Traffic-Lights */
+}
+.app-bar .app-icon {
+  font-size: 14px !important;
+}
+.app-bar .info-btn {
+  background: #c0c0c0 !important;
+  color: #000 !important;
+  border: 1px solid #404040 !important;
+  border-radius: 0 !important;
+  padding: 1px 6px !important;
+  font-family: "Tahoma", sans-serif !important;
+}
+.app-bar .app-user {
+  background: rgba(255,255,255,.15) !important;
+  border-radius: 0 !important;
+  font-size: 11px !important;
+}
+
+/* Toolbar: graue Leiste mit dichten Elementen */
+.app-toolbar {
+  background: #ece9d8 !important;        /* Win-XP-Toolbar */
+  border-bottom: 1px solid #aca899 !important;
+  padding: 4px 8px !important;
+}
+.app-toolbar h2 {
+  font-family: "Tahoma", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #000 !important;
+}
+.app-toolbar .breadcrumb {
+  color: #444 !important;
+  font-size: 11px !important;
+}
+
+/* Content: weißer Hintergrund, dichte Tabellen */
+.app-content {
+  background: #fff !important;
+  padding: 8px 12px !important;
+}
+
+/* Sub-Tabs: klassische Karteireiter-Optik */
+.sub-tabs {
+  background: #ece9d8 !important;
+  border-bottom: 1px solid #aca899 !important;
+}
+.sub-tabs button {
+  background: #d4d0c8 !important;
+  border: 1px solid #808080 !important;
+  border-bottom: 0 !important;
+  border-radius: 4px 4px 0 0 !important;
+  margin-right: 2px !important;
+  font-size: 11px !important;
+  font-family: "Tahoma", sans-serif !important;
+  color: #000 !important;
+}
+.sub-tabs button.active {
+  background: #fff !important;
+  border-bottom: 1px solid #fff !important;
+  margin-bottom: -1px !important;
+  font-weight: 700 !important;
+}
+
+/* Tabellen: dicht, mit Linien, klassischer Look */
+table.entity {
+  border: 1px solid #808080 !important;
+  font-size: 11px !important;
+  font-family: "Tahoma", sans-serif !important;
+}
+table.entity th {
+  background: linear-gradient(180deg, #ddd 0%, #c0c0c0 100%) !important;
+  color: #000 !important;
+  border-right: 1px solid #808080 !important;
+  border-bottom: 1px solid #808080 !important;
+  padding: 3px 6px !important;
+  font-weight: 700 !important;
+}
+table.entity td {
+  border-right: 1px solid #c0c0c0 !important;
+  border-bottom: 1px solid #c0c0c0 !important;
+  padding: 2px 6px !important;
+}
+table.entity tr:nth-child(even) td {
+  background: #f0f0f0 !important;
+}
+
+/* Cards: kantig, ohne Schatten */
+.card {
+  border: 1px solid #808080 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 6px 10px !important;
+  background: #f8f8f8 !important;
+}
+.card h3 {
+  font-size: 11px !important;
+  font-family: "Tahoma", sans-serif !important;
+  color: #000 !important;
+  background: #c0c0c0 !important;
+  padding: 2px 6px !important;
+  margin: -6px -10px 6px -10px !important;
+}
+
+/* Action-Bar: graue Win-Toolbar */
+.app-actionbar {
+  background: #ece9d8 !important;
+  border-top: 1px solid #aca899 !important;
+  padding: 4px 8px !important;
+}
+.app-actionbar .actions button {
+  background: linear-gradient(180deg, #f5f5f5 0%, #d4d0c8 100%) !important;
+  color: #000 !important;
+  border: 1px solid #808080 !important;
+  border-radius: 2px !important;
+  padding: 3px 12px !important;
+  font-family: "Tahoma", sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+.app-actionbar .actions button.secondary {
+  background: linear-gradient(180deg, #f5f5f5 0%, #c0c0c0 100%) !important;
+}
+
+/* Statusbar: Win-Klassik */
+.app-statusbar {
+  background: #d4d0c8 !important;
+  border-top: 1px solid #aca899 !important;
+  color: #000 !important;
+  font-size: 10px !important;
+  font-family: "Tahoma", sans-serif !important;
+  padding: 2px 8px !important;
+}
+
+/* Persona-Chips: kompakt, eckig */
+.persona-chip {
+  background: #ece9d8 !important;
+  color: #000 !important;
+  border: 1px solid #808080 !important;
+  border-radius: 0 !important;
+  font-size: 10px !important;
+  padding: 1px 5px !important;
+}
+
+/* SID-Tag: Notepad-Stil */
+.sid {
+  background: #ffffaa !important;
+  color: #000 !important;
+  border: 1px solid #aca899 !important;
+  border-radius: 0 !important;
+}
+
+/* Topbar bleibt eher Greenfield (zeigt im Browser-Header an, dass es "Klickdummy" ist) */
+/* — bewusst nicht überschrieben, damit Stakeholder erkennt: das ist der Mockup-Frame, der Inhalt ist OK.Wobis-Look */

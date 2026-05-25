@@ -1,0 +1,22 @@
+/* ============================================================================
+ * prosoz-look.css — Skin für Web-basierte Verwaltungs-Suiten
+ * (Prosoz/OK.JUS-Familie). Web aber konservativ. Rechtlich frei.
+ * ============================================================================ */
+:root {
+  --accent: #0d5a99 !important;
+  --accent-bg: #e0eef9 !important;
+  --font-h: "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
+}
+body { background: #f4f6f8 !important; font-family: "Segoe UI", Arial, sans-serif !important; font-size: 13px !important; }
+.app-frame { border: 1px solid #c5d3df !important; border-radius: 2px !important; box-shadow: 0 1px 3px rgba(0,0,0,.08) !important; }
+.app-bar { background: linear-gradient(180deg, #0d5a99 0%, #094776 100%) !important; padding: 6px 14px !important; }
+.app-bar .traffic { display: none !important; }
+.app-bar .app-name { font-weight: 600 !important; font-size: 13px !important; }
+.app-toolbar { background: #eff3f7 !important; border-bottom: 1px solid #c5d3df !important; padding: 8px 14px !important; }
+.app-toolbar h2 { font-family: "Segoe UI", sans-serif !important; font-size: 16px !important; font-weight: 600 !important; color: #094776 !important; }
+.sub-tabs { background: #eff3f7 !important; border-bottom: 1px solid #c5d3df !important; }
+.sub-tabs button.active { background: #fff !important; border-bottom-color: #0d5a99 !important; }
+table.entity { border: 1px solid #c5d3df !important; font-size: 12px !important; }
+table.entity th { background: #d6e3ee !important; color: #094776 !important; padding: 5px 8px !important; }
+.app-actionbar .actions button { background: #0d5a99 !important; border-radius: 2px !important; font-size: 12px !important; }
+.app-actionbar .actions button.secondary { background: #fff !important; color: #0d5a99 !important; border-color: #0d5a99 !important; }
