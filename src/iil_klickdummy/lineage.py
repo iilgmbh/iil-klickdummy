@@ -57,6 +57,13 @@ BASE_URL = "/"
 # 4 Skin-CSS-Dateien neben dem Genesor-Site liegen.
 SKIN_BASE = ""
 
+# Repos, deren echte Mockup-HTMLs unter "/kd/<repo>/..." einvendoriert
+# ausgeliefert werden (z. B. iil-pet-portal/kd/). Steht ein Repo hier, wird in
+# url_for_path() dem ROOT-relativen Pfad ein "/kd"-Präfix vorangestellt, sodass
+# der Link auf die vendored Kopie statt auf das (auf iil.pet nicht ausgelieferte)
+# Original zeigt. Leere Menge (Default) → byte-identisch zu früher.
+VENDORED_REPOS: set[str] = set()
+
 
 def _base_prefix() -> str:
     """Normalisiert BASE_URL zu einem Präfix ohne Trailing-Slash ("/"→"")."""
@@ -100,11 +107,19 @@ def url_for_path(p: Path) -> str | None:
     """Pfad → URL relativ zu REPOS_ROOT, präfixiert mit BASE_URL.
 
     Default BASE_URL "/" → _base_prefix()=="" → "/<relpath>" (byte-identisch zu früher).
+
+    Vendoring: liegt das erste Pfad-Segment (das Repo) in VENDORED_REPOS, wird dem
+    ROOT-relativen Pfad ein "/kd"-Präfix vorangestellt ("/<repo>/..." →
+    "/kd/<repo>/..."), sodass der Link auf die einvendorierte Kopie zeigt. Leere
+    Menge (Default) → byte-identisch zu früher.
     """
     try:
-        return _base_prefix() + "/" + str(p.relative_to(REPOS_ROOT))
+        rel = str(p.relative_to(REPOS_ROOT))
     except ValueError:
         return None
+    if VENDORED_REPOS and rel.split("/", 1)[0] in VENDORED_REPOS:
+        return _base_prefix() + "/kd/" + rel
+    return _base_prefix() + "/" + rel
 
 
 # ---- Skin-Library (zentral in iil-klickdummy, via HTTP-Server-Root erreichbar)
@@ -2778,6 +2793,13 @@ def build_genesor_html(records: list[dict],
                 kd_url = url_for_path(kd_mockup) if kd_mockup else (
                     f"/genesor/render/{html.escape(r['repo'])}-{html.escape(r['kd'])}.html"
                 )
+                # Sichtbarer Flag: KD ohne echtes Mockup-HTML → nur Spec-Render.
+                mockup_missing_badge = (
+                    '<span class="warn-badge warn-warning mockup-missing" '
+                    'title="Kein echtes Mockup-HTML im KD-Verzeichnis — Link zeigt auf den '
+                    'aus der Spec generierten Auto-Render.">⚠ Mockup fehlt · nur Spec-Render</span> '
+                    if kd_mockup is None else ""
+                )
 
                 # Screen×Surface-Matrix als JSON-Datenstruktur fürs Modal
                 screen_routes = _extract_screen_routes(r)
@@ -2851,7 +2873,7 @@ def build_genesor_html(records: list[dict],
     <tr class="kd-row {'render-only' if is_render_only else ''}" data-detail-id="detail-{idx}" data-drift-status="{d_status}" data-org="{html.escape(org)}" onclick="toggleDetail(this)">
       <td class="org-cell">{org_cell}</td>
       <td class="repo-cell">{repo_cell}</td>
-      <td><span class="toggle">▸</span> {badge} <b>{html.escape(r["kd"])}</b><br/><span class="muted">{html.escape(title)}</span></td>
+      <td><span class="toggle">▸</span> {badge} <b>{html.escape(r["kd"])}</b><br/>{mockup_missing_badge}<span class="muted">{html.escape(title)}</span></td>
       <td>{role_chip(role)}</td>
       <td><span class="klass-{html.escape(klass)}">{html.escape(klass)}</span></td>
       <td class="num">{n_screens}</td>
@@ -5654,15 +5676,20 @@ def main() -> int:
                         help="Basis-URL für Skin-CSS (z. B. '/genesor/skins'). Leer (Default) → "
                              "Skins unter '/iil-klickdummy/.../skins/<name>.css' (byte-identisch zu früher); "
                              "gesetzt → '<skin-base>/<name>.css' für einen self-contained Build.")
+    parser.add_argument("--vendored-repos", default="",
+                        help="Komma-separierte Repo-Namen, deren echte Mockup-HTMLs einvendoriert "
+                             "unter '/kd/<repo>/...' ausgeliefert werden (z. B. 'ausschreibungs-hub'). "
+                             "Leer (Default) → keine Umschreibung (byte-identisch zu früher).")
     args = parser.parse_args()
 
     # Argparse → modulweite Konfiguration (alle Funktionen lesen diese Globals).
     # Defaults reproduzieren das bisherige Verhalten byte-identisch.
-    global REPOS_ROOT, GENESOR_OUT, BASE_URL, SKIN_BASE
+    global REPOS_ROOT, GENESOR_OUT, BASE_URL, SKIN_BASE, VENDORED_REPOS
     REPOS_ROOT = Path(args.repos_root).expanduser()
     GENESOR_OUT = Path(args.out).expanduser() if args.out else REPOS_ROOT / "genesor"
     BASE_URL = args.base_url
     SKIN_BASE = args.skin_base
+    VENDORED_REPOS = {r.strip() for r in args.vendored_repos.split(",") if r.strip()}
 
     if args.gen_impl_brief:
         try:
