@@ -28,5 +28,9 @@ __author__ = "iil GmbH"
 from . import (  # noqa: F401
     check_i1, check_i2, check_i3, check_i4,
     extract_requirements, inventory, install_snippets, registry,
-    sync_to_orchestrator, manage,
+    sync_to_orchestrator,
 )
+# Hinweis: `manage` wird hier NICHT eager importiert — das Modul existiert
+# (noch) nicht; ein eager Import würde das gesamte Paket beim Laden crashen
+# (ImportError → blockiert alle console-scripts). pyproject verweist weiterhin
+# auf klickdummy-manage; das ist separat zu klären (pre-existing drift).
