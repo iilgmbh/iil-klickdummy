@@ -730,6 +730,13 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       <option value="data-unrealistic">Beispiel-Daten unrealistisch</option>
       <option value="idea">Vorschlag</option>
     </select>
+    <label>Acceptance</label>
+    <select id="fb-verdict">
+      <option value="">— wählen —</option>
+      <option value="accepted">✓ Accepted</option>
+      <option value="needs-change">✎ Needs-Change</option>
+      <option value="rejected">✗ Rejected</option>
+    </select>
     <label>Was sollte anders sein?</label>
     <textarea id="fb-text" placeholder="Beschreibung — was hast Du erwartet? Was fehlt?"></textarea>
     <div class="row">
@@ -886,6 +893,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       klickdummy_class: KD_META.klass,
       spec_role: KD_META.role,
       feedback_scope: "screen",
+      acceptance_verdict: document.getElementById('fb-verdict')?.value || null,
       screen_id: document.getElementById('fb-current-screen').textContent,
       persona_filter: document.getElementById('fb-current-persona').textContent,
       kategorie: document.getElementById('fb-cat').value,
@@ -1746,6 +1754,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <option value="idea">Idee / Vorschlag</option>
     </select>
 
+    <label>Acceptance</label>
+    <select id="fb-verdict">
+      <option value="">— wählen —</option>
+      <option value="accepted">✓ Accepted</option>
+      <option value="needs-change">✎ Needs-Change</option>
+      <option value="rejected">✗ Rejected</option>
+    </select>
+
     <label>Betroffener KD <small>(nur bei Scope „app")</small></label>
     <select id="fb-kd">
       <option value="">— alle / kein spezifischer —</option>
@@ -1777,6 +1793,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       spec_version: window.KLICKDUMMY_SPEC.version,
       klickdummy_class: window.KLICKDUMMY_SPEC.klickdummy_class,
       feedback_scope: document.getElementById('fb-scope').value,
+      acceptance_verdict: document.getElementById('fb-verdict')?.value || null,
       kategorie: document.getElementById('fb-cat').value,
       betroffener_kd: document.getElementById('fb-kd').value || null,
       text: document.getElementById('fb-text').value,
@@ -2800,6 +2817,29 @@ def build_genesor_html(records: list[dict],
                     'aus der Spec generierten Auto-Render.">⚠ Mockup fehlt · nur Spec-Render</span> '
                     if kd_mockup is None else ""
                 )
+                # Feature B: "🛠 Mockup generieren" — nur wenn kein echtes Mockup existiert.
+                # Verlinkt auf ein vorausgefülltes GitHub-Issue (labels=klickdummy,auto).
+                mockup_generate_btn = ""
+                if kd_mockup is None:
+                    from urllib.parse import quote as _quote
+                    _issue_title = f'[klickdummy] {r["kd"]} bauen'
+                    _issue_body = (
+                        f'Mockup für {repo}:{r["kd"]} bauen gemäß ADR-211, '
+                        f'angefordert über genesor.'
+                    )
+                    _issue_url = (
+                        f'https://github.com/{detect_org(repo)}/{repo}/issues/new'
+                        f'?title={_quote(_issue_title)}'
+                        f'&labels=klickdummy,auto'
+                        f'&body={_quote(_issue_body)}'
+                    )
+                    mockup_generate_btn = (
+                        f'<a class="mockup-gen-btn" href="{html.escape(_issue_url, quote=True)}" '
+                        f'target="_blank" rel="noopener" '
+                        f'title="GitHub-Issue zum Bau dieses Mockups vorausfüllen (labels=klickdummy,auto)" '
+                        f'onclick="event.stopPropagation(); mockupGenStart(this);">'
+                        f'🛠 Mockup generieren</a> '
+                    )
 
                 # Screen×Surface-Matrix als JSON-Datenstruktur fürs Modal
                 screen_routes = _extract_screen_routes(r)
@@ -2873,7 +2913,7 @@ def build_genesor_html(records: list[dict],
     <tr class="kd-row {'render-only' if is_render_only else ''}" data-detail-id="detail-{idx}" data-drift-status="{d_status}" data-org="{html.escape(org)}" onclick="toggleDetail(this)">
       <td class="org-cell">{org_cell}</td>
       <td class="repo-cell">{repo_cell}</td>
-      <td><span class="toggle">▸</span> {badge} <b>{html.escape(r["kd"])}</b><br/>{mockup_missing_badge}<span class="muted">{html.escape(title)}</span></td>
+      <td><span class="toggle">▸</span> {badge} <b>{html.escape(r["kd"])}</b><br/>{mockup_missing_badge}{mockup_generate_btn}<span class="muted">{html.escape(title)}</span></td>
       <td>{role_chip(role)}</td>
       <td><span class="klass-{html.escape(klass)}">{html.escape(klass)}</span></td>
       <td class="num">{n_screens}</td>
@@ -2889,6 +2929,71 @@ def build_genesor_html(records: list[dict],
                 iter_idx += 1
 
     table_body = "".join(rows)
+
+    # ── Feature C2: Acceptance-Matrix (ADR-211 §Acceptance) ──────────────────
+    # Eine Zeile pro KD, Spalten = die zwei Achsen spec_signed/ui_walked.
+    # Liest die ECHTE acceptance-Sektion aus der Spec (KD-Level). Die meisten
+    # KDs haben (noch) keinen Sign-Off → Status "none" / "offen" — genau das ist
+    # der Sinn: sichtbar machen, wo eine Abnahme fehlt.
+    _ac_axis_labels = {"spec_signed": "PO-Sign-Off", "ui_walked": "Workshop-Walk"}
+    _am_rows: list[str] = []
+    _am_open_count = 0  # KDs mit mindestens einer offenen Achse
+    for r in records:
+        ac_status = compute_acceptance_status((r.get("data") or {}).get("acceptance"))
+        cells = []
+        row_has_open = False
+        for axis in _ACCEPTANCE_AXES:
+            info = ac_status.get(axis, {})
+            st = info.get("status", "missing")
+            label = _ac_axis_labels.get(axis, axis)
+            if st == "signed":
+                chip = (
+                    f'<span class="ac-chip ac-signed" title="{html.escape(label)}: '
+                    f'{html.escape(str(info.get("latest_by") or "?"))} · '
+                    f'{html.escape(str(info.get("latest_date") or ""))} · '
+                    f'ref={html.escape(str(info.get("latest_ref") or "—"))}">'
+                    f'✓ signed</span>'
+                )
+            elif st == "stale":
+                chip = (
+                    f'<span class="ac-chip ac-stale" title="{html.escape(label)}: '
+                    f'letzter Eintrag {info.get("age_days")}d alt '
+                    f'({html.escape(str(info.get("latest_date") or ""))}) — '
+                    f'Spec-Drift möglich, neue Abnahme empfohlen">⚠ stale</span>'
+                )
+                row_has_open = True
+            else:
+                chip = (
+                    f'<span class="ac-chip ac-none" title="{html.escape(label)}: '
+                    f'keine Abnahme erfasst">offen</span>'
+                )
+                row_has_open = True
+            cells.append(f'<td>{chip}</td>')
+        if row_has_open:
+            _am_open_count += 1
+        repo = r["repo"]
+        org = r.get("org") or detect_org(repo)
+        _am_rows.append(
+            f'<tr>'
+            f'<td class="am-label">{org_chip(org)} <code>{html.escape(repo)}</code> · '
+            f'<b>{html.escape(r["kd"])}</b></td>'
+            f'{"".join(cells)}'
+            f'</tr>'
+        )
+    acceptance_matrix_section = (
+        '<details class="acceptance-matrix">'
+        f'<summary>✍️ Acceptance-Matrix — {_am_open_count}/{len(records)} KD(s) mit '
+        'offener Abnahme (klicken zum Aufklappen)</summary>'
+        '<table>'
+        '<thead><tr>'
+        '<th>Repo · Klickdummy</th>'
+        f'<th title="ADR-211 Achse spec_signed">{_ac_axis_labels["spec_signed"]}</th>'
+        f'<th title="ADR-211 Achse ui_walked">{_ac_axis_labels["ui_walked"]}</th>'
+        '</tr></thead>'
+        f'<tbody>{"".join(_am_rows)}</tbody>'
+        '</table>'
+        '</details>'
+    )
 
     # Skin-Switcher-Optionen für die Genesor-Topbar — aus skin_library() generiert,
     # damit sie --skin-base respektieren (statt hardcodierter /iil-klickdummy/...-URLs).
@@ -2986,6 +3091,21 @@ def build_genesor_html(records: list[dict],
   .warnings li.warn-warning {{ background: none; padding-left: 0; }}
   .n-err {{ color: #c40 !important; }}
   .n-warn {{ color: #b80 !important; }}
+  /* Feature B: "Mockup generieren"-Button (nur auf mockup-missing-Zeilen) */
+  .mockup-gen-btn {{ display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; margin-right: 6px; text-decoration: none; background: #e0ecff; color: #1d4ed8; border: 1px solid #bcd2ff; cursor: pointer; }}
+  .mockup-gen-btn:hover {{ background: #cfe0ff; }}
+  .mockup-gen-btn.mockup-gen-running {{ background: #f3f4f6; color: #6b7280; border-color: #d1d5db; pointer-events: none; cursor: default; }}
+  /* Feature C2: Acceptance-Matrix — .ac-chip im Genesor-Root (Render-Variante: L578) */
+  .ac-chip {{ display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-right: 6px; cursor: help; }}
+  .ac-signed {{ background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }}
+  .ac-stale  {{ background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }}
+  .ac-none   {{ background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }}
+  .acceptance-matrix {{ margin: 12px 0; border: 1px solid #e3e8ee; border-radius: 6px; background: #fff; }}
+  .acceptance-matrix > summary {{ cursor: pointer; padding: 10px 14px; font-weight: 600; color: #1f2937; list-style: none; }}
+  .acceptance-matrix > summary::-webkit-details-marker {{ display: none; }}
+  .acceptance-matrix > summary:hover {{ background: #f8fafc; }}
+  .acceptance-matrix table {{ margin: 0; width: 100%; }}
+  .acceptance-matrix .am-label {{ font-size: 11px; }}
 
   /* Sunset-Aging (F4) */
   td.sunset-ok {{ color: #060; }}
@@ -3227,6 +3347,8 @@ def build_genesor_html(records: list[dict],
 
 <p class="muted small">💡 Klick auf eine Zeile öffnet Detail-Panel · 🔍 öffnet Brief-§10 (Drift-Sektion KD↔Code).</p>
 
+{acceptance_matrix_section}
+
 <table id="genesor-table">
   <thead>
     <tr>
@@ -3291,6 +3413,16 @@ function toggleDetail(row) {{
   if (!detail) return;
   const isOpen = detail.classList.toggle('visible');
   row.classList.toggle('open', isOpen);
+}}
+
+// Feature B: "🛠 Mockup generieren" — Issue öffnet im neuen Tab (href/target),
+// hier nur Sofort-Feedback: Label umschalten + Button entschärfen.
+function mockupGenStart(btn) {{
+  if (!btn || btn.dataset.genStarted === '1') return;
+  btn.dataset.genStarted = '1';
+  btn.textContent = '⏳ generieren läuft…';
+  btn.classList.add('mockup-gen-running');
+  btn.setAttribute('aria-disabled', 'true');
 }}
 
 // Surface-Modal (Pilot-Memo §Surface-Modal — Screen×Surface-Matrix pro KD)
