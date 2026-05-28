@@ -49,10 +49,30 @@ GENESOR_OUT = REPOS_ROOT / "genesor"                              # Cross-Repo: 
 # Wird via --base-url überschrieben (z. B. "/genesor-host/" für einen späteren Portal-Build).
 BASE_URL = "/"
 
+# Basis-URL für die Skin-CSS-Dateien. Default "" reproduziert das bisherige
+# Verhalten byte-identisch: Skins werden unter ihrem REPOS_ROOT-relativen Pfad
+# (iil-klickdummy/.../skins/<name>.css) ausgeliefert. Wird via --skin-base
+# gesetzt (z. B. "/genesor/skins"), dann wird NUR der Basename verwendet:
+# "<skin-base>/<name>.css" — für einen self-contained Portal-Build, bei dem die
+# 4 Skin-CSS-Dateien neben dem Genesor-Site liegen.
+SKIN_BASE = ""
+
 
 def _base_prefix() -> str:
     """Normalisiert BASE_URL zu einem Präfix ohne Trailing-Slash ("/"→"")."""
     return BASE_URL.rstrip("/")
+
+
+def _skin_url(rel: str) -> str:
+    """Skin-Pfad (REPOS_ROOT-relativ) → finale URL.
+
+    SKIN_BASE leer  → "<base_prefix>/<rel>"  (byte-identisch zu früher).
+    SKIN_BASE gesetzt → "<skin_base>/<basename>"  (nur Dateiname, z. B.
+                        "/genesor/skins/okwobis-look.css").
+    """
+    if SKIN_BASE:
+        return SKIN_BASE.rstrip("/") + "/" + rel.rsplit("/", 1)[-1]
+    return _base_prefix() + "/" + rel
 
 
 # ---- Mockup-HTML-Discovery (Stufe 1b: "Klickdummy klickbar") ---------------
@@ -103,14 +123,14 @@ SKIN_LIBRARY_REL: list[tuple[str, str]] = [
 
 
 def skin_library() -> list[tuple[str, str]]:
-    """Skin-Library mit BASE_URL-präfixierten URLs.
+    """Skin-Library mit finalen Skin-URLs.
 
-    Default BASE_URL "/" → _base_prefix()=="" → "/iil-klickdummy/..." (byte-identisch zu früher).
+    Default (SKIN_BASE leer, BASE_URL "/") → "/iil-klickdummy/..." (byte-identisch zu früher).
+    Mit --skin-base → "<skin-base>/<name>.css".
     Der Sentinel "__greenfield" bleibt unverändert.
     """
-    prefix = _base_prefix()
     return [
-        (value if value == "__greenfield" else f"{prefix}/{value}", label)
+        (value if value == "__greenfield" else _skin_url(value), label)
         for value, label in SKIN_LIBRARY_REL
     ]
 
@@ -2848,6 +2868,26 @@ def build_genesor_html(records: list[dict],
 
     table_body = "".join(rows)
 
+    # Skin-Switcher-Optionen für die Genesor-Topbar — aus skin_library() generiert,
+    # damit sie --skin-base respektieren (statt hardcodierter /iil-klickdummy/...-URLs).
+    # Kurze Labels (ohne Klammer-Zusatz) wie in der bisherigen Hardcoded-Variante.
+    _genesor_skin_short_labels = {
+        "okwobis-look.css": "OK.Wobis-Look",
+        "prosoz-look.css": "Prosoz-Look",
+        "arriba-look.css": "ARRIBA-Look",
+        "bayernid-look.css": "BayernID-Look",
+    }
+    _genesor_skin_options = []
+    for _value, _label in skin_library():
+        if _value == "__greenfield":
+            _genesor_skin_options.append('<option value="__greenfield">Greenfield (Default)</option>')
+            continue
+        _short = _genesor_skin_short_labels.get(_value.rsplit("/", 1)[-1], _label)
+        _genesor_skin_options.append(
+            f'<option value="{html.escape(_value)}">{html.escape(_short)}</option>'
+        )
+    genesor_skin_options = "\n      ".join(_genesor_skin_options)
+
     return f"""<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -3075,11 +3115,7 @@ def build_genesor_html(records: list[dict],
   <div style="display:flex;align-items:center;gap:6px;color:#fff;">
     <label for="skin-select" style="font-size:12px;opacity:0.9;">🎨 Demo-Style</label>
     <select id="skin-select" style="padding:5px 10px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.1);color:#fff;border-radius:4px;font-size:13px;">
-      <option value="__greenfield">Greenfield (Default)</option>
-      <option value="/iil-klickdummy/src/iil_klickdummy/snippets/skins/okwobis-look.css">OK.Wobis-Look</option>
-      <option value="/iil-klickdummy/src/iil_klickdummy/snippets/skins/prosoz-look.css">Prosoz-Look</option>
-      <option value="/iil-klickdummy/src/iil_klickdummy/snippets/skins/arriba-look.css">ARRIBA-Look</option>
-      <option value="/iil-klickdummy/src/iil_klickdummy/snippets/skins/bayernid-look.css">BayernID-Look</option>
+      {genesor_skin_options}
     </select>
   </div>
 </header>
@@ -5614,14 +5650,19 @@ def main() -> int:
                         help="Genesor-Output-Verzeichnis (Default: <repos-root>/genesor)")
     parser.add_argument("--base-url", default="/",
                         help="URL-Präfix für generierte Links + Skin-Pfade (Default: '/')")
+    parser.add_argument("--skin-base", default="",
+                        help="Basis-URL für Skin-CSS (z. B. '/genesor/skins'). Leer (Default) → "
+                             "Skins unter '/iil-klickdummy/.../skins/<name>.css' (byte-identisch zu früher); "
+                             "gesetzt → '<skin-base>/<name>.css' für einen self-contained Build.")
     args = parser.parse_args()
 
     # Argparse → modulweite Konfiguration (alle Funktionen lesen diese Globals).
     # Defaults reproduzieren das bisherige Verhalten byte-identisch.
-    global REPOS_ROOT, GENESOR_OUT, BASE_URL
+    global REPOS_ROOT, GENESOR_OUT, BASE_URL, SKIN_BASE
     REPOS_ROOT = Path(args.repos_root).expanduser()
     GENESOR_OUT = Path(args.out).expanduser() if args.out else REPOS_ROOT / "genesor"
     BASE_URL = args.base_url
+    SKIN_BASE = args.skin_base
 
     if args.gen_impl_brief:
         try:
