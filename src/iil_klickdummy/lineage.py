@@ -1198,9 +1198,14 @@ def generate_render_fallback(record: dict, out_dir: Path,
                 next_titles = [screen_titles.get(n, n) for n in next_screens[:3]]
                 next_items = "".join(f"<li>{html.escape(str(t))}</li>" for t in next_titles)
                 default_next = f"<h4>Folge-Schritte</h4><ul>{next_items}</ul>"
+            # validierungsfrage (Spec-Feld): was dieser Screen beim Stakeholder prüfen soll
+            default_check = ""
+            vfrage = s.get("validierungsfrage")
+            if vfrage and isinstance(vfrage, str):
+                default_check = f'<h4>Diese Ansicht soll prüfen</h4><p>{html.escape(vfrage)}</p>'
             help_modal_inner = (
                 '<p style="font-size:11px;color:#9ca3af;margin-top:0;">(Auto-Hilfetext aus Spec — bei Bedarf in <code>screen.help_text:</code> überschreiben)</p>'
-                + default_what + default_actions + default_next
+                + default_what + default_actions + default_next + default_check
             )
 
         # ----- 📁 Akte-Modal: Klick auf Aktenzeichen/-name in einer Tabelle --
@@ -2119,6 +2124,27 @@ def build_uc_coverage(ucs: list[dict], kds: list[dict]) -> dict:
     }
 
 
+def _normalize_spec_aliases(data: dict) -> dict:
+    """Field-Aliase für Cross-Repo-Kompatibilität (additiv, backward-compatible).
+
+    ausschreibungs-hub nutzt `cross_kd_links`; lineage liest historisch
+    `cross_klickdummy_link`. Normalisiert data- + screen-level, ohne vorhandene
+    kanonische Keys zu überschreiben. Reine Ergänzung — bestehende Specs unberührt.
+    """
+    if not isinstance(data, dict):
+        return data
+    if "cross_klickdummy_link" not in data and "cross_kd_links" in data:
+        data["cross_klickdummy_link"] = data["cross_kd_links"]
+    for screen in data.get("screens", []) or []:
+        if (
+            isinstance(screen, dict)
+            and "cross_klickdummy_link" not in screen
+            and "cross_kd_links" in screen
+        ):
+            screen["cross_klickdummy_link"] = screen["cross_kd_links"]
+    return data
+
+
 def find_all_repos_specs() -> list[dict]:
     """Walks ~/github/*/ für screens-spec.yaml UND render-only-KDs ohne Spec (F11)."""
     out: list[dict] = []
@@ -2143,6 +2169,7 @@ def find_all_repos_specs() -> list[dict]:
                 data = yaml.safe_load(spec_path.read_text("utf-8")) or {}
             except yaml.YAMLError:
                 continue
+            data = _normalize_spec_aliases(data)
             adr_local = (data.get("adr", {}) or {}).get("local")
             extra = adr_meta.get(adr_local, {}) if adr_local else {}
             out.append({"org": org, "repo": repo_name, "kd": kd_name,
@@ -2157,6 +2184,7 @@ def find_all_repos_specs() -> list[dict]:
                 data = yaml.safe_load(spec_path.read_text("utf-8")) or {}
             except yaml.YAMLError:
                 continue
+            data = _normalize_spec_aliases(data)
             adr_local = (data.get("adr", {}) or {}).get("local")
             extra = adr_meta.get(adr_local, {}) if adr_local else {}
             out.append({"org": org, "repo": repo_name, "kd": kd_name,
