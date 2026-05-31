@@ -71,6 +71,12 @@ def screen_route(sc: dict) -> str:
 # Bewusst klein & standard-nah gehalten (Playwright sync_api). Ein `assert`-Block
 # ist {action, selector?, expect?}. Unbekannte/fehlende action ⇒ nur-Prosa.
 
+def _q(s) -> str:
+    """Double-quoted Python-String-Literal — `ruff format`-konform (nicht `repr`,
+    das Single-Quotes liefert und Adopter mit `ruff format --check` rot macht)."""
+    return json.dumps(str(s), ensure_ascii=False)
+
+
 def render_assertion(a: dict) -> str | None:
     """Eine Playwright-Assertion-Zeile oder None (= nicht ausführbar)."""
     if not isinstance(a, dict):
@@ -79,20 +85,20 @@ def render_assertion(a: dict) -> str | None:
     sel = a.get("selector", "")
     exp = a.get("expect", "")
     if action == "visible":
-        return f"expect(page.locator({sel!r})).to_be_visible()"
+        return f"expect(page.locator({_q(sel)})).to_be_visible()"
     if action == "text":
-        return f"expect(page.locator({sel!r})).to_contain_text({exp!r})"
+        return f"expect(page.locator({_q(sel)})).to_contain_text({_q(exp)})"
     if action == "clickable":
         # I2-Geist: kein toter Link — Element sichtbar UND bedienbar.
-        return f"expect(page.locator({sel!r})).to_be_enabled()"
+        return f"expect(page.locator({_q(sel)})).to_be_enabled()"
     if action == "url":
-        return f"assert {exp!r} in page.url, page.url"
+        return f"assert {_q(exp)} in page.url, page.url"
     if action == "count":
         try:
             n = int(exp)
         except (TypeError, ValueError):
             return None
-        return f"expect(page.locator({sel!r})).to_have_count({n})"
+        return f"expect(page.locator({_q(sel)})).to_have_count({n})"
     return None
 
 
@@ -149,57 +155,66 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
     screens = spec.get("screens", []) or []
 
     sha = hashlib.sha256(spec_path.read_bytes()).hexdigest()
-    parts: list[str] = [HEADER.format(
+    header = HEADER.format(
         spec_id=spec_id, spec_version=ver, spec_rel=spec_path.name,
         sha=sha, this=this_name,
-    )]
+    )
     n_exec = 0
     skipped: list[dict] = []
     fragile: list[dict] = []
+    # Top-Level-Blöcke (Kommentar an erste Screen-Funktion attached); am Ende mit
+    # genau zwei Leerzeilen verbunden ⇒ `ruff format`-konform (Adopter-CI grün).
+    blocks: list[str] = []
 
     for sc in screens:
         sid = sc.get("id", "screen")
         stitle = sc.get("title", sid)
         route = screen_route(sc)
-        parts.append(f"\n\n# ── Screen: {sid} · {stitle}  (route {route}) ──")
+        screen_comment = f"# ── Screen: {sid} · {stitle}  (route {route}) ──"
         pas = sc.get("parity_acceptance", []) or []
         if not pas:
-            parts.append(f"\n# (keine parity_acceptance im Screen {sid})")
+            blocks.append(f"{screen_comment}\n# (keine parity_acceptance im Screen {sid})")
             continue
+        first = True
         for pa in pas:
             acc_id = pa.get("id", "check")
             check = str(pa.get("check", "")).replace('"""', "'''")
             fn = f"test_{ident(sid)}__{ident(acc_id)}"
+            prefix = f"{screen_comment}\n" if first else ""
+            first = False
             a = pa.get("assert")
             line = render_assertion(a)
             if line is None:
                 skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", "")})
-                parts.append(
-                    f'\n\n@pytest.mark.skip(reason="kein ausführbares `assert` — Prosa-Parity")'
-                    f'\ndef {fn}(page: Page):'
-                    f'\n    """[{sid}] {check}"""'
-                    f'\n    page.goto(BASE + {route!r})'
-                    f'\n    # TODO: `assert`-Block in der Spec ergänzen (action/selector/expect),'
-                    f'\n    #       um diese Parity ausführbar zu machen.'
+                blocks.append(
+                    f'{prefix}@pytest.mark.skip(reason="kein ausführbares `assert` — Prosa-Parity")\n'
+                    f"def {fn}(page: Page):\n"
+                    f'    """[{sid}] {check}"""\n'
+                    f"    page.goto(BASE + {_q(route)})\n"
+                    f"    # TODO: `assert`-Block in der Spec ergänzen (action/selector/expect),\n"
+                    f"    #       um diese Parity ausführbar zu machen."
                 )
             else:
                 n_exec += 1
                 if isinstance(a, dict) and is_fragile_selector(a.get("selector")):
                     fragile.append({"screen": sid, "id": acc_id, "selector": a.get("selector")})
-                parts.append(
-                    f'\n\ndef {fn}(page: Page):'
-                    f'\n    """[{sid}] {check}"""'
-                    f'\n    page.goto(BASE + {route!r})'
-                    f'\n    {line}'
+                blocks.append(
+                    f"{prefix}def {fn}(page: Page):\n"
+                    f'    """[{sid}] {check}"""\n'
+                    f"    page.goto(BASE + {_q(route)})\n"
+                    f"    {line}"
                 )
-    parts.append("\n")
+
+    # header endet mit '\n' nach BASE; '\n\n' davor ⇒ zwei Leerzeilen vor dem
+    # ersten Block; Blöcke mit '\n\n\n' (zwei Leerzeilen) verbunden; ein \n am Ende.
+    body = (header + "\n\n" + "\n\n\n".join(blocks) + "\n") if blocks else header + "\n"
     stats = {
         "executable": n_exec,
         "skipped": len(skipped),
         "skipped_detail": skipped,
         "fragile_selectors": fragile,
     }
-    return "".join(parts), stats
+    return body, stats
 
 
 # -- Main ---------------------------------------------------------------------
