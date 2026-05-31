@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.6.1] — 2026-05-31
+
+### Fixed — `gen_e2e` Output `ruff format`-konform (Adopter-Blocker)
+
+- Generierter Output nutzt jetzt **Double-Quotes** (via `json.dumps` statt
+  `repr`/Single-Quotes) und **zwei Leerzeilen** zwischen Top-Level-Funktionen.
+  Vorher brach jeder Adopter mit `ruff format --check`-CI — real aufgetreten beim
+  ersten Adopter (risk-hub). Determinismus, Spec-SHA256-Header und
+  Coverage-/Manifest-Verhalten unverändert; neuer Regressions-Test
+  (`ruff format --check` auf generiertem Output, via `importorskip`-Äquivalent).
+
 ## [1.6.0] — 2026-05-31
 
 ### Added — Executable-Parity-Bridge (Keystone, `platform:ADR-211` Rev-18-Kandidat)
