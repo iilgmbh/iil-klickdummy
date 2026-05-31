@@ -10,6 +10,7 @@
     "$schema":       { "type": "string" },
     "spec_id":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*$" },
     "spec_version":  { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
+    "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix." },
     "spec_date":     { "type": "string", "format": "date" },
     "title":         { "type": "string" },
 
@@ -86,6 +87,7 @@
         "properties": {
           "id":        { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
           "title":     { "type": "string" },
+          "route":     { "type": "string", "pattern": "^/", "description": "Optionale Render-Route; Default-Konvention `/<id>`. Ziel von `klickdummy-gen-e2e`." },
           "personas":  { "type": "array", "minItems": 1, "items": { "type": "string" } },
           "purpose":   { "type": "string" },
           "konzept_ref": { "type": "array", "items": { "type": "string" } },
@@ -110,9 +112,21 @@
             "items": {
               "type": "object",
               "required": ["id", "check"],
+              "additionalProperties": true,
               "properties": {
                 "id":    { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*$" },
-                "check": { "type": "string", "minLength": 8 }
+                "check": { "type": "string", "minLength": 8 },
+                "assert": {
+                  "type": "object",
+                  "description": "Optional, ausführbare Form (platform:ADR-211 §Parity-Off-Ramp). `klickdummy-gen-e2e` macht hieraus einen Playwright-Testfall, der Klickdummy UND echte App validiert. Fehlt der Block, bleibt der Check als skip sichtbar (kein vacuous pass).",
+                  "required": ["action"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "action":   { "type": "string", "enum": ["visible", "text", "clickable", "url", "count"] },
+                    "selector": { "type": "string" },
+                    "expect":   { "type": ["string", "number"] }
+                  }
+                }
               }
             }
           },

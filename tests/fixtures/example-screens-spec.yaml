@@ -1,0 +1,41 @@
+# Fixture für test_gen_e2e — zeigt beide Pfade: ausführbarer `assert` + nur-Prosa.
+spec_id: example:klickdummy-spec-login
+spec_version: "0.1"
+spec_date: "2026-05-31"
+title: Login — Klickdummy
+adr:
+  local: example:ADR-100
+  conforms_to: platform:ADR-211
+class: stub-demo
+grounding:
+  konzept: "Keystone-Beispiel"
+  pilot: "iil-klickdummy gen_e2e"
+off_ramp:
+  policy: platform:ADR-211 Static→Echt-Migrationspfad
+  unit: per-screen
+  rule: "Parity-grün pro Screen ⇒ Screen aus statischer Quelle entfernen"
+  doppelquell_grenze: prod-release
+  parity_runner: klickdummy-gen-e2e
+personas:
+  user:
+    label: Benutzer
+    rolle: angemeldeter Nutzer
+    sieht: [login]
+screens:
+  - id: login
+    title: Login-Maske
+    route: /auth/login
+    personas: [user]
+    purpose: "Nutzer meldet sich an"
+    off_ramp_status: static
+    parity_acceptance:
+      # ausführbar: dieselbe Assertion gilt für Klickdummy UND echte App
+      - id: login.has-heading
+        check: "Die Login-Seite zeigt die Überschrift 'Anmelden'"
+        assert: { action: text, selector: "h1", expect: "Anmelden" }
+      - id: login.submit-clickable
+        check: "Der Anmelde-Button ist bedienbar (kein toter Link)"
+        assert: { action: clickable, selector: "button[type=submit]" }
+      # nur-Prosa: bleibt als skip sichtbar (kein stilles Weglassen)
+      - id: login.shows-error
+        check: "Bei falschem Passwort erscheint eine Fehlermeldung"

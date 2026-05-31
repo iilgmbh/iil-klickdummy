@@ -14,14 +14,14 @@ def test_package_version():
 def test_all_modules_present():
     import iil_klickdummy
     for mod in ("check_i1", "check_i2", "check_i3", "check_i4",
-                "extract_requirements", "inventory", "install_snippets"):
+                "extract_requirements", "gen_e2e", "inventory", "install_snippets"):
         assert hasattr(iil_klickdummy, mod), f"missing module: {mod}"
 
 
 def test_all_main_cli_endpoints():
     import iil_klickdummy
     for mod_name in ("check_i1", "check_i2", "check_i3", "check_i4",
-                     "extract_requirements", "inventory", "install_snippets"):
+                     "extract_requirements", "gen_e2e", "inventory", "install_snippets"):
         mod = getattr(iil_klickdummy, mod_name)
         assert callable(getattr(mod, "main_cli", None)), f"{mod_name}.main_cli missing"
 

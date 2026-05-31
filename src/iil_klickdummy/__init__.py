@@ -3,6 +3,7 @@
 Public surface:
     check_i1, check_i2, check_i3, check_i4 — invariant checks
     extract_requirements                    — Spec → UC/FR/NFR/Lasten/Pflicht
+    gen_e2e                                 — Spec → ausführbare E2E-Parity-Suite (v1.6, Keystone)
     inventory                               — S11 Cross-Repo Legacy-Inventur
     install_snippets                        — copy/symlink HTML+JS+templates into a repo
     registry                                — Klickdummy-Discovery + Browser (v1.1, Cross-Repo v1.3)
@@ -27,7 +28,7 @@ __author__ = "iil GmbH"
 
 from . import (  # noqa: F401
     check_i1, check_i2, check_i3, check_i4,
-    extract_requirements, inventory, install_snippets, registry,
+    extract_requirements, gen_e2e, inventory, install_snippets, registry,
     sync_to_orchestrator,
 )
 # Hinweis: `manage` wird hier NICHT eager importiert — das Modul existiert
