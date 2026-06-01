@@ -329,6 +329,20 @@ def test_v17_trace_strip_renders_into_screen_section(tmp_path):
     assert "body.spec-view" in out_html
 
 
+# --- v1.7.1: Feedback-Widget PAT-Modal (ersetzt window.prompt) --------------
+
+def test_v171_widget_pat_modal_replaces_prompt():
+    """Token-Abfrage läuft über gestyltes Modal, nicht über window.prompt()."""
+    js = (files("iil_klickdummy") / "snippets" / "feedback-widget" / "widget.js").read_text()
+    assert "injectPatModal" in js
+    assert "function promptToken" in js
+    assert "fb-pat-overlay" in js
+    assert "await promptToken()" in js          # Modal ist im Submit-Pfad verdrahtet
+    # kein nativer Token-Prompt-Aufruf mehr — Erwähnung nur in Kommentarzeilen erlaubt
+    prompt_lines = [ln for ln in js.splitlines() if "window.prompt(" in ln]
+    assert all(ln.lstrip().startswith("//") for ln in prompt_lines), prompt_lines
+
+
 # --- v1.8: discovery_push (Stage 1.5 PoC, platform:ADR-215) -----------------
 
 def test_v18_discovery_push_module_present():

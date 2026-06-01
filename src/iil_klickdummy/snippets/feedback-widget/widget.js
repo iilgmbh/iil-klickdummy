@@ -77,6 +77,24 @@
 #fb-panel .fb-rel-hint{font-size:10px;color:#8893a3;margin-top:4px}
 #fb-panel .fb-rel-empty{font-size:11px;color:#8893a3;font-style:italic;padding:4px 0}
 #fb-panel .fb-rel-chip .fb-action-tgt{opacity:.6;font-size:10px;margin-left:4px}
+#fb-pat-overlay{position:fixed;inset:0;z-index:300;background:rgba(15,23,36,.55);display:none;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;backdrop-filter:blur(2px)}
+#fb-pat-overlay.open{display:flex}
+#fb-pat-dialog{background:#fff;border:1px solid #d8e0e8;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.32);padding:20px 22px;width:420px;max-width:calc(100vw - 32px);box-sizing:border-box}
+#fb-pat-dialog h3{margin:0 0 10px;font-size:15px;color:#1a3a6c;display:flex;align-items:center;gap:8px}
+#fb-pat-dialog .fb-pat-explain{font-size:12px;color:#3a4a5a;line-height:1.55;margin:0 0 12px}
+#fb-pat-dialog .fb-pat-explain code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:11px}
+#fb-pat-dialog .fb-pat-explain a{color:#1a3a6c;text-decoration:underline}
+#fb-pat-dialog input[type=password]{width:100%;padding:9px 10px;border:1px solid #d8e0e8;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;box-sizing:border-box;background:#f8fafc}
+#fb-pat-dialog input[type=password]:focus{outline:none;border-color:#1a3a6c;background:#fff}
+#fb-pat-dialog .fb-pat-foot{font-size:10px;color:#8893a3;margin-top:8px;line-height:1.5}
+#fb-pat-dialog .fb-pat-err{font-size:11px;color:#b3261e;margin-top:6px;display:none}
+#fb-pat-dialog .fb-pat-err.show{display:block}
+#fb-pat-dialog .fb-pat-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+#fb-pat-dialog .fb-pat-actions button{font-size:12px;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;border:1px solid #d8e0e8;background:#fff;color:#3a4a5a}
+#fb-pat-dialog .fb-pat-actions button.primary{background:#1a3a6c;border-color:#1a3a6c;color:#fff}
+#fb-pat-dialog .fb-pat-actions button:hover{background:#f3f4f6}
+#fb-pat-dialog .fb-pat-actions button.primary:hover{background:#005ea2;border-color:#005ea2}
+#fb-pat-dialog .fb-pat-actions button[disabled]{opacity:.5;cursor:not-allowed}
 `;
     const s = document.createElement('style');
     s.id = 'fb-styles';
@@ -149,6 +167,84 @@
     document.getElementById('fb-cb').addEventListener('click', () => submit('clipboard'));
     document.getElementById('fb-gh').addEventListener('click', () => submit('github'));
     document.getElementById('fb-files').addEventListener('change', filesListUpdate);
+    injectPatModal();
+  }
+
+  function injectPatModal() {
+    if (document.getElementById('fb-pat-overlay')) return;
+    const host = location.hostname;
+    const overlay = document.createElement('div');
+    overlay.id = 'fb-pat-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'fb-pat-title');
+    overlay.innerHTML = `
+<div id="fb-pat-dialog">
+  <h3 id="fb-pat-title">🔑 GitHub-Token für Issue-Submit</h3>
+  <p class="fb-pat-explain">
+    <strong>${host}</strong> möchte ein Issue im Klickdummy-Repo${REPO ? ' <code>' + REPO + '</code>' : ''} anlegen.
+    Bitte einen <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">Personal Access Token</a>
+    eingeben (Scope <code>repo</code> bei privatem Repo, sonst <code>public_repo</code>).
+  </p>
+  <input type="password" id="fb-pat-input" autocomplete="off" spellcheck="false" placeholder="ghp_… oder github_pat_…" aria-label="GitHub Personal Access Token">
+  <div class="fb-pat-err" id="fb-pat-err">Token-Format ungültig (erwartet: <code>ghp_…</code> oder <code>github_pat_…</code>).</div>
+  <div class="fb-pat-foot">
+    Token bleibt nur in <code>localStorage.klickdummy_github_token</code> dieses Browsers — wird nicht an Dritte gesendet.
+    Issue-Author = realer GitHub-User; Audit native.
+  </div>
+  <div class="fb-pat-actions">
+    <button id="fb-pat-cancel" type="button">Abbrechen</button>
+    <button id="fb-pat-ok" type="button" class="primary">Speichern &amp; Issue anlegen</button>
+  </div>
+</div>`;
+    document.body.appendChild(overlay);
+  }
+
+  // Promise-basiertes PAT-Modal — ersetzt natives window.prompt()
+  function promptToken() {
+    return new Promise(resolve => {
+      const overlay = document.getElementById('fb-pat-overlay');
+      const input = document.getElementById('fb-pat-input');
+      const err = document.getElementById('fb-pat-err');
+      const ok = document.getElementById('fb-pat-ok');
+      const cancel = document.getElementById('fb-pat-cancel');
+      if (!overlay || !input || !ok || !cancel) { resolve(null); return; }
+
+      input.value = '';
+      err.classList.remove('show');
+      overlay.classList.add('open');
+      setTimeout(() => input.focus(), 50);
+
+      const close = (val) => {
+        overlay.classList.remove('open');
+        ok.removeEventListener('click', onOk);
+        cancel.removeEventListener('click', onCancel);
+        overlay.removeEventListener('click', onBackdrop);
+        input.removeEventListener('keydown', onKey);
+        resolve(val);
+      };
+      const valid = (t) => /^(ghp_|github_pat_|gho_|ghu_|ghs_|ghr_)/.test(t);
+      const onOk = () => {
+        const t = (input.value || '').trim();
+        if (!t) { err.classList.add('show'); err.textContent = 'Bitte Token eingeben.'; return; }
+        if (!valid(t)) {
+          err.classList.add('show');
+          err.innerHTML = 'Token-Format ungültig (erwartet: <code>ghp_…</code> oder <code>github_pat_…</code>).';
+          return;
+        }
+        close(t);
+      };
+      const onCancel = () => close(null);
+      const onBackdrop = (e) => { if (e.target === overlay) close(null); };
+      const onKey = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+        else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+      };
+      ok.addEventListener('click', onOk);
+      cancel.addEventListener('click', onCancel);
+      overlay.addEventListener('click', onBackdrop);
+      input.addEventListener('keydown', onKey);
+    });
   }
 
   // ---- Screen/Action discovery -------------------------------------------
@@ -420,11 +516,7 @@ ${snap}${att}
     if (!REPO) { toast('window.KLICKDUMMY_FEEDBACK_REPO nicht gesetzt'); return; }
     let token = localStorage.getItem('klickdummy_github_token');
     if (!token) {
-      token = prompt(
-        'GitHub Personal Access Token (Scope: repo wenn privat, sonst public_repo).\n\n' +
-        'Erstellen unter: https://github.com/settings/tokens?type=beta\n' +
-        'Token wird nur in localStorage gespeichert (klickdummy_github_token).'
-      );
+      token = await promptToken();
       if (!token) return;
       localStorage.setItem('klickdummy_github_token', token);
     }
