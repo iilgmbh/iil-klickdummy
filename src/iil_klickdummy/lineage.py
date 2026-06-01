@@ -1500,6 +1500,8 @@ def generate_render_fallback(record: dict, out_dir: Path,
         accept_html = "".join(accept_chips)
 
         # Komplette App-Frame
+        # (Fallback vorab — kein Backslash-Escape im f-string-Ausdruck → Python <3.12-kompatibel)
+        content_html = "".join(content_blocks) or '<p style="color:#6b7280;">Keine Inhalte im Spec deklariert.</p>'
         frame_html = (
             f'<div class="app-frame">'
             f'  <div class="app-bar">'
@@ -1516,7 +1518,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
             f'    <span class="sid">{html.escape(sid)}</span>'
             f'    {per_chips}'
             f'  </div>'
-            f'  <div class="app-content">{"".join(content_blocks) or "<p style=\"color:#6b7280;\">Keine Inhalte im Spec deklariert.</p>"}</div>'
+            f'  <div class="app-content">{content_html}</div>'
             f'  <div class="app-actionbar">'
             f'    <div class="actions">{action_buttons}</div>'
             f'    {cross_html}'
@@ -5430,7 +5432,7 @@ Realität abweichen — wertvoll für Brief-Iteration v2 und Spec-Pflege.
 4. Test: `curl {dev_run.get("test_url", "http://localhost:8000/healthz/")}`
 5. Pilot-Login: **admin / admin123** auf `http://<host>:{dev_run.get("http_port", 8000)}/admin/login/`
 
-{"⚠ **Requirements-Drift:** pyproject.toml hat Deps die in requirements.txt fehlen: " + ", ".join("`" + d + "`" for d in dev_run.get("requirements_drift", [])) + "\n" if dev_run.get("requirements_drift") else ""}
+{"⚠ **Requirements-Drift:** pyproject.toml hat Deps die in requirements.txt fehlen: " + ", ".join("`" + d + "`" for d in dev_run.get("requirements_drift", [])) + chr(10) if dev_run.get("requirements_drift") else ""}
 
 ## 12. Infrastructure-Kontext (Pilot-Lessons #7 + #8)
 
