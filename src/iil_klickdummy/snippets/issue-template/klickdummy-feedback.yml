@@ -1,0 +1,58 @@
+name: "💬 Klickdummy-Feedback"
+description: "Feedback aus dem Klickdummy-Feedback-Widget (Co-Development-Loop, platform:ADR-211)."
+title: "[Klickdummy-Feedback] "
+labels: ["klickdummy-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feedback zum Klickdummy-Render. Wähle **Art** — das setzt automatisch die richtigen Labels
+        und routet das Issue zum passenden Bearbeiter.
+
+  - type: dropdown
+    id: art
+    attributes:
+      label: "Art des Feedbacks"
+      description: "Bestimmt Labels und Bearbeitungs-Bucket"
+      options:
+        - "Bug (etwas funktioniert nicht)"
+        - "Feature / Idee (Verbesserungsvorschlag)"
+        - "Fehlende View oder Action (Code fehlt)"
+        - "Spec-Korrektur (inhaltliche Spec-Angabe falsch)"
+    validations:
+      required: true
+
+  - type: input
+    id: anker
+    attributes:
+      label: "Klickdummy-Anker"
+      description: "kd / screen / spec_id — vom Widget vorausgefüllt"
+      placeholder: "kd=… · screen=… · spec_id=…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: beschreibung
+    attributes:
+      label: "Beschreibung"
+      description: "Was passiert / was fehlt / was sollte anders sein?"
+      placeholder: "Ich sehe … statt … / Es fehlt … / Ich möchte …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduktion
+    attributes:
+      label: "Reproduktion (bei Bug)"
+      description: "Schritte zum Nachstellen — nur bei Art=Bug"
+      placeholder: "1. Öffne …\n2. Klicke …\n3. Sehe …"
+    validations:
+      required: false
+
+  - type: textarea
+    id: akzeptanz
+    attributes:
+      label: "Fertig wenn (optional)"
+      placeholder: "- [ ] …"
+    validations:
+      required: false

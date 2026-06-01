@@ -3,6 +3,23 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.14.0] — 2026-06-01
+
+### Added — Klickdummy-Capture-Gate: strukturiertes Issue-Form statt thin-prefill
+
+- **`_gh_issue_url` kind-Routing (2b, platform:ADR-211 §Co-Creation-Loop):**
+  `kind=use-case` routet auf `?template=uc-klickdummy.yml` (GitHub Issue Form mit
+  `required`-Feldern — GitHub blockiert leeres Submit) statt thin-prefill. `kind=off-ramp`
+  und `kind=parity` behalten den bisherigen Markdown-body-Prefill bis eigene Forms gebaut sind.
+- **`snippets/issue-template/uc-klickdummy.yml`** — GitHub Issue Form (YAML): 5 Pflicht-
+  felder (Anker, Persona, Ziel, Hauptszenario, Akzeptanz), spec-vorbefüllter Titel (`UC: kd/screen`),
+  Labels `uc-draft`+`needs-domain-review`. Labels Route Issue direkt in den Co-Creation-Loop.
+- **`snippets/issue-template/klickdummy-feedback.yml`** — ersetzt `.md`: GitHub Issue Form
+  mit `Art`-Dropdown (Bug/Feature/Fehlende View/Spec-Korrektur) als Quell-Router; Pflicht-
+  felder Art + Anker + Beschreibung.
+- **`.github/ISSUE_TEMPLATE/uc-klickdummy.yml`** — repo-eigenes Template (Dogfood).
+- Test `test_v17_trace_strip_uc_create_button` auf neues URL-Format aktualisiert.
+
 ## [1.13.4] — 2026-06-01
 
 ### Added

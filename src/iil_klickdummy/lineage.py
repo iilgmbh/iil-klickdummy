@@ -532,14 +532,36 @@ def _screen_coverage(s: dict) -> tuple[int, int, list[str], list[str]]:
 def _gh_issue_url(repo: str, sid: str, kd_name: str, s: dict, kind: str) -> str:
     """Vorausgefüllter GitHub-New-Issue-Link, um eine fehlende Spec-Angabe anzulegen.
 
-    kind ∈ {use-case, off-ramp, parity}. Org via detect_org(repo) — kein Hardcode.
+    kind-Routing (2b, platform:ADR-211 §Co-Creation-Loop):
+    - use-case  → uc-klickdummy.yml (GitHub Issue Form, required-Felder erzwingen Inhalt)
+    - off-ramp / parity → thin-prefill (Markdown body) bis eigene Forms gebaut sind
+    Org via detect_org(repo) — kein Hardcode.
     """
     from urllib.parse import quote
 
     org = detect_org(repo)
-    persona = ", ".join(s.get("personas") or s.get("persona") or []) if isinstance(s.get("personas") or s.get("persona"), list) else str(s.get("personas") or "—")
+    persona_raw = s.get("personas") or s.get("persona") or []
+    persona = ", ".join(persona_raw) if isinstance(persona_raw, list) else str(persona_raw or "—")
+
+    if kind == "use-case":
+        # Routet auf das strukturierte GitHub Issue Form (uc-klickdummy.yml).
+        # title trägt den Spec-Anker (kd/screen); required-Felder erzwingen Inhalt.
+        route = s.get("route", "")
+        spec_id = s.get("spec_id", "")
+        anker = f"kd={kd_name} · screen={sid} · route={route} · spec_id={spec_id}"
+        daten = "; ".join(
+            f"{f.get('name', '?')}:{f.get('type', '?')}"
+            for f in (s.get("datafields") or [])[:6]
+        )
+        return (
+            f"https://github.com/{org}/{repo}/issues/new"
+            f"?template=uc-klickdummy.yml"
+            f"&title={quote(f'UC: {kd_name}/{sid} — ')}"
+            f"&labels={quote('uc-draft,needs-domain-review')}"
+        )
+
+    # off-ramp + parity: Markdown-body-Prefill bis eigene Forms existieren
     titles = {
-        "use-case": f"UC: {kd_name}/{sid}",
         "off-ramp": f"off_ramp_status fehlt: {kd_name}/{sid}",
         "parity": f"parity_acceptance fehlt: {kd_name}/{sid}",
     }

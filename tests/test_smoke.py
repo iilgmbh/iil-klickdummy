@@ -298,7 +298,9 @@ def test_v17_trace_strip_uc_create_button():
     )
     assert "tr-act" in out
     assert "issues/new" in out
-    assert "labels=use-case" in out
+    # kind=use-case → GitHub Issue Form (uc-klickdummy.yml), required-Felder, uc-draft-Label
+    assert "template=uc-klickdummy.yml" in out
+    assert "uc-draft" in out
 
 
 def test_uc_button_inflight_markers():
