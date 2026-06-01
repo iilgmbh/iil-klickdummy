@@ -341,3 +341,12 @@ def test_v171_widget_pat_modal_replaces_prompt():
     # kein nativer Token-Prompt-Aufruf mehr — Erwähnung nur in Kommentarzeilen erlaubt
     prompt_lines = [ln for ln in js.splitlines() if "window.prompt(" in ln]
     assert all(ln.lstrip().startswith("//") for ln in prompt_lines), prompt_lines
+
+
+# --- v1.8: discovery_push (Stage 1.5 PoC, platform:ADR-215) -----------------
+
+def test_v18_discovery_push_module_present():
+    import iil_klickdummy
+    assert hasattr(iil_klickdummy, "discovery_push")
+    from iil_klickdummy import discovery_push
+    assert callable(getattr(discovery_push, "main", None))
