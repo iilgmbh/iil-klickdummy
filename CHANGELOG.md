@@ -3,6 +3,24 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.12.0] — 2026-06-01
+
+### Added — Genesor Repo-Ebenen-Einstieg (Master-Detail + Fassetten-Linse)
+
+- `build_genesor_html` erhält eine **client-seitige Master-Detail-Schiene** in der
+  bestehenden `index.html` (KONZ-iil-klickdummy-002): linke Repo-Schiene (alle Repos
+  sichtbar, mit KD-Count + Drift-Punkt) + Hash-Routing `#/repo/<repo>` für teilbare
+  Deep-Links. Adressiert den Übersichtlichkeits-Verlust bei wachsender KD-Zahl
+  (49 KDs / 10 Repos, Long-Tail), ohne eine zweite Datei oder Server-Routing.
+- **Fassetten-Linse** (Out-of-the-Box): Schiene umschaltbar nach `repo | org | class
+  | role` — Repo ist nur die Default-Linse, nicht die einzige Achse. Schiene wird
+  client-seitig aus den Zeilen-`data`-Attributen gebaut (kein N×-Server-Render).
+- **Rein additiv & rückwärtskompatibel:** ohne Hash zeigt die Seite unverändert alle
+  Zeilen; die neue Gruppen-Dimension UND-verknüpft mit den bestehenden Org-/Drift-/
+  Such-Filtern. `render_detail`, Surface-Modal, Sort, Skin-Switcher unberührt.
+- Verifiziert per Playwright (Master-Detail-Verengung exakt, Deep-Link beim Frisch-Load,
+  Fassetten-Wechsel, Koexistenz, 0 Konsolen-Fehler) + 60 Tests grün.
+
 ## [1.11.0] — 2026-06-01
 
 ### Added — `klickdummy-from-django`: Brownfield-Reverse-Onboarding

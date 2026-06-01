@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>IIL-Genesor — Repo-Einstieg (Mockup)</title>
+<style>
+  :root {
+    --accent: #1e3a8a; --accent-bg: #eef2ff; --font-h: "Segoe UI", system-ui, sans-serif;
+    --idea:#94a3b8; --klickdummy:#3b82f6; --pilot:#f59e0b; --prod:#16a34a; --sunset:#9ca3af;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, "Segoe UI", sans-serif; color:#1f2937; background:#f5f7fa; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:.92em; }
+
+  /* ---- Topbar ---- */
+  header.topbar { background:#fff; border-bottom:1px solid #e3e8ee; padding:12px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header.topbar h1 { font-family:var(--font-h); margin:0; font-size:18px; color:var(--accent); }
+  header.topbar .mock-tag { font-size:10px; font-weight:700; background:#fde68a; color:#92400e; padding:2px 7px; border-radius:4px; letter-spacing:.5px; }
+  .facet-switch { margin-left:auto; display:flex; align-items:center; gap:6px; }
+  .facet-switch label { font-size:12px; color:#6b7280; }
+  .facet-switch select, #global-search { padding:5px 10px; border:1px solid #e3e8ee; border-radius:6px; font-size:13px; background:#fff; }
+  #global-search { min-width:200px; }
+
+  /* ---- Portfolio stats strip (at-a-glance, never hidden) ---- */
+  .stats { display:flex; gap:8px; flex-wrap:wrap; padding:10px 22px; background:#fff; border-bottom:1px solid #eef1f5; }
+  .stat { background:#f8fafc; border:1px solid #eef1f5; border-radius:8px; padding:6px 12px; font-size:12px; color:#475569; }
+  .stat b { color:#0f172a; font-size:15px; display:block; }
+  .pipe-legend { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:11px; color:#64748b; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:3px; }
+
+  /* ---- Master-Detail layout ---- */
+  main { display:grid; grid-template-columns:260px 1fr; min-height:calc(100vh - 112px); }
+  aside.rail { background:#fff; border-right:1px solid #e3e8ee; overflow-y:auto; padding:12px 0; }
+  aside.rail .rail-head { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; padding:4px 18px 8px; }
+  .rail-item { display:flex; align-items:center; gap:8px; width:100%; text-align:left; border:0; background:none; cursor:pointer;
+               padding:9px 18px; font-size:13px; border-left:3px solid transparent; color:#1f2937; }
+  .rail-item:hover { background:var(--accent-bg); }
+  .rail-item.active { background:var(--accent-bg); border-left-color:var(--accent); font-weight:600; color:var(--accent); }
+  .rail-item .count { margin-left:auto; font-size:11px; color:#64748b; background:#f1f5f9; border-radius:10px; padding:1px 8px; }
+  .rail-item.active .count { background:#fff; }
+
+  section.detail { padding:22px 26px; overflow-y:auto; }
+  .repo-title { font-family:var(--font-h); font-size:22px; margin:0 0 2px; color:#0f172a; }
+  .repo-sub { color:#64748b; font-size:13px; margin-bottom:14px; }
+  .subtabs { display:flex; gap:4px; border-bottom:1px solid #e3e8ee; margin-bottom:16px; }
+  .subtabs button { border:0; background:none; padding:8px 14px; cursor:pointer; font-size:13px; color:#64748b; border-bottom:2px solid transparent; }
+  .subtabs button.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+
+  /* ---- KD cards ---- */
+  .kd-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+  .kd-card { background:#fff; border:1px solid #e6eaf0; border-radius:10px; padding:14px; transition:box-shadow .15s, transform .15s; }
+  .kd-card:hover { box-shadow:0 4px 14px rgba(30,58,138,.10); transform:translateY(-1px); }
+  .kd-card h3 { margin:0 0 6px; font-size:15px; }
+  .kd-card h3 a { color:#0f172a; text-decoration:none; }
+  .kd-card h3 a:hover { color:var(--accent); }
+  .kd-card .kd-name { font-size:11px; color:#94a3b8; }
+  .badges { margin-top:9px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:11px; font-weight:600; }
+  .class-mock { background:#e0e7ff; color:#3730a3; } .class-spec-demo { background:#dcfce7; color:#166534; }
+  .class-story { background:#fce7f3; color:#9d174d; } .class-stub-demo { background:#fef3c7; color:#92400e; }
+  .pipe { font-size:11px; padding:2px 8px; border-radius:11px; color:#fff; font-weight:600; text-transform:capitalize; }
+  .open-link { margin-top:11px; font-size:12px; }
+  .open-link a { color:var(--accent); text-decoration:none; font-weight:600; }
+  .empty { color:#94a3b8; font-style:italic; padding:40px; text-align:center; }
+  .placeholder-panel { background:#fff; border:1px dashed #cbd5e1; border-radius:10px; padding:28px; color:#64748b; font-size:13px; }
+  .hint { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:12px; color:#92400e; margin-bottom:14px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>🌱 IIL-Genesor</h1>
+  <span class="mock-tag">MOCKUP · #/repo-Routing</span>
+  <div class="facet-switch">
+    <label for="facet">Linse:</label>
+    <select id="facet">
+      <option value="repo">Repo</option>
+      <option value="org">Org</option>
+      <option value="pipeline">Pipeline-Status</option>
+      <option value="class">Klasse</option>
+    </select>
+    <input id="global-search" type="search" placeholder="KD / Repo suchen…"/>
+  </div>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<main>
+  <aside class="rail">
+    <div class="rail-head" id="rail-head">Repos</div>
+    <div id="rail"></div>
+  </aside>
+  <section class="detail" id="detail"></section>
+</main>
+
+<script>
+// === ECHTE Daten (gescannt aus ~/github, 2026-06-01) ===
+// pipeline_status ist für den Mockup synthetisiert (genesor liest es real aus den GitHub-Projects-Feldern).
+const ORG = {
+  "ausschreibungs-hub":"achimdehnert", "risk-hub":"achimdehnert", "design-hub":"iilgmbh",
+  "ttz-hub":"ttz-lif", "pg-hub":"iilgmbh", "nl2iot-hub":"iilgmbh", "bahn-sqf-pg-hub":"bahn-sqf"
+};
+const KDS = [
+  ["ausschreibungs-hub","document-intelligence-vergabe-analyse","spec-demo","pilot"],
+  ["ausschreibungs-hub","bieter-stammdaten","mock","klickdummy"],
+  ["ausschreibungs-hub","kalkulations-check","mock","klickdummy"],
+  ["ausschreibungs-hub","foerderung-vollzyklus","mock","klickdummy"],
+  ["ausschreibungs-hub","bau-beschaffung","mock","idea"],
+  ["ausschreibungs-hub","submission-workflow-phase-recherche","spec-demo","pilot"],
+  ["ausschreibungs-hub","submission-workflow-phase-unterlagen","spec-demo","pilot"],
+  ["ausschreibungs-hub","verfahrenskommunikation","mock","klickdummy"],
+  ["ausschreibungs-hub","submission-workflow-phase-submission","spec-demo","pilot"],
+  ["ausschreibungs-hub","document-intelligence","spec-demo","prod"],
+  ["ausschreibungs-hub","submission-workflow","spec-demo","pilot"],
+  ["ausschreibungs-hub","it-angebot","mock","klickdummy"],
+  ["risk-hub","mandant-bearbeiten","mock","klickdummy"],
+  ["risk-hub","avv-pflege","mock","klickdummy"],
+  ["risk-hub","vvt-pflege","mock","klickdummy"],
+  ["risk-hub","organigramm","mock","idea"],
+  ["risk-hub","nis2-wizard","mock","pilot"],
+  ["risk-hub","module-nav-prototype","mock","klickdummy"],
+  ["risk-hub","sitemap","mock","klickdummy"],
+  ["risk-hub","ex-schutz-konzept","mock","idea"],
+  ["risk-hub","audit-log","mock","klickdummy"],
+  ["risk-hub","dsb-mandant-neuanlage","mock","klickdummy"],
+  ["risk-hub","tom-pflege","mock","klickdummy"],
+  ["design-hub","tenant-dashboard","mock","pilot"],
+  ["design-hub","tenant-template-typen","mock","klickdummy"],
+  ["design-hub","tenant-renders","mock","klickdummy"],
+  ["design-hub","tenant-brand-profile","mock","klickdummy"],
+  ["ttz-hub","werkleiter-skizze","mock","idea"],
+  ["ttz-hub","schichtleitung-cockpit","mock","klickdummy"],
+  ["pg-hub","pocket-governance","mock","klickdummy"],
+  ["pg-hub","pocket-governance-db","mock","klickdummy"],
+  ["nl2iot-hub","nl2iot-mvp","spec-demo","pilot"],
+  ["nl2iot-hub","developer-cockpit","spec-demo","klickdummy"],
+  ["bahn-sqf-pg-hub","pocket-governance","mock","klickdummy"],
+  ["bahn-sqf-pg-hub","pocket-governance-db","mock","klickdummy"],
+].map(([repo,kd,cls,pipe]) => ({repo, kd, cls, pipe, org:ORG[repo]||"iilgmbh",
+  title: kd.replace(/-/g," ").replace(/\b\w/g, c=>c.toUpperCase())}));
+
+const PIPE_COLOR = {idea:"var(--idea)",klickdummy:"var(--klickdummy)",pilot:"var(--pilot)",prod:"var(--prod)",sunset:"var(--sunset)"};
+const PIPE_ORDER = ["idea","klickdummy","pilot","prod","sunset"];
+
+const FACETS = {
+  repo:    {head:"Repos",     key:k=>k.repo,  sort:(a,b)=>byCount(a,b)},
+  org:     {head:"Orgs",      key:k=>k.org,   sort:(a,b)=>byCount(a,b)},
+  pipeline:{head:"Pipeline",  key:k=>k.pipe,  sort:(a,b)=>PIPE_ORDER.indexOf(a.id)-PIPE_ORDER.indexOf(b.id)},
+  class:   {head:"Klassen",   key:k=>k.cls,   sort:(a,b)=>byCount(a,b)},
+};
+function byCount(a,b){ return b.items.length - a.items.length || a.id.localeCompare(b.id); }
+
+let state = { facet:"repo", group:null, tab:"KDs", q:"" };
+
+function groups(facet, q){
+  const fn = FACETS[facet].key;
+  const m = {};
+  KDS.forEach(k => {
+    if (q && !(k.kd+" "+k.repo+" "+k.title).toLowerCase().includes(q.toLowerCase())) return;
+    (m[fn(k)] = m[fn(k)] || []).push(k);
+  });
+  return Object.entries(m).map(([id,items]) => ({id, items})).sort(FACETS[facet].sort);
+}
+
+function statusDot(items){
+  // Höchste Reife in der Gruppe als Ampel-Punkt
+  const best = items.map(i=>i.pipe).sort((a,b)=>PIPE_ORDER.indexOf(b)-PIPE_ORDER.indexOf(a))[0] || "idea";
+  return `<span class="dot" style="background:${PIPE_COLOR[best]}" title="höchste Reife: ${best}"></span>`;
+}
+
+function renderStats(){
+  const repos = new Set(KDS.map(k=>k.repo)).size;
+  const orgs = new Set(KDS.map(k=>k.org)).size;
+  const byPipe = {}; KDS.forEach(k=>byPipe[k.pipe]=(byPipe[k.pipe]||0)+1);
+  document.getElementById("stats").innerHTML =
+    `<div class="stat"><b>${KDS.length}</b>Klickdummies</div>`+
+    `<div class="stat"><b>${repos}</b>Repos</div>`+
+    `<div class="stat"><b>${orgs}</b>Orgs</div>`+
+    `<div class="pipe-legend">`+PIPE_ORDER.filter(p=>byPipe[p]).map(p=>
+      `<span><span class="dot" style="background:${PIPE_COLOR[p]}"></span>${p} ${byPipe[p]}</span>`).join("")+`</div>`;
+}
+
+function renderRail(){
+  const gs = groups(state.facet, state.q);
+  document.getElementById("rail-head").textContent = FACETS[state.facet].head;
+  if (!gs.find(g=>g.id===state.group)) state.group = gs[0] && gs[0].id;
+  document.getElementById("rail").innerHTML = gs.map(g =>
+    `<button class="rail-item ${g.id===state.group?"active":""}" data-group="${g.id}">
+       ${statusDot(g.items)}<span>${g.id}</span><span class="count">${g.items.length}</span>
+     </button>`).join("") || `<div class="empty">keine Treffer</div>`;
+  document.querySelectorAll(".rail-item").forEach(b =>
+    b.onclick = () => { setHash(state.facet, b.dataset.group); });
+}
+
+function renderDetail(){
+  const el = document.getElementById("detail");
+  const gs = groups(state.facet, state.q);
+  const g = gs.find(x=>x.id===state.group);
+  if (!g){ el.innerHTML = `<div class="empty">Nichts ausgewählt.</div>`; return; }
+  const subtabs = ["KDs","Lineage","UCs","Coverage"];
+  const head =
+    `<h2 class="repo-title">${state.facet==="repo"?"📦 ":""}${g.id}</h2>
+     <div class="repo-sub">${g.items.length} Klickdummies${state.facet==="repo"?` · org: ${g.items[0].org}`:` · Linse: ${FACETS[state.facet].head}`}</div>
+     <div class="subtabs">${subtabs.map(t=>`<button class="${t===state.tab?"active":""}" data-tab="${t}">${t}</button>`).join("")}</div>`;
+  let body;
+  if (state.tab==="KDs"){
+    body = `<div class="kd-grid">`+ g.items.sort((a,b)=>a.kd.localeCompare(b.kd)).map(k=>`
+      <div class="kd-card">
+        <h3><a href="#/kd/${k.repo}/${k.kd}">${k.title}</a></h3>
+        <div class="kd-name"><code>${k.repo}/${k.kd}</code></div>
+        <div class="badges">
+          <span class="badge class-${k.cls}">${k.cls}</span>
+          <span class="pipe" style="background:${PIPE_COLOR[k.pipe]}">${k.pipe}</span>
+        </div>
+        <div class="open-link"><a href="#/kd/${k.repo}/${k.kd}">→ KD öffnen</a></div>
+      </div>`).join("") + `</div>`;
+  } else if (state.tab==="Lineage"){
+    body = `<div class="placeholder-panel">🌐 <b>lineage-${g.id}.html</b> — der bereits existierende Mermaid-Topologie-Graph dieses Repos würde hier eingebettet (heute eigene Datei, lineage.py:4045).</div>`;
+  } else if (state.tab==="UCs"){
+    body = `<div class="placeholder-panel">📋 <b>uc-${g.id}.html</b> — der bereits existierende Use-Case-Index dieses Repos (heute eigene Datei, lineage.py:6286).</div>`;
+  } else {
+    body = `<div class="placeholder-panel">📊 <b>coverage.html</b>, auf dieses Repo gefiltert — Spec↔UC-Abdeckung.</div>`;
+  }
+  el.innerHTML = head +
+    (state.facet==="repo"?`<div class="hint">💡 Repo-Heimat bündelt, was heute über drei Dateien verstreut ist: KD-Liste + Lineage + UC-Index. Deep-Link: <code>iil.pet/genesor/#/repo/${g.id}</code></div>`:"") +
+    body;
+  document.querySelectorAll(".subtabs button").forEach(b =>
+    b.onclick = () => { state.tab = b.dataset.tab; renderDetail(); });
+}
+
+function setHash(facet, group){ location.hash = `#/${facet}/${encodeURIComponent(group)}`; }
+function readHash(){
+  const m = location.hash.match(/^#\/(repo|org|pipeline|class)\/(.+)$/);
+  if (m){ state.facet = m[1]; state.group = decodeURIComponent(m[2]); document.getElementById("facet").value = state.facet; }
+  const kd = location.hash.match(/^#\/kd\/([^/]+)\/(.+)$/);
+  if (kd){ alert(`(Mockup) Würde Klickdummy öffnen:\n${decodeURIComponent(kd[1])}/${decodeURIComponent(kd[2])}\n\n→ real: shell.html?feedback=on`); history.back(); return; }
+}
+function render(){ renderStats(); renderRail(); renderDetail(); }
+
+document.getElementById("facet").onchange = e => { state.facet = e.target.value; state.group=null; render(); };
+document.getElementById("global-search").oninput = e => { state.q = e.target.value; renderRail(); renderDetail(); };
+window.addEventListener("hashchange", () => { readHash(); render(); });
+readHash(); render();
+</script>
+</body>
+</html>
