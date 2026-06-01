@@ -3,6 +3,20 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.15.1] — 2026-06-01
+
+### Fixed — Sub-Tab-aware UC anlegen + Feedback-Widget (#34)
+
+- **`build_trace_strip` `act()`:** UC-anlegen-Button trägt jetzt `data-uc-subtab-selector`
+  → Page-Level-Script liest beim Click den aktiven Sub-Tab-Namen und hängt ihn an den
+  localStorage-Key (sub-tab-spezifischer Inflight-State) und den Issue-Titel.
+- **Sub-Tab-Switch-Handler:** setzt `fb-current-subtab`-Element (+ Initial-Sync bei Seitenlade).
+- **`fbCollect()`** (beide Instanzen — Render-Template + lineage.py-Self-Render):
+  `active_subtab: document.getElementById('fb-current-subtab')?.textContent || null`
+  im Feedback-Payload.
+- **`fb-current-subtab`:** hidden Span nach Widget-Placeholder-Inject im Template + lineage.py.
+- 2 neue Smoke-Tests; 37 grün; 3.10-safe.
+
 ## [1.15.0] — 2026-06-01
 
 ### Added — gen_e2e: parametrisierte Routen + Auth für ausführbare Parity-Suite (#28)
