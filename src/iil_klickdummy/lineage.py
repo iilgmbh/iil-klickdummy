@@ -688,6 +688,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>Klickdummy: {kd_name} — {title}</title>
 <style>
   :root {{
@@ -3287,6 +3288,7 @@ def build_genesor_html(records: list[dict],
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>IIL-Genesor — Klickdummy-Übersicht (Cross-Repo)</title>
 <style>
   body {{ font-family: -apple-system, system-ui, sans-serif; margin: 0; color: #222; background: #fafafa; }}
