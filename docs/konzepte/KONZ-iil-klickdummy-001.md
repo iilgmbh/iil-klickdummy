@@ -16,6 +16,8 @@ evidence_manifest:
   - {claim_id: C3, source_path: "ausschreibungs-hub/.github/scripts/klickdummy_sync.py:180-186", commit_or_pr: "working-tree@main", opened_in_session: true}
   - {claim_id: C4, source_path: "github:achimdehnert/ausschreibungs-hub#66,#67", commit_or_pr: "#66,#67", opened_in_session: true}
   - {claim_id: C5, source_path: "find klickdummy_sync.py → ausschreibungs-hub + meiki-hub", commit_or_pr: "working-tree", opened_in_session: true}
+  - {claim_id: C6, source_path: "diff ausschreibungs-hub vs meiki-hub klickdummy_sync.py (divergent, kein MANAGED-Footer)", commit_or_pr: "working-tree", opened_in_session: true}
+  - {claim_id: C7, source_path: "klickdummy_sync.py:47-55 find_specs + lineage.py:1671 + ls klickdummy/*/ (Dirs ohne -klickdummy-Suffix)", commit_or_pr: "working-tree", opened_in_session: true}
 created: 2026-06-01
 off_ramp:                         # idea-Stufe; wird Issue/PR in iil-klickdummy + konsumierenden Repos
 ---
@@ -41,7 +43,8 @@ off_ramp:                         # idea-Stufe; wird Issue/PR in iil-klickdummy 
 | L5 | Wurzel = zwei Erzeuger, ein Namensraum, kein gemeinsamer Idempotenz-Schlüssel (nicht „fehlendes Dedup") | Entscheidung (Root-Cause) | C1–C4 | verifiziert |
 | L6 | Fix trifft das geteilte Package `iil-klickdummy` → Cross-Repo → **T2** | Entscheidung (Tier) | C1, C5 | verifiziert |
 | L7 | `klickdummy_sync.py` ist pro-Repo kopiert (ausschreibungs-hub + meiki-hub) → Bot-Fix in N Kopien | Risiko (SSoT/Drift) | C5 | verifiziert |
-| L8 | *Wie* `klickdummy_sync.py` verteilt wird (Sync-Mechanismus) | Annahme (offen) | nicht geöffnet — Check: Dist-Footer im Script-Kopf greppen | offen (H) |
+| L8 | *Wie* `klickdummy_sync.py` verteilt wird (Sync-Mechanismus) | Risiko (SSoT/Drift) | C6: kein MANAGED-Footer, **keine kanonische Quelle**, zwei Kopien **divergent** | verifiziert — Teil B blockiert bis Konsolidierung |
+| L9 | Teil A wirkt: `r["kd"]` (Button) == `kd_name` (Bot-Sentinel) | Annahme→verifiziert | C7: beide leiten aus Spec-Dir ab; ausschreibungs-hub-Dirs ohne `-klickdummy`-Suffix → `removesuffix` No-op; empirisch #66 kd == Dir `klickdummy/document-intelligence-vergabe-analyse/` | verifiziert (Restkante: wörtliche `klickdummy/<x>-klickdummy/`-Dirs) |
 
 ## Minimal Viable Concept (zweiteilig, Cross-Repo)
 
