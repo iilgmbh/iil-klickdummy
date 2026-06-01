@@ -3,6 +3,14 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.13.0] — 2026-06-01
+
+### Fixed
+- `spec-sicht`: UC-Button-Zustand „⏳ UC anlegen in Arbeit" nach Klick — State via `localStorage` persistent nach Reload (#26).
+
+### Refactored
+- `lineage.py` Globals → `@dataclass GenesorConfig` (PR #23) + Teil-Split in `iil_klickdummy/genesor/` (config, introspect_django, export — PR #24). Vorbereitung für den Render-Kern-Split (#22).
+
 ## [1.12.0] — 2026-06-01
 
 ### Added — Genesor Repo-Ebenen-Einstieg (Master-Detail + Fassetten-Linse)
