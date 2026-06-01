@@ -32,6 +32,7 @@ import argparse
 import html
 import json
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -52,33 +53,68 @@ ROOT = Path(__file__).resolve().parent.parent
 MOCKUPS_DIR = ROOT / "docs" / "01-architektur" / "mockups"
 CONTRACTS_DIR = ROOT / "docs" / "01-architektur" / "contracts"
 OUT_DIR = ROOT / "docs" / "01-architektur" / "lineage"           # Single-Repo-Lineage (Rückwärtskompat)
-REPOS_ROOT = Path.home() / "github"
-GENESOR_OUT = REPOS_ROOT / "genesor"                              # Cross-Repo: top-level für HTTP-Root
 
-# URL-Präfix für generierte Cross-Repo-Links + Skin-Library-Pfade.
-# Default "/" reproduziert das bisherige Verhalten byte-identisch (HTTP-Root = ~/github).
-# Wird via --base-url überschrieben (z. B. "/genesor-host/" für einen späteren Portal-Build).
-BASE_URL = "/"
 
-# Basis-URL für die Skin-CSS-Dateien. Default "" reproduziert das bisherige
-# Verhalten byte-identisch: Skins werden unter ihrem REPOS_ROOT-relativen Pfad
-# (iil-klickdummy/.../skins/<name>.css) ausgeliefert. Wird via --skin-base
-# gesetzt (z. B. "/genesor/skins"), dann wird NUR der Basename verwendet:
-# "<skin-base>/<name>.css" — für einen self-contained Portal-Build, bei dem die
-# 4 Skin-CSS-Dateien neben dem Genesor-Site liegen.
-SKIN_BASE = ""
+@dataclass
+class GenesorConfig:
+    """Explizite Konfiguration für den Genesor-Modus (KONZ-003 Empf-1).
 
-# Repos, deren echte Mockup-HTMLs unter "/kd/<repo>/..." einvendoriert
-# ausgeliefert werden (z. B. iil-pet-portal/kd/). Steht ein Repo hier, wird in
-# url_for_path() dem ROOT-relativen Pfad ein "/kd"-Präfix vorangestellt, sodass
-# der Link auf die vendored Kopie statt auf das (auf iil.pet nicht ausgelieferte)
-# Original zeigt. Leere Menge (Default) → byte-identisch zu früher.
-VENDORED_REPOS: set[str] = set()
+    Ersetzt die mutierten Modul-Globals REPOS_ROOT, GENESOR_OUT, BASE_URL,
+    SKIN_BASE, VENDORED_REPOS. Wird in main() aus argparse-Args instanziiert
+    und als Modul-Global _cfg gesetzt — alle Funktionen lesen von _cfg statt
+    von früheren bare Globals.
+
+    Defaults reproduzieren das bisherige Verhalten byte-identisch.
+    """
+    repos_root: Path = field(default_factory=lambda: Path.home() / "github")
+    # genesor_out None → wird lazy auf repos_root / "genesor" aufgelöst
+    _genesor_out: Path | None = field(default=None, repr=False)
+    # URL-Präfix für generierte Cross-Repo-Links + Skin-Library-Pfade.
+    # Default "/" reproduziert das bisherige Verhalten byte-identisch (HTTP-Root = ~/github).
+    # Wird via --base-url überschrieben (z. B. "/genesor-host/" für einen späteren Portal-Build).
+    base_url: str = "/"
+    # Basis-URL für die Skin-CSS-Dateien. Default "" reproduziert das bisherige
+    # Verhalten byte-identisch: Skins werden unter ihrem REPOS_ROOT-relativen Pfad
+    # (iil-klickdummy/.../skins/<name>.css) ausgeliefert. Wird via --skin-base
+    # gesetzt (z. B. "/genesor/skins"), dann wird NUR der Basename verwendet:
+    # "<skin-base>/<name>.css" — für einen self-contained Portal-Build, bei dem die
+    # 4 Skin-CSS-Dateien neben dem Genesor-Site liegen.
+    skin_base: str = ""
+    # Repos, deren echte Mockup-HTMLs unter "/kd/<repo>/..." einvendoriert
+    # ausgeliefert werden (z. B. iil-pet-portal/kd/). Steht ein Repo hier, wird in
+    # url_for_path() dem ROOT-relativen Pfad ein "/kd"-Präfix vorangestellt, sodass
+    # der Link auf die vendored Kopie statt auf das (auf iil.pet nicht ausgelieferte)
+    # Original zeigt. Leere Menge (Default) → byte-identisch zu früher.
+    vendored_repos: set = field(default_factory=set)
+
+    @property
+    def genesor_out(self) -> Path:
+        if self._genesor_out is not None:
+            return self._genesor_out
+        return self.repos_root / "genesor"
+
+    @genesor_out.setter
+    def genesor_out(self, value: Path | None) -> None:
+        self._genesor_out = value
+
+
+# Modul-weite Konfigurationsinstanz. Wird in main() aus CLI-Args neu gesetzt.
+# Default: byte-identisches Verhalten zu den früheren bare Globals.
+_cfg: GenesorConfig = GenesorConfig()
+
+# Backward-compat-Aliases (werden nicht mehr mutiert; für externe Leser die
+# noch direkt auf diese Namen referenzieren — z. B. Tests, falls vorhanden).
+# Alle Funktionen in dieser Datei lesen jetzt _cfg.* statt dieser Namen.
+REPOS_ROOT = _cfg.repos_root
+GENESOR_OUT = _cfg.genesor_out
+BASE_URL = _cfg.base_url
+SKIN_BASE = _cfg.skin_base
+VENDORED_REPOS: set[str] = _cfg.vendored_repos
 
 
 def _base_prefix() -> str:
     """Normalisiert BASE_URL zu einem Präfix ohne Trailing-Slash ("/"→"")."""
-    return BASE_URL.rstrip("/")
+    return _cfg.base_url.rstrip("/")
 
 
 def _skin_url(rel: str) -> str:
@@ -88,8 +124,8 @@ def _skin_url(rel: str) -> str:
     SKIN_BASE gesetzt → "<skin_base>/<basename>"  (nur Dateiname, z. B.
                         "/genesor/skins/okwobis-look.css").
     """
-    if SKIN_BASE:
-        return SKIN_BASE.rstrip("/") + "/" + rel.rsplit("/", 1)[-1]
+    if _cfg.skin_base:
+        return _cfg.skin_base.rstrip("/") + "/" + rel.rsplit("/", 1)[-1]
     return _base_prefix() + "/" + rel
 
 
@@ -125,10 +161,10 @@ def url_for_path(p: Path) -> str | None:
     Menge (Default) → byte-identisch zu früher.
     """
     try:
-        rel = str(p.relative_to(REPOS_ROOT))
+        rel = str(p.relative_to(_cfg.repos_root))
     except ValueError:
         return None
-    if VENDORED_REPOS and rel.split("/", 1)[0] in VENDORED_REPOS:
+    if _cfg.vendored_repos and rel.split("/", 1)[0] in _cfg.vendored_repos:
         return _base_prefix() + "/kd/" + rel
     return _base_prefix() + "/" + rel
 
@@ -1157,7 +1193,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
     sunset = (d.get("off_ramp", {}) or {}).get("sunset_after") or "—"
 
     # Domain-Styling aus doc-profile.yaml
-    repo_dir = REPOS_ROOT / repo
+    repo_dir = _cfg.repos_root / repo
     profile = read_doc_profile(repo_dir)
     style = _DOMAIN_STYLES.get(profile) or _DOMAIN_STYLES["default"]
 
@@ -1542,7 +1578,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
     # Spec-Pfad
     spec_rel = ""
     try:
-        spec_rel = str(record["path"].relative_to(REPOS_ROOT))
+        spec_rel = str(record["path"].relative_to(_cfg.repos_root))
     except (ValueError, KeyError):
         pass
 
@@ -2168,10 +2204,10 @@ def _prefix_to_repo(prefix: str) -> str:
     if not prefix:
         return ""
     p = prefix.strip()
-    if (REPOS_ROOT / p).is_dir():
+    if (_cfg.repos_root / p).is_dir():
         return p
     cand = f"{p}-hub"
-    if (REPOS_ROOT / cand).is_dir():
+    if (_cfg.repos_root / cand).is_dir():
         return cand
     return p
 
@@ -2213,9 +2249,9 @@ def find_all_repos_ucs() -> list[dict]:
     Markdown-only UCs ohne Frontmatter werden übersprungen (Iter-1-Scope).
     """
     out: list[dict] = []
-    if not REPOS_ROOT.is_dir():
+    if not _cfg.repos_root.is_dir():
         return out
-    for repo_dir in sorted(REPOS_ROOT.iterdir()):
+    for repo_dir in sorted(_cfg.repos_root.iterdir()):
         if not repo_dir.is_dir() or repo_dir.name.startswith("."):
             continue
         repo_name = repo_dir.name
@@ -2369,9 +2405,9 @@ def _normalize_spec_aliases(data: dict) -> dict:
 def find_all_repos_specs() -> list[dict]:
     """Walks ~/github/*/ für screens-spec.yaml UND render-only-KDs ohne Spec (F11)."""
     out: list[dict] = []
-    if not REPOS_ROOT.is_dir():
+    if not _cfg.repos_root.is_dir():
         return out
-    for repo_dir in sorted(REPOS_ROOT.iterdir()):
+    for repo_dir in sorted(_cfg.repos_root.iterdir()):
         if not repo_dir.is_dir() or repo_dir.name.startswith("."):
             continue
         repo_name = repo_dir.name
@@ -2575,8 +2611,8 @@ def _load_iil_apps_index() -> dict[str, dict]:
     """
     import json
     candidates = [
-        REPOS_ROOT / "iil-relaunch" / "apps.json",
-        REPOS_ROOT / "platform" / "static-sites" / "iil.pet" / "apps.json",
+        _cfg.repos_root / "iil-relaunch" / "apps.json",
+        _cfg.repos_root / "platform" / "static-sites" / "iil.pet" / "apps.json",
     ]
     for p in candidates:
         if not p.is_file():
@@ -2637,7 +2673,7 @@ def _compute_drift_status(record: dict) -> dict:
 
     # Tatsächlich vorhandene Briefs prüfen
     actual_briefs: list[tuple[str, str, int]] = []  # (screen_id, brief_md_path, age_days)
-    brief_dir = GENESOR_OUT / "impl-brief"
+    brief_dir = _cfg.genesor_out / "impl-brief"
     today = datetime.now()
     for sid in expected_briefs:
         # Konvention: impl-brief/<repo>-<kd>-<screen>.md
@@ -2783,7 +2819,7 @@ def build_genesor_html(records: list[dict],
             html_files_str = ", ".join(f'<code>{html.escape(f)}</code>' for f in html_files if f)
             rel_path = ""
             try:
-                rel_path = str(r["path"].relative_to(REPOS_ROOT))
+                rel_path = str(r["path"].relative_to(_cfg.repos_root))
             except (ValueError, KeyError):
                 rel_path = str(r.get("path", "?"))
             # Mockup-URL: für render-only-inline ist der Pfad direkt der HTML, sonst gibt's mehrere
@@ -2881,7 +2917,7 @@ def build_genesor_html(records: list[dict],
         # Spec-Pfad + Mermaid-Detail-Link (wenn vorhanden)
         rel_path = ""
         try:
-            rel_path = str(r["path"].relative_to(REPOS_ROOT))
+            rel_path = str(r["path"].relative_to(_cfg.repos_root))
         except (ValueError, KeyError):
             rel_path = str(r.get("path", "?"))
 
@@ -4048,13 +4084,13 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
             continue   # F12: nur sinnvoll bei ≥2 KDs (sonst leerer Graph)
         specs_for_repo = [(r["kd"], r["path"], r["data"]) for r in repo_records]
         # Suche Contracts in zwei möglichen Pfaden:
-        contracts_dir_a = REPOS_ROOT / repo_name / "docs" / "01-architektur" / "contracts"
-        contracts_dir_b = REPOS_ROOT / repo_name / "contracts"
+        contracts_dir_a = _cfg.repos_root / repo_name / "docs" / "01-architektur" / "contracts"
+        contracts_dir_b = _cfg.repos_root / repo_name / "contracts"
         repo_contracts: dict[str, Path] = {}
         for cd in (contracts_dir_a, contracts_dir_b):
             repo_contracts.update(find_contracts_in_dir(cd))
         # CD-Upgrade (2026-05-26): doc-profile-basierter Style + Click-Direktiven
-        repo_dir = REPOS_ROOT / repo_name
+        repo_dir = _cfg.repos_root / repo_name
         profile = read_doc_profile(repo_dir)
         style = _DOMAIN_STYLES.get(profile, _DOMAIN_STYLES["default"])
         mermaid = emit_mermaid(specs_for_repo, repo_contracts)
@@ -4385,7 +4421,7 @@ def _git_repo_meta(repo: str) -> dict:
     sichtbar". Echter Remote-Check wäre per-PR-aware aber zu teuer.
     """
     import subprocess
-    repo_path = REPOS_ROOT / repo
+    repo_path = _cfg.repos_root / repo
     if not (repo_path / ".git").exists():
         return {}
     try:
@@ -4565,7 +4601,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
                 + "</dd>"
             )
         try:
-            rel_path = uc["source_file"].relative_to(REPOS_ROOT / repo)
+            rel_path = uc["source_file"].relative_to(_cfg.repos_root / repo)
             rel_path_str = str(rel_path)
             src_link = f'<a href="../{html.escape(repo)}/{html.escape(rel_path_str)}" target="_blank" class="src-link" title="Lokale MD-Datei">📄 source</a>'
             gh_edit = _github_edit_url(repo, rel_path_str)
@@ -4966,7 +5002,7 @@ def validate_ucs(ucs: list[dict], kds: list[dict]) -> dict[str, list[dict]]:
             })
         else:
             try:
-                seen_gids[gid] = str(uc["source_file"].relative_to(REPOS_ROOT))
+                seen_gids[gid] = str(uc["source_file"].relative_to(_cfg.repos_root))
             except (ValueError, KeyError):
                 seen_gids[gid] = str(uc.get("source_file", "?"))
 
@@ -4984,7 +5020,7 @@ def _inspect_django_models(repo: str) -> dict[str, dict]:
     """
     import ast
     result: dict[str, dict] = {}
-    repo_path = REPOS_ROOT / repo
+    repo_path = _cfg.repos_root / repo
     apps_dir = repo_path / "apps"
     if not apps_dir.is_dir():
         return result
@@ -5067,7 +5103,7 @@ def _detect_tenant_pattern(models_inspected: dict[str, dict]) -> dict:
 def _detect_auth_user_model(repo: str) -> str:
     """Liest ``AUTH_USER_MODEL`` aus ``config/settings/base.py`` (oder Fallback)."""
     import re
-    repo_path = REPOS_ROOT / repo
+    repo_path = _cfg.repos_root / repo
     candidates = [
         repo_path / "config" / "settings" / "base.py",
         repo_path / "config" / "settings.py",
@@ -5095,7 +5131,7 @@ def _inspect_dev_run(repo: str) -> dict:
     gefunden wurde.
     """
     import re
-    repo_path = REPOS_ROOT / repo
+    repo_path = _cfg.repos_root / repo
     out: dict = {"repo_path": f"~/github/{repo}"}
 
     # start-dev.sh
@@ -5690,7 +5726,7 @@ def build_uc_export_json(ucs: list[dict], kds: list[dict], coverage: dict) -> st
     for uc in ucs:
         gid = f"{uc['repo']}:{uc['uc_id']}"
         try:
-            rel_src = str(uc["source_file"].relative_to(REPOS_ROOT))
+            rel_src = str(uc["source_file"].relative_to(_cfg.repos_root))
         except (ValueError, KeyError):
             rel_src = str(uc.get("source_file", ""))
         ucs_out.append({
@@ -5739,7 +5775,7 @@ def build_uc_export_json(ucs: list[dict], kds: list[dict], coverage: dict) -> st
 def _repo_of_path(p: Path) -> str | None:
     """Repo-Name aus absolutem Pfad: ``~/github/<repo>/...`` → ``<repo>``."""
     try:
-        rel = p.relative_to(REPOS_ROOT)
+        rel = p.relative_to(_cfg.repos_root)
         return rel.parts[0] if rel.parts else None
     except ValueError:
         return None
@@ -5758,7 +5794,7 @@ def _git_publish_changes(repo: str, paths: list[Path], commit_msg: str,
     Returns: ``{committed, pushed, branch, sha, n_files, skip_reason}``.
     """
     import subprocess
-    repo_path = REPOS_ROOT / repo
+    repo_path = _cfg.repos_root / repo
     try:
         branch = subprocess.check_output(
             ["git", "-C", str(repo_path), "rev-parse", "--abbrev-ref", "HEAD"],
@@ -6095,7 +6131,7 @@ def generate_uc_skeletons(records: list[dict], existing_ucs: list[dict],
         kd_name = kd["kd"]
         d = kd["data"] or {}
         kd_adr_local = (d.get("adr", {}) or {}).get("local")
-        out_dir = REPOS_ROOT / repo / "docs" / "use-cases" / "_auto"
+        out_dir = _cfg.repos_root / repo / "docs" / "use-cases" / "_auto"
         if not dry_run:
             out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -6182,14 +6218,18 @@ def main() -> int:
                              "Leer (Default) → keine Umschreibung (byte-identisch zu früher).")
     args = parser.parse_args()
 
-    # Argparse → modulweite Konfiguration (alle Funktionen lesen diese Globals).
+    # Argparse → GenesorConfig (KONZ-003 Empf-1: keine bare-Global-Mutation mehr).
     # Defaults reproduzieren das bisherige Verhalten byte-identisch.
-    global REPOS_ROOT, GENESOR_OUT, BASE_URL, SKIN_BASE, VENDORED_REPOS
-    REPOS_ROOT = Path(args.repos_root).expanduser()
-    GENESOR_OUT = Path(args.out).expanduser() if args.out else REPOS_ROOT / "genesor"
-    BASE_URL = args.base_url
-    SKIN_BASE = args.skin_base
-    VENDORED_REPOS = {r.strip() for r in args.vendored_repos.split(",") if r.strip()}
+    global _cfg
+    _repos_root = Path(args.repos_root).expanduser()
+    _genesor_out = Path(args.out).expanduser() if args.out else None
+    _cfg = GenesorConfig(
+        repos_root=_repos_root,
+        base_url=args.base_url,
+        skin_base=args.skin_base,
+        vendored_repos={r.strip() for r in args.vendored_repos.split(",") if r.strip()},
+    )
+    _cfg.genesor_out = _genesor_out
 
     if args.gen_impl_brief:
         try:
@@ -6206,7 +6246,7 @@ def main() -> int:
         if brief_md is None:
             print(f"❌ Screen '{screen_a}' hat kein `implementation_brief`-Block ODER existiert nicht")
             return 1
-        out_dir = GENESOR_OUT / "impl-brief"
+        out_dir = _cfg.genesor_out / "impl-brief"
         out_dir.mkdir(parents=True, exist_ok=True)
         out_file = out_dir / f"{repo_a}-{kd_a}-{screen_a}.md"
         out_file.write_text(brief_md, encoding="utf-8")
@@ -6240,7 +6280,7 @@ def main() -> int:
         # UC-Cleanup (Workshop 2026-05-26 #3): löscht ausschließlich Files mit
         # `auto_generated: true` im Frontmatter — handgepflegte UCs bleiben.
         deleted: list[Path] = []
-        for uc_path in REPOS_ROOT.glob("*/docs/use-cases/**/UC-*.md"):
+        for uc_path in _cfg.repos_root.glob("*/docs/use-cases/**/UC-*.md"):
             try:
                 text = uc_path.read_text("utf-8")
             except OSError:
@@ -6295,9 +6335,9 @@ def main() -> int:
     if args.genesor:
         records = find_all_repos_specs()
         if not records:
-            print(f"WARN: Keine Klickdummies unter {REPOS_ROOT} gefunden.", file=sys.stderr)
+            print(f"WARN: Keine Klickdummies unter {_cfg.repos_root} gefunden.", file=sys.stderr)
             return 1
-        GENESOR_OUT.mkdir(parents=True, exist_ok=True)
+        _cfg.genesor_out.mkdir(parents=True, exist_ok=True)
         print(f"Genesor (Cross-Repo) · gefundene Klickdummies: {len(records)} aus "
               f"{len({(r['org'], r['repo']) for r in records})} Repos / "
               f"{len({r['org'] for r in records})} Orgs")
@@ -6321,16 +6361,16 @@ def main() -> int:
                 continue   # render-only KDs haben schon HTML, kein Fallback nötig
             kd_dir = rec["path"].parent
             if find_mockup_html(kd_dir, rec["kd"]) is None:
-                generate_render_fallback(rec, GENESOR_OUT,
+                generate_render_fallback(rec, _cfg.genesor_out,
                                          known_kds=known_kds,
                                          known_kd_repos=known_kd_repos)
                 n_rendered += 1
         if n_rendered:
-            print(f"✓ {n_rendered} Render-Fallback-HTMLs in {GENESOR_OUT / 'render'}/")
+            print(f"✓ {n_rendered} Render-Fallback-HTMLs in {_cfg.genesor_out / 'render'}/")
         # Stufe 1b: Per-Repo-Lineages zuerst (damit Genesor sie verlinken kann)
         # Implementation-Briefs auto-emittieren (Pilot ADR-Variante-3) für alle
         # Screens mit implementation_brief-Block (User-Wunsch 2026-05-26: P2)
-        impl_briefs_dir = GENESOR_OUT / "impl-brief"
+        impl_briefs_dir = _cfg.genesor_out / "impl-brief"
         n_briefs = 0
         for rec in records:
             if rec.get("kind", "spec") != "spec":
@@ -6346,10 +6386,10 @@ def main() -> int:
                 out_file = impl_briefs_dir / f"{rec['repo']}-{rec['kd']}-{sid}.md"
                 out_file.write_text(brief_md, encoding="utf-8")
                 # HTML-Render daneben (CD aus doc-profile)
-                profile_ib = read_doc_profile(REPOS_ROOT / rec["repo"])
+                profile_ib = read_doc_profile(_cfg.repos_root / rec["repo"])
                 style_ib = _DOMAIN_STYLES.get(profile_ib, _DOMAIN_STYLES["default"])
                 html_out_ib = build_impl_brief_html(brief_md, rec["repo"], rec["kd"], sid, profile_ib, style_ib)
-                (GENESOR_OUT / f"impl-brief-{rec['repo']}-{rec['kd']}-{sid}.html").write_text(html_out_ib, encoding="utf-8")
+                (_cfg.genesor_out / f"impl-brief-{rec['repo']}-{rec['kd']}-{sid}.html").write_text(html_out_ib, encoding="utf-8")
                 n_briefs += 1
         if n_briefs:
             print(f"✓ {n_briefs} Implementation-Brief(s) in {impl_briefs_dir}/")
@@ -6364,25 +6404,25 @@ def main() -> int:
                 continue
             repo_kd = rec["repo"]
             kd_kd = rec["kd"]
-            profile_sl = read_doc_profile(REPOS_ROOT / repo_kd)
+            profile_sl = read_doc_profile(_cfg.repos_root / repo_kd)
             style_sl = _DOMAIN_STYLES.get(profile_sl, _DOMAIN_STYLES["default"])
             html_out_sl = build_screen_lineage_html(repo_kd, kd_kd, d, profile_sl, style_sl)
-            (GENESOR_OUT / f"screen-lineage-{repo_kd}-{kd_kd}.html").write_text(html_out_sl, encoding="utf-8")
+            (_cfg.genesor_out / f"screen-lineage-{repo_kd}-{kd_kd}.html").write_text(html_out_sl, encoding="utf-8")
             n_screen_lineage += 1
         if n_screen_lineage:
-            print(f"✓ {n_screen_lineage} Screen-Lineage-Pages in {GENESOR_OUT}/")
+            print(f"✓ {n_screen_lineage} Screen-Lineage-Pages in {_cfg.genesor_out}/")
 
-        per_repo_files = generate_per_repo_lineages(records, GENESOR_OUT)
+        per_repo_files = generate_per_repo_lineages(records, _cfg.genesor_out)
         for p in per_repo_files:
             print(f"✓ {p}")
         # UC-Coverage (ADR-211 Rev 16 §UC-Coverage) — cross-repo Heatmap
         ucs = find_all_repos_ucs()
         coverage = build_uc_coverage(ucs, records)
         coverage_html = build_coverage_html(ucs, records, coverage)
-        (GENESOR_OUT / "coverage.html").write_text(coverage_html, encoding="utf-8")
+        (_cfg.genesor_out / "coverage.html").write_text(coverage_html, encoding="utf-8")
         n_realized = sum(1 for v in coverage["uc_realized_count"].values() if v > 0)
         n_cells = sum(len(v) for v in coverage["matrix"].values())
-        print(f"✓ {GENESOR_OUT / 'coverage.html'} ({len(ucs)} UCs / {n_realized} realized / {n_cells} cells)")
+        print(f"✓ {_cfg.genesor_out / 'coverage.html'} ({len(ucs)} UCs / {n_realized} realized / {n_cells} cells)")
 
         # UC-Validator (Layer A) — Workshop 2026-05-26
         uc_findings = validate_ucs(ucs, records)
@@ -6398,19 +6438,19 @@ def main() -> int:
         for repo_name, ucs_for_repo in ucs_by_repo.items():
             uc_idx_html = build_repo_uc_index_html(repo_name, ucs_for_repo, coverage,
                                                   kds=records, validation=uc_findings)
-            (GENESOR_OUT / f"uc-{repo_name}.html").write_text(uc_idx_html, encoding="utf-8")
-            print(f"✓ {GENESOR_OUT / f'uc-{repo_name}.html'} ({len(ucs_for_repo)} UCs)")
+            (_cfg.genesor_out / f"uc-{repo_name}.html").write_text(uc_idx_html, encoding="utf-8")
+            print(f"✓ {_cfg.genesor_out / ('uc-' + repo_name + '.html')} ({len(ucs_for_repo)} UCs)")
 
         # JSON-Export (Workshop-Feedback 2026-05-26 #5) — strukturierter Snapshot
         # für externe Konsumenten (Backstage, Excel, Linear-Sync, PDF-Report).
         export_json = build_uc_export_json(ucs, records, coverage)
-        (GENESOR_OUT / "uc-export.json").write_text(export_json, encoding="utf-8")
-        print(f"✓ {GENESOR_OUT / 'uc-export.json'} ({len(export_json)} chars)")
+        (_cfg.genesor_out / "uc-export.json").write_text(export_json, encoding="utf-8")
+        print(f"✓ {_cfg.genesor_out / 'uc-export.json'} ({len(export_json)} chars)")
 
         # Genesor-Übersicht
         genesor_html = build_genesor_html(records, uc_coverage=coverage, n_ucs=len(ucs))
-        (GENESOR_OUT / "index.html").write_text(genesor_html, encoding="utf-8")
-        print(f"✓ {GENESOR_OUT / 'index.html'}")
+        (_cfg.genesor_out / "index.html").write_text(genesor_html, encoding="utf-8")
+        print(f"✓ {_cfg.genesor_out / 'index.html'}")
 
         # ---- Smoke-Test (Standard nach jeder --genesor-Run) ------------------
         # Verhalten als Standard integriert (User-Vorschlag 2026-05-25):
@@ -6425,7 +6465,7 @@ def main() -> int:
                 continue
             kd_name = rec["kd"]
             repo = rec["repo"]
-            render_path = GENESOR_OUT / "render" / f"{repo}-{kd_name}.html"
+            render_path = _cfg.genesor_out / "render" / f"{repo}-{kd_name}.html"
             if not render_path.is_file():
                 continue
             content = render_path.read_text("utf-8")
