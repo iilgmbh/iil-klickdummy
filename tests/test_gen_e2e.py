@@ -38,9 +38,14 @@ def test_render_assertion_vocabulary():
 
 def test_screen_route_convention():
     from iil_klickdummy import gen_e2e as g
-    assert g.screen_route({"id": "login", "route": "/auth/login"}) == "/auth/login"
-    assert g.screen_route({"id": "login"}) == "/login"          # Default-Konvention
-    assert g.screen_route({"id": "x", "route": "bare"}) == "/bare"  # führender Slash erzwungen
+    assert g.screen_route({"id": "login", "route": "/auth/login"}) == ("/auth/login", False)
+    assert g.screen_route({"id": "login"}) == ("/login", False)
+    assert g.screen_route({"id": "x", "route": "bare"}) == ("/bare", False)
+    # route_example bevorzugt
+    assert g.screen_route({"id": "x", "route": "/items/<uuid:pk>/", "route_example": "/items/abc-123/"}) == ("/items/abc-123/", False)
+    # parametrisierte Route ohne route_example → is_parametrised=True
+    assert g.screen_route({"id": "x", "route": "/items/<uuid:pk>/"}) == ("/items/<uuid:pk>/", True)
+    assert g.screen_route({"id": "x", "route": "/items/<int:pk>/detail/"}) == ("/items/<int:pk>/detail/", True)
 
 
 def test_gen_e2e_generates_runnable_suite(tmp_path):
@@ -148,9 +153,91 @@ def test_schema_allows_assert_and_route():
     )
     screen_props = schema["properties"]["screens"]["items"]["properties"]
     assert "route" in screen_props
+    assert "route_example" in screen_props          # Issue #28
+    assert "login_required" in screen_props         # Issue #28
+    assert "auth" in schema["properties"]           # Issue #28: Top-Level-Auth-Block
     pa_props = screen_props["parity_acceptance"]["items"]["properties"]
     assert "assert" in pa_props
     assert pa_props["assert"]["properties"]["action"]["enum"] == \
         ["visible", "text", "clickable", "url", "count"]
     # `check` bleibt Pflicht — Rückwärtskompatibilität
     assert screen_props["parity_acceptance"]["items"]["required"] == ["id", "check"]
+
+
+def test_gen_e2e_route_example_used(tmp_path):
+    """route_example ersetzt parametrisierte route in page.goto (Issue #28)."""
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec = {
+        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock", "grounding": "test", "off_ramp": {},
+        "personas": {"user": {}}, "screens": [
+            {"id": "detail", "title": "Detail",
+             "route": "/items/<uuid:pk>/",
+             "route_example": "/items/abc-123-def/",
+             "parity_acceptance": [
+                 {"id": "d.visible", "check": "visible",
+                  "assert": {"action": "visible", "selector": "[data-testid=item]"}}
+             ]},
+        ]
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    out = tmp_path / "test_parity.py"
+    gen_e2e.main([str(spec_file), str(out)])
+    code = out.read_text(encoding="utf-8")
+    assert "/items/abc-123-def/" in code     # route_example genutzt
+    assert "<uuid:pk>" not in code           # Platzhalter NICHT im Output
+
+
+def test_gen_e2e_parametrised_route_skipped(tmp_path):
+    """Parametrisierte route ohne route_example → skip mit klarem Grund (Issue #28)."""
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec = {
+        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock", "grounding": "test", "off_ramp": {},
+        "personas": {"user": {}}, "screens": [
+            {"id": "detail", "title": "Detail",
+             "route": "/items/<uuid:pk>/",
+             "parity_acceptance": [
+                 {"id": "d.vis", "check": "visible",
+                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}
+             ]},
+        ]
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    out = tmp_path / "test_parity.py"
+    gen_e2e.main([str(spec_file), str(out)])
+    code = out.read_text(encoding="utf-8")
+    assert "pytest.mark.skip" in code
+    assert "route_example" in code          # Hinweis im skip-reason
+    assert "page.goto" not in code          # kein goto gegen 404
+
+
+def test_gen_e2e_login_required_skip(tmp_path):
+    """login_required ohne auth-Block → skip mit klarem Grund (Issue #28)."""
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec = {
+        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock", "grounding": "test", "off_ramp": {},
+        "personas": {"user": {}}, "screens": [
+            {"id": "dashboard", "title": "Dashboard", "login_required": True,
+             "parity_acceptance": [
+                 {"id": "d.vis", "check": "title visible",
+                  "assert": {"action": "visible", "selector": "[data-testid=dash]"}}
+             ]},
+        ]
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    out = tmp_path / "test_parity.py"
+    gen_e2e.main([str(spec_file), str(out)])
+    code = out.read_text(encoding="utf-8")
+    assert "pytest.mark.skip" in code
+    assert "login_required" in code
