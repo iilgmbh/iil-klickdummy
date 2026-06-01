@@ -3,6 +3,12 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.13.2] — 2026-06-01
+
+### Fixed
+- Inflight-Span zurücksetzbar: Klick auf „⏳ UC anlegen in Arbeit" löscht localStorage-Key + Reload → Button wiederhergestellt.
+- UC-Liste als `<details>/<summary>` klappbar (statt Freitext).
+
 ## [1.13.1] — 2026-06-01
 
 ### Fixed
