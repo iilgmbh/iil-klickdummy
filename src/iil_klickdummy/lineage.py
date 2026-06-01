@@ -37,6 +37,8 @@ from typing import Any
 
 import yaml
 
+from .gen_e2e import is_fragile_selector, render_assertion
+
 ROOT = Path(__file__).resolve().parent.parent
 MOCKUPS_DIR = ROOT / "docs" / "01-architektur" / "mockups"
 CONTRACTS_DIR = ROOT / "docs" / "01-architektur" / "contracts"
@@ -512,6 +514,190 @@ def _entities_lookup(d: dict) -> dict[str, Any]:
     return out
 
 
+# ---- Spec-Layer (X-Ray) Trace-Strip ----------------------------------------
+# ADR-211-konform: jeder Chip ist 1:1 aus der Spec abgeleitet. Fehlt das Feld,
+# wird ein "nicht deklariert"-Chip mit dem exakten Spec-Feld zum Ergänzen
+# gerendert (Evidenz-Disziplin: nie erfinden — vgl. akte_next-Muster). Sichtbar
+# nur bei body.spec-view (globaler Toggle / Taste "s"), damit die Echt-App-
+# Illusion für den Stakeholder-Walkthrough erhalten bleibt.
+
+_OFFRAMP_CHIP_CLASS = {
+    "static": "tr-static",
+    "parity-staging": "tr-staging",
+    "parity-green": "tr-green",
+    "removed": "tr-removed",
+}
+
+
+def _screen_use_cases(s: dict) -> tuple[list[str], str]:
+    """Betroffene Use Cases + Quell-Feld.
+
+    Priorität: use_cases[] (first-class) > konzept_ref[] > akte_next.uc.
+    """
+    uc = s.get("use_cases")
+    if isinstance(uc, list) and uc:
+        return [str(x) for x in uc], "use_cases"
+    kr = s.get("konzept_ref")
+    if isinstance(kr, list) and kr:
+        return [str(x) for x in kr], "konzept_ref"
+    if isinstance(kr, str) and kr:
+        return [kr], "konzept_ref"
+    an = s.get("akte_next")
+    if isinstance(an, dict) and an.get("uc"):
+        return [str(an["uc"])], "akte_next.uc"
+    return [], ""
+
+
+def _screen_coverage(s: dict) -> tuple[int, int, list[str], list[str]]:
+    """Pro-Screen Parity-Coverage aus parity_acceptance.
+
+    Selbe Klassifikation wie gen_e2e (render_assertion/is_fragile_selector) —
+    eine SoR für "ausführbar vs. prose-only vs. fragil".
+    Returnt (n_executable, n_prose, prose_ids, fragile_ids).
+    """
+    pa = s.get("parity_acceptance") or []
+    n_exec = n_prose = 0
+    prose_ids: list[str] = []
+    fragile_ids: list[str] = []
+    for item in pa:
+        if not isinstance(item, dict):
+            continue
+        a = item.get("assert")
+        if render_assertion(a) is not None:
+            n_exec += 1
+            if isinstance(a, dict) and is_fragile_selector(a.get("selector")):
+                fragile_ids.append(str(item.get("id", "?")))
+        else:
+            n_prose += 1
+            prose_ids.append(str(item.get("id", "?")))
+    return n_exec, n_prose, prose_ids, fragile_ids
+
+
+def build_trace_strip(s: dict, klass: str, role: str, accept_status: dict) -> str:
+    """Kompakter, spec-abgeleiteter Chip-Streifen pro Screen (Spec-Sicht/X-Ray)."""
+    chips: list[str] = []
+
+    # 📋 Betroffene Use Cases
+    ucs, uc_src = _screen_use_cases(s)
+    if ucs:
+        shown = ", ".join(html.escape(u) for u in ucs[:3])
+        more = f" +{len(ucs) - 3}" if len(ucs) > 3 else ""
+        chips.append(
+            f'<span class="tr-chip" title="Betroffene Use Cases (Spec-Feld: {uc_src}): '
+            f'{html.escape(", ".join(ucs))}">📋 UC: {shown}{more}</span>'
+        )
+    else:
+        chips.append(
+            '<span class="tr-chip tr-missing" title="Kein UC-Bezug in der Spec — '
+            'ergänzen via screen.use_cases: [..] oder konzept_ref: [..]">'
+            '📋 UC nicht deklariert</span>'
+        )
+
+    # 📦 Entities + Datenfelder
+    konsumiert = s.get("konsumiert_entities") or []
+    lokal = s.get("lokale_entities") or []
+    datafields = s.get("datafields") or []
+    ent_names: list[str] = []
+    for e in list(konsumiert) + list(lokal):
+        if isinstance(e, dict):
+            ent_names.append(str(e.get("name") or e.get("entity") or "?"))
+        else:
+            ent_names.append(str(e))
+    n_ent = len(ent_names)
+    n_df = len(datafields) if isinstance(datafields, list) else 0
+    if n_ent or n_df:
+        title = "Entities: " + (", ".join(html.escape(x) for x in ent_names) or "—")
+        if n_df:
+            title += f" · {n_df} Datenfeld(er)"
+        df_part = f" · {n_df} Feld(er)" if n_df else ""
+        ent_word = "Entität" if n_ent == 1 else "Entitäten"
+        chips.append(
+            f'<span class="tr-chip" title="{title}">📦 {n_ent} {ent_word}{df_part}</span>'
+        )
+    else:
+        chips.append(
+            '<span class="tr-chip tr-missing" title="Keine Entities/Datenfelder '
+            'deklariert — ergänzen via konsumiert_entities / lokale_entities / '
+            'datafields">📦 keine Daten deklariert</span>'
+        )
+
+    # 🏷 class · role (I2)
+    chips.append(
+        f'<span class="tr-chip" title="Spec-Klasse (I2) · Spec-Rolle">'
+        f'🏷 {html.escape(klass)} · {html.escape(role)}</span>'
+    )
+
+    # 🚦 Off-Ramp-Status (I3)
+    ors = s.get("off_ramp_status")
+    if ors:
+        cls = _OFFRAMP_CHIP_CLASS.get(str(ors), "tr-static")
+        chips.append(
+            f'<span class="tr-chip {cls}" title="Off-Ramp-Status (I3, Spec-Feld: '
+            f'off_ramp_status)">🚦 {html.escape(str(ors))}</span>'
+        )
+    else:
+        chips.append(
+            '<span class="tr-chip tr-missing" title="off_ramp_status fehlt '
+            '(I3-Pflichtfeld) — Spec ergänzen">🚦 off-ramp fehlt</span>'
+        )
+
+    # ✓/⚠ Acceptance (kompakt, mit Frische)
+    for axis, info in (accept_status or {}).items():
+        label = "PO-Sign-Off" if axis == "spec_signed" else "Workshop-Walk"
+        st = info.get("status")
+        if st == "signed":
+            chips.append(
+                f'<span class="tr-chip tr-ok" title="{label}: '
+                f'{html.escape(info.get("latest_by") or "?")} · {info.get("latest_date")}">'
+                f'✓ {html.escape(axis)} {info.get("age_days")}d</span>'
+            )
+        elif st == "stale":
+            chips.append(
+                f'<span class="tr-chip tr-warn" title="{label}: letzter Eintrag '
+                f'{info.get("age_days")}d alt — neue Abnahme empfohlen">'
+                f'⚠ {html.escape(axis)} {info.get("age_days")}d</span>'
+            )
+
+    # 🎯 Parity-Coverage (I1, aus parity_acceptance — selbe Klassifikation wie gen_e2e)
+    n_exec, n_prose, prose_ids, fragile_ids = _screen_coverage(s)
+    total = n_exec + n_prose
+    if total:
+        extra = []
+        if n_prose:
+            extra.append(f"{n_prose} prose-only")
+        if fragile_ids:
+            extra.append(f"⚠{len(fragile_ids)} fragil")
+        suffix = (" · " + " · ".join(extra)) if extra else ""
+        tcls = "tr-ok" if (n_prose == 0 and not fragile_ids) else "tr-warn"
+        title = f"Parity-Coverage (aus parity_acceptance): {n_exec}/{total} ausführbar"
+        if prose_ids:
+            title += " · prose-only: " + ", ".join(html.escape(x) for x in prose_ids)
+        if fragile_ids:
+            title += " · fragile Selektoren: " + ", ".join(html.escape(x) for x in fragile_ids)
+        chips.append(
+            f'<span class="tr-chip {tcls}" title="{title}">🎯 {n_exec}/{total} ausführbar{suffix}</span>'
+        )
+    else:
+        chips.append(
+            '<span class="tr-chip tr-missing" title="Keine parity_acceptance-Checks '
+            '(I1) — Spec ergänzen">🎯 keine Parity-Checks</span>'
+        )
+
+    # ❓ Validierungsfrage
+    vf = s.get("validierungsfrage")
+    if vf:
+        chips.append(
+            f'<span class="tr-chip tr-q" title="{html.escape(str(vf))}">❓ Validierungsfrage</span>'
+        )
+
+    return (
+        '<div class="trace-strip" aria-label="Spec-Sicht (X-Ray)">'
+        '<span class="trace-label">🔍 Spec-Sicht</span>'
+        + "".join(chips)
+        + "</div>"
+    )
+
+
 # ---- Render v2 Template ----------------------------------------------------
 
 RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
@@ -630,6 +816,24 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   .render-mode {{ font-size: 11px; color: #9ca3af; text-align: center; padding: 6px; background: #eef1f5; }}
   .empty-state {{ text-align: center; padding: 40px; color: #6b7280; }}
   .placeholder {{ background: #fef0d0; }}
+  /* Spec-Layer (X-Ray) — Trace-Strip pro Screen, nur bei body.spec-view sichtbar */
+  .trace-strip {{ display: none; }}
+  body.spec-view .trace-strip {{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 10px; background: #1f2937; border-radius: 6px; }}
+  .trace-strip .trace-label {{ color: #93c5fd; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-right: 4px; }}
+  .tr-chip {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #374151; color: #e5e7eb; cursor: help; border: 1px solid #4b5563; }}
+  .tr-chip.tr-missing {{ background: #4b5563; color: #fca5a5; border-color: #6b7280; border-style: dashed; }}
+  .tr-chip.tr-ok {{ background: #065f46; color: #d1fae5; border-color: #047857; }}
+  .tr-chip.tr-warn {{ background: #78350f; color: #fef3c7; border-color: #92400e; }}
+  .tr-chip.tr-static {{ background: #374151; color: #d1d5db; }}
+  .tr-chip.tr-staging {{ background: #1e3a8a; color: #bfdbfe; border-color: #1d4ed8; }}
+  .tr-chip.tr-green {{ background: #065f46; color: #d1fae5; border-color: #047857; }}
+  .tr-chip.tr-removed {{ background: #7f1d1d; color: #fecaca; border-color: #991b1b; }}
+  .tr-chip.tr-q {{ background: #4c1d95; color: #ede9fe; border-color: #6d28d9; }}
+  /* Spec-Sicht-Toggle im Header */
+  .spec-toggle {{ display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; font-size: 13px; cursor: pointer; color: #374151; }}
+  .spec-toggle.on {{ background: #1f2937; color: #fff; border-color: #1f2937; }}
+  .spec-toggle .dot {{ width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }}
+  .spec-toggle.on .dot {{ background: #34d399; }}
   /* Custom-CSS-Hook — wenn spec.app_skin.custom_css gesetzt, lädt nach dem inline-Style ein zusätzliches CSS */
   /* Damit kann Bestand-System-Skin (OK.Wobis, eigene CI etc.) injiziert werden, ohne Render zu ändern */
 </style>
@@ -672,6 +876,9 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
     </select>
   </div>
   {skin_switcher_html}
+  <button class="spec-toggle" id="spec-toggle" title="Spec-Sicht (X-Ray) ein/aus — Taste S. Zeigt UC, Daten, Status & Coverage pro Screen, direkt aus der Spec.">
+    <span class="dot"></span> Spec-Sicht
+  </button>
 </header>
 <script>window.INITIAL_SKIN = "{initial_skin}";</script>
 
@@ -863,6 +1070,24 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   }}
   document.addEventListener('keydown', e => {{
     if (e.key === 'Escape') closeInfoModal();
+  }});
+
+  // Spec-Layer (X-Ray): globaler Toggle + Taste 's' (außer in Eingabefeldern)
+  const specToggle = document.getElementById('spec-toggle');
+  function setSpecView(on) {{
+    document.body.classList.toggle('spec-view', on);
+    if (specToggle) specToggle.classList.toggle('on', on);
+  }}
+  if (specToggle) {{
+    specToggle.addEventListener('click', () =>
+      setSpecView(!document.body.classList.contains('spec-view')));
+  }}
+  document.addEventListener('keydown', e => {{
+    if (e.key !== 's' && e.key !== 'S') return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
+              || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    setSpecView(!document.body.classList.contains('spec-view'));
   }});
 
   // Sub-Tabs innerhalb des App-Content
@@ -1275,6 +1500,8 @@ def generate_render_fallback(record: dict, out_dir: Path,
         accept_html = "".join(accept_chips)
 
         # Komplette App-Frame
+        # (Fallback vorab — kein Backslash-Escape im f-string-Ausdruck → Python <3.12-kompatibel)
+        content_html = "".join(content_blocks) or '<p style="color:#6b7280;">Keine Inhalte im Spec deklariert.</p>'
         frame_html = (
             f'<div class="app-frame">'
             f'  <div class="app-bar">'
@@ -1291,7 +1518,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
             f'    <span class="sid">{html.escape(sid)}</span>'
             f'    {per_chips}'
             f'  </div>'
-            f'  <div class="app-content">{"".join(content_blocks) or "<p style=\"color:#6b7280;\">Keine Inhalte im Spec deklariert.</p>"}</div>'
+            f'  <div class="app-content">{content_html}</div>'
             f'  <div class="app-actionbar">'
             f'    <div class="actions">{action_buttons}</div>'
             f'    {cross_html}'
@@ -1315,9 +1542,12 @@ def generate_render_fallback(record: dict, out_dir: Path,
             f'</div>'
         )
 
+        # Spec-Layer (X-Ray): kompakter, spec-abgeleiteter Trace-Strip pro Screen
+        trace_html = build_trace_strip(s, klass, role, accept_status)
+
         screen_sections.append(
             f'<section class="screen" id="screen-{html.escape(sid)}" data-personas="{per_data}">'
-            f'{frame_html}</section>'
+            f'{frame_html}{trace_html}</section>'
         )
 
     # Spec-Pfad
@@ -5202,7 +5432,7 @@ Realität abweichen — wertvoll für Brief-Iteration v2 und Spec-Pflege.
 4. Test: `curl {dev_run.get("test_url", "http://localhost:8000/healthz/")}`
 5. Pilot-Login: **admin / admin123** auf `http://<host>:{dev_run.get("http_port", 8000)}/admin/login/`
 
-{"⚠ **Requirements-Drift:** pyproject.toml hat Deps die in requirements.txt fehlen: " + ", ".join("`" + d + "`" for d in dev_run.get("requirements_drift", [])) + "\n" if dev_run.get("requirements_drift") else ""}
+{"⚠ **Requirements-Drift:** pyproject.toml hat Deps die in requirements.txt fehlen: " + ", ".join("`" + d + "`" for d in dev_run.get("requirements_drift", [])) + chr(10) if dev_run.get("requirements_drift") else ""}
 
 ## 12. Infrastructure-Kontext (Pilot-Lessons #7 + #8)
 

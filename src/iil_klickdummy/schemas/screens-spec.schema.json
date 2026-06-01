@@ -10,7 +10,7 @@
     "$schema":       { "type": "string" },
     "spec_id":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*$" },
     "spec_version":  { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
-    "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix." },
+    "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix. Generationen: 1.0 = Baseline; 1.1 = + `screen.use_cases[]` (Spec-Layer/X-Ray)." },
     "spec_date":     { "type": "string", "format": "date" },
     "title":         { "type": "string" },
 
@@ -91,6 +91,11 @@
           "personas":  { "type": "array", "minItems": 1, "items": { "type": "string" } },
           "purpose":   { "type": "string" },
           "konzept_ref": { "type": "array", "items": { "type": "string" } },
+          "use_cases": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Betroffene Use Cases dieses Screens (Spec-Layer/X-Ray-Strip, ab spec_schema_version 1.1). Strukturierte First-Class-Form; ohne dieses Feld fällt der Renderer auf `konzept_ref[]` bzw. `akte_next.uc` zurück."
+          },
           "datafields": {
             "type": "array",
             "items": {
