@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.7.1] — 2026-06-01
+
+### Fixed — Feedback-Widget: PAT-Eingabe als gestyltes Modal statt `window.prompt()`
+
+- GitHub-Token-Abfrage beim Issue-Submit läuft jetzt über ein eingebettetes,
+  promise-basiertes Modal (`injectPatModal` / `promptToken`) mit Erklärtext,
+  Token-Format-Validierung und Hinweis auf `localStorage`-only-Speicherung —
+  statt des nativen `window.prompt()`. Reine `widget.js`-Snippet-Änderung,
+  additiv. (Substanz aus stale PR #6 extrahiert; dort war der Fix unter 71
+  Editor-Config-Dateien begraben — PR #6 geschlossen.)
+
 ## [1.7.0] — 2026-06-01
 
 ### Added — Spec-Layer (X-Ray): per-Screen Trace-Strip
