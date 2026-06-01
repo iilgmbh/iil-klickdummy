@@ -327,3 +327,12 @@ def test_v17_trace_strip_renders_into_screen_section(tmp_path):
     assert out_html.count('class="trace-strip"') == n_screens
     assert 'id="spec-toggle"' in out_html
     assert "body.spec-view" in out_html
+
+
+# --- v1.8: discovery_push (Stage 1.5 PoC, platform:ADR-215) -----------------
+
+def test_v18_discovery_push_module_present():
+    import iil_klickdummy
+    assert hasattr(iil_klickdummy, "discovery_push")
+    from iil_klickdummy import discovery_push
+    assert callable(getattr(discovery_push, "main", None))

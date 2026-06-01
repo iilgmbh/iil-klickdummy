@@ -3,6 +3,24 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.8.0] — 2026-06-01
+
+### Added — `discovery_push`: Spec → pgvector-Discovery-Push (Stage 1.5 PoC)
+
+- Neues Modul `discovery_push` (`platform:ADR-215`, `status: proposed`):
+  sammelt Klickdummy-Discovery-Entries cross-repo (über `registry`) und pusht
+  sie an einen Orchestrator-Endpoint (`KLICKDUMMY_DISCOVERY_ENDPOINT`, Bearer
+  optional). Nur stdlib (`urllib`), keine neue Dependency. API-Vertrag in
+  `docs/api/discovery.md`. **PoC/alpha** — Aktivierung erst nach
+  Orchestrator-Schema-Migration.
+- **Herkunft:** Substanz aus stale PR #5 (Stand v1.4.x) sauber auf aktuelles
+  `main` extrahiert statt rebased — der literale Rebase hätte `gen_e2e` (v1.6
+  Keystone) aus `__init__`/`test_smoke` regressiert, weil der Branch aus der
+  Vor-`gen_e2e`-Ära stammt. Nur die genuin neuen Dateien übernommen
+  (`discovery_push.py`, `test_discovery_push.py`, `docs/api/discovery.md`) +
+  `__init__`-Export; `manage.py`/Circular-Import-Fixes waren auf `main` bereits
+  eigenständig gelöst.
+
 ## [1.7.0] — 2026-06-01
 
 ### Added — Spec-Layer (X-Ray): per-Screen Trace-Strip
