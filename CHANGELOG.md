@@ -3,6 +3,11 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.13.1] — 2026-06-01
+
+### Fixed
+- `spec-sicht`: UC-Button-Inflight-State Hotfix — erster Ansatz (#26) war durch doppelte HTML-Escaping-Stufen kaputt. Neuer Ansatz: `data-uc-key` auf dem Link + sauberes Page-Level-Script (kein `document.currentScript`, kein Inline-JS, echte Emoji-Zeichen).
+
 ## [1.13.0] — 2026-06-01
 
 ### Fixed
