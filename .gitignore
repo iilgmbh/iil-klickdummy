@@ -8,3 +8,10 @@ build/
 .venv/
 .coverage
 htmlcov/
+
+# Editor / tooling artifacts
+.windsurf/
+.windsurfignore
+.playwright-mcp/
+# Auto-generated /next cache
+NEXT.md
