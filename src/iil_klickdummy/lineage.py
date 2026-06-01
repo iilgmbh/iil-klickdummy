@@ -562,6 +562,18 @@ def build_trace_strip(
     aktionierbare „anlegen"-Buttons für fehlende Pflicht-Angaben (ADR-211 Co-Creation)."""
     rows: list[str] = []
 
+    # Screen-Titel am Kopf des Spec-Sicht-Panels (zeigt welcher Tab/Screen aktiv ist)
+    _title = s.get("title") or sid or ""
+    _sid_display = sid or s.get("id", "")
+    if _title or _sid_display:
+        _title_html = (
+            f'<span class="tr-screen-title">'
+            f'<span class="tr-screen-id">{html.escape(_sid_display)}</span>'
+            + (f' — {html.escape(str(_title))}' if _title and _title != _sid_display else "")
+            + f'</span>'
+        )
+        rows.append(f'<div class="tr-row tr-row-title">{_title_html}</div>')
+
     def row(icon: str, key: str, value_html: str, missing: bool = False) -> None:
         cls = "tr-v tr-missing" if missing else "tr-v"
         rows.append(
@@ -676,6 +688,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>Klickdummy: {kd_name} — {title}</title>
 <style>
   :root {{
@@ -803,6 +816,9 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   .tr-act:hover {{ background: #34d399; color: #06281d !important; }}
   .tr-act-inflight {{ display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid #f59e0b; border-radius: 4px; color: #92400e !important; background: #fef3c7; font-size: 11px; font-weight: 600; cursor: pointer; }}
   .tr-act-inflight:hover {{ background: #fde68a; }}
+  .tr-row-title {{ padding: 4px 0 6px; border-bottom: 1px solid #334155; margin-bottom: 4px; }}
+  .tr-screen-title {{ font-size: 13px; font-weight: 700; color: #e2e8f0; letter-spacing: .01em; }}
+  .tr-screen-id {{ font-family: ui-monospace, monospace; color: #7dd3fc; font-size: 12px; }}
   details.tr-uc-details {{ display: inline; }}
   details.tr-uc-details > summary {{ display: inline; cursor: pointer; color: #06c; font-size: 12px; }}
   ul.tr-uc-list {{ margin: 4px 0 2px 16px; padding: 0; font-size: 11px; color: #374151; }}
@@ -3272,6 +3288,7 @@ def build_genesor_html(records: list[dict],
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>IIL-Genesor — Klickdummy-Übersicht (Cross-Repo)</title>
 <style>
   body {{ font-family: -apple-system, system-ui, sans-serif; margin: 0; color: #222; background: #fafafa; }}
