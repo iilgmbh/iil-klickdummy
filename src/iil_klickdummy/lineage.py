@@ -30,15 +30,47 @@ from __future__ import annotations
 
 import argparse
 import html
-import json
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from .gen_e2e import is_fragile_selector, render_assertion
+
+# --- Genesor-Sub-Package Imports (KONZ-003 Empf-1, PR2) ---
+# config: GenesorConfig, _cfg-Singleton, set_cfg, Konstanten
+# Backward-compat-Aliases (REPOS_ROOT etc.) re-exportiert für
+# `from iil_klickdummy.lineage import X` ohne NameError.
+from .genesor.config import (  # noqa: E402,F401
+    GenesorConfig,
+    _cfg,
+    get_cfg,
+    set_cfg,
+    REPOS_ROOT,
+    GENESOR_OUT,
+    BASE_URL,
+    SKIN_BASE,
+    VENDORED_REPOS,
+    _base_prefix,
+    _skin_url,
+    MOCKUP_PRIO_NAMES,
+    SKIN_LIBRARY_REL,
+    _DOMAIN_STYLES,
+    _BUERGER_POOL,
+    _AKTEN_PROFIL_POOL,
+    _FRONTMATTER_RE,
+)
+# introspect_django: Django-Introspection-Helfer
+from .genesor.introspect_django import (  # noqa: E402,F401
+    _inspect_django_models,
+    _detect_tenant_pattern,
+    _detect_auth_user_model,
+    _inspect_dev_run,
+    _inspect_infra_context,
+)
+# export: UC-JSON-Export
+from .genesor.export import build_uc_export_json  # noqa: E402,F401
 
 # Kanonisches Feedback-Widget (widget.js, PAT-Modal + GitHub-direct) — wird in den
 # Render injiziert (platform:ADR-211 Rev 13), ersetzt das alte inline-Widget.
@@ -55,83 +87,9 @@ CONTRACTS_DIR = ROOT / "docs" / "01-architektur" / "contracts"
 OUT_DIR = ROOT / "docs" / "01-architektur" / "lineage"           # Single-Repo-Lineage (Rückwärtskompat)
 
 
-@dataclass
-class GenesorConfig:
-    """Explizite Konfiguration für den Genesor-Modus (KONZ-003 Empf-1).
-
-    Ersetzt die mutierten Modul-Globals REPOS_ROOT, GENESOR_OUT, BASE_URL,
-    SKIN_BASE, VENDORED_REPOS. Wird in main() aus argparse-Args instanziiert
-    und als Modul-Global _cfg gesetzt — alle Funktionen lesen von _cfg statt
-    von früheren bare Globals.
-
-    Defaults reproduzieren das bisherige Verhalten byte-identisch.
-    """
-    repos_root: Path = field(default_factory=lambda: Path.home() / "github")
-    # genesor_out None → wird lazy auf repos_root / "genesor" aufgelöst
-    _genesor_out: Path | None = field(default=None, repr=False)
-    # URL-Präfix für generierte Cross-Repo-Links + Skin-Library-Pfade.
-    # Default "/" reproduziert das bisherige Verhalten byte-identisch (HTTP-Root = ~/github).
-    # Wird via --base-url überschrieben (z. B. "/genesor-host/" für einen späteren Portal-Build).
-    base_url: str = "/"
-    # Basis-URL für die Skin-CSS-Dateien. Default "" reproduziert das bisherige
-    # Verhalten byte-identisch: Skins werden unter ihrem REPOS_ROOT-relativen Pfad
-    # (iil-klickdummy/.../skins/<name>.css) ausgeliefert. Wird via --skin-base
-    # gesetzt (z. B. "/genesor/skins"), dann wird NUR der Basename verwendet:
-    # "<skin-base>/<name>.css" — für einen self-contained Portal-Build, bei dem die
-    # 4 Skin-CSS-Dateien neben dem Genesor-Site liegen.
-    skin_base: str = ""
-    # Repos, deren echte Mockup-HTMLs unter "/kd/<repo>/..." einvendoriert
-    # ausgeliefert werden (z. B. iil-pet-portal/kd/). Steht ein Repo hier, wird in
-    # url_for_path() dem ROOT-relativen Pfad ein "/kd"-Präfix vorangestellt, sodass
-    # der Link auf die vendored Kopie statt auf das (auf iil.pet nicht ausgelieferte)
-    # Original zeigt. Leere Menge (Default) → byte-identisch zu früher.
-    vendored_repos: set = field(default_factory=set)
-
-    @property
-    def genesor_out(self) -> Path:
-        if self._genesor_out is not None:
-            return self._genesor_out
-        return self.repos_root / "genesor"
-
-    @genesor_out.setter
-    def genesor_out(self, value: Path | None) -> None:
-        self._genesor_out = value
-
-
-# Modul-weite Konfigurationsinstanz. Wird in main() aus CLI-Args neu gesetzt.
-# Default: byte-identisches Verhalten zu den früheren bare Globals.
-_cfg: GenesorConfig = GenesorConfig()
-
-# Backward-compat-Aliases (werden nicht mehr mutiert; für externe Leser die
-# noch direkt auf diese Namen referenzieren — z. B. Tests, falls vorhanden).
-# Alle Funktionen in dieser Datei lesen jetzt _cfg.* statt dieser Namen.
-REPOS_ROOT = _cfg.repos_root
-GENESOR_OUT = _cfg.genesor_out
-BASE_URL = _cfg.base_url
-SKIN_BASE = _cfg.skin_base
-VENDORED_REPOS: set[str] = _cfg.vendored_repos
-
-
-def _base_prefix() -> str:
-    """Normalisiert BASE_URL zu einem Präfix ohne Trailing-Slash ("/"→"")."""
-    return _cfg.base_url.rstrip("/")
-
-
-def _skin_url(rel: str) -> str:
-    """Skin-Pfad (REPOS_ROOT-relativ) → finale URL.
-
-    SKIN_BASE leer  → "<base_prefix>/<rel>"  (byte-identisch zu früher).
-    SKIN_BASE gesetzt → "<skin_base>/<basename>"  (nur Dateiname, z. B.
-                        "/genesor/skins/okwobis-look.css").
-    """
-    if _cfg.skin_base:
-        return _cfg.skin_base.rstrip("/") + "/" + rel.rsplit("/", 1)[-1]
-    return _base_prefix() + "/" + rel
-
+# _base_prefix, _skin_url, MOCKUP_PRIO_NAMES imported from .genesor.config above.
 
 # ---- Mockup-HTML-Discovery (Stufe 1b: "Klickdummy klickbar") ---------------
-
-MOCKUP_PRIO_NAMES = ("index.html", "shell.html")
 
 def find_mockup_html(kd_dir: Path, kd_name: str) -> Path | None:
     """Findet die klickbare HTML-Datei in einem KD-Verzeichnis."""
@@ -173,15 +131,7 @@ def url_for_path(p: Path) -> str | None:
 # User-Feedback 2026-05-25: Style-Switcher als Demo-Werkzeug auch auf Root-Ebene
 # (Genesor-Übersicht), mit localStorage-Persistenz cross-Render.
 
-# Skin-Pfade relativ zu REPOS_ROOT (ohne BASE_URL-Präfix). Der Sentinel
-# "__greenfield" ist KEIN Pfad und wird nie präfixiert.
-SKIN_LIBRARY_REL: list[tuple[str, str]] = [
-    ("__greenfield", "Greenfield (Default)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/okwobis-look.css", "OK.Wobis-Look (Win-Forms)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/prosoz-look.css", "Prosoz-Look (Web-Verwaltung)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/arriba-look.css", "ARRIBA-Look (AVA-Engineering)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/bayernid-look.css", "BayernID-Look (Bürger-modern)"),
-]
+# SKIN_LIBRARY_REL imported from .genesor.config above.
 
 
 def skin_library() -> list[tuple[str, str]]:
@@ -247,7 +197,7 @@ SKIN_SWITCHER_JS = """
 
 # ---- ADR-Frontmatter-Reader (Rev-15-Vorgriff: realizes_use_cases + replaces_system_ref)
 
-_FRONTMATTER_RE = __import__("re").compile(r"^---\s*\n(.*?)\n---", __import__("re").DOTALL | __import__("re").MULTILINE)
+# _FRONTMATTER_RE imported from .genesor.config above.
 
 def read_kd_adr_meta(repo_dir: Path) -> dict[str, dict]:
     """Parsed ADR-Frontmatter aus docs/adr/ und sammelt Klickdummy-spezifische Felder.
@@ -336,15 +286,7 @@ def find_use_cases(repo_dir: Path) -> dict[str, dict]:
 
 # ---- Domain-Style + Synthetic-Data-Helpers (Render v2) ----------------------
 
-_DOMAIN_STYLES = {
-    "public-admin": {"accent": "#0050a3", "accent_bg": "#e3f0ff", "font_h": "Georgia, 'Times New Roman', serif"},
-    "saas":         {"accent": "#2563eb", "accent_bg": "#eff6ff", "font_h": "-apple-system, 'Segoe UI', system-ui, sans-serif"},
-    "konzern-pilot":{"accent": "#7c2d12", "accent_bg": "#fff4ed", "font_h": "-apple-system, system-ui, sans-serif"},
-    "forschung":    {"accent": "#0d9488", "accent_bg": "#f0fdfa", "font_h": "-apple-system, system-ui, sans-serif"},
-    "default":      {"accent": "#374151", "accent_bg": "#f3f4f6", "font_h": "-apple-system, system-ui, sans-serif"},
-    # Alias-Migration (siehe ADR-218 Rev 3)
-    "lra-pilot":    {"accent": "#0050a3", "accent_bg": "#e3f0ff", "font_h": "Georgia, 'Times New Roman', serif"},
-}
+# _DOMAIN_STYLES, _BUERGER_POOL, _AKTEN_PROFIL_POOL imported from .genesor.config above.
 
 
 def read_doc_profile(repo_dir: Path) -> str:
@@ -357,37 +299,6 @@ def read_doc_profile(repo_dir: Path) -> str:
     except yaml.YAMLError:
         return "default"
     return str(data.get("profile") or "default")
-
-
-_BUERGER_POOL = [
-    {"vorname": "Sabine", "nachname": "Müller",  "gebdatum": "1972-03-14",
-     "adresse": "Friedrichstr. 12, 79541 Lörrach",  "kanal": "postbox"},
-    {"vorname": "Klaus",  "nachname": "Schmidt", "gebdatum": "1985-08-02",
-     "adresse": "Bahnhofstr. 7, 79588 Efringen",    "kanal": "email"},
-    {"vorname": "Ayşe",   "nachname": "Yilmaz",  "gebdatum": "1990-11-29",
-     "adresse": "Hauinger Str. 33, 79541 Lörrach",  "kanal": "brief"},
-    {"vorname": "Dimitri","nachname": "Petrov",  "gebdatum": "1968-05-21",
-     "adresse": "Lindenplatz 2, 79576 Weil",        "kanal": "postbox"},
-    {"vorname": "Maria",  "nachname": "Weber",   "gebdatum": "1978-09-09",
-     "adresse": "Mühlenweg 18, 79585 Steinen",      "kanal": "email"},
-    {"vorname": "Jens",   "nachname": "Lange",   "gebdatum": "1995-02-17",
-     "adresse": "Im Sandgrund 5, 79540 Lörrach",    "kanal": "postbox"},
-]
-
-# Akten-Typ + KD-Hint: kd_hint wird zur Render-Zeit gegen die bekannten KDs
-# gematcht. Wenn ein KD existiert (z. B. wohngeld), wird die Akten-Zeile mit
-# data-target-kd + data-target-url versehen → Sprung-CTA im Akte-Modal.
-_AKTEN_PROFIL_POOL = [
-    # kd_hint = KD-Name (cross-repo möglich); entry = Spec-Screen-ID, auf die der
-    # Ziel-KD bei externem Sprung initialisieren soll (für *bestehende* Akten;
-    # statt Default = „neuer Antrag/Eingang"). Hash-Routing: ?#screen-<entry>.
-    {"typ": "Antrag Wohngeld",     "prefix": "WOH", "kd_hint": "wohngeld", "entry": "antragsdaten"},
-    {"typ": "Bauantrag",           "prefix": "BAU", "kd_hint": None,       "entry": None},
-    {"typ": "UVG-Erstantrag",      "prefix": "UVG", "kd_hint": "uvg",      "entry": "antragsdaten_uvg"},
-    {"typ": "Asyl-Folgeantrag",    "prefix": "ASY", "kd_hint": "asyl",     "entry": "vorgangs_uebersicht"},
-    {"typ": "Bewohnerparkausweis", "prefix": "BPK", "kd_hint": None,       "entry": None},
-    {"typ": "Hundesteuer",         "prefix": "HDS", "kd_hint": None,       "entry": None},
-]
 
 
 def _row_buerger(row_idx: int) -> dict:
@@ -5011,306 +4922,8 @@ def validate_ucs(ucs: list[dict], kds: list[dict]) -> dict[str, list[dict]]:
     return out
 
 
-def _inspect_django_models(repo: str) -> dict[str, dict]:
-    """AST-Parse aller `apps/*/models.py` → ``{app_label.ModelName: {fields, file}}``.
-
-    Liefert pro Model die Field-Definitionen mit Type-Name und kwargs (best-effort).
-    Lesson learned Iter-1: ohne diesen Schritt rät der Brief Model-Namen und
-    User-Owner-Pattern, was zu Refactor-Aufwand führt.
-    """
-    import ast
-    result: dict[str, dict] = {}
-    repo_path = _cfg.repos_root / repo
-    apps_dir = repo_path / "apps"
-    if not apps_dir.is_dir():
-        return result
-    for models_py in apps_dir.glob("*/models.py"):
-        app_label = models_py.parent.name
-        try:
-            tree = ast.parse(models_py.read_text("utf-8"))
-        except (SyntaxError, OSError):
-            continue
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.ClassDef):
-                continue
-            # Nur Models, die models.Model erben (best-effort heuristisch)
-            is_model = any(
-                (isinstance(b, ast.Attribute) and b.attr == "Model")
-                or (isinstance(b, ast.Name) and b.id == "Model")
-                for b in node.bases
-            )
-            if not is_model:
-                continue
-            fields: dict[str, dict] = {}
-            for stmt in node.body:
-                if not isinstance(stmt, ast.Assign):
-                    continue
-                if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
-                    continue
-                fname = stmt.targets[0].id
-                if not isinstance(stmt.value, ast.Call):
-                    continue
-                # Field-Type-Name extrahieren (z. B. CharField, ForeignKey)
-                ftype = None
-                fn = stmt.value.func
-                if isinstance(fn, ast.Attribute):
-                    ftype = fn.attr
-                elif isinstance(fn, ast.Name):
-                    ftype = fn.id
-                if not ftype:
-                    continue
-                # kwargs flachpressen (best-effort, ohne komplexe AST-Eval)
-                kwargs = {}
-                for kw in stmt.value.keywords:
-                    if kw.arg:
-                        try:
-                            kwargs[kw.arg] = ast.unparse(kw.value)
-                        except Exception:
-                            kwargs[kw.arg] = "?"
-                # Positional args (z. B. FK("auth.User"))
-                args_pos = []
-                for arg in stmt.value.args:
-                    try:
-                        args_pos.append(ast.unparse(arg))
-                    except Exception:
-                        args_pos.append("?")
-                fields[fname] = {"type": ftype, "args": args_pos, "kwargs": kwargs}
-            key = f"{app_label}.{node.name}"
-            result[key] = {
-                "app_label": app_label,
-                "model_name": node.name,
-                "fields": fields,
-                "source_path": str(models_py.relative_to(repo_path)),
-            }
-    return result
-
-
-def _detect_tenant_pattern(models_inspected: dict[str, dict]) -> dict:
-    """Erkennt ADR-072 Multi-Tenant-Pattern (≥3 Models mit ``tenant_id``)."""
-    with_tenant = [k for k, v in models_inspected.items() if "tenant_id" in v.get("fields", {})]
-    return {
-        "active": len(with_tenant) >= 3,
-        "count": len(with_tenant),
-        "models": with_tenant[:10],
-        "rationale": (
-            "ADR-072 Multi-Tenant via BigIntegerField (kein FK). Neue Models in diesem Repo "
-            "sollten `tenant_id`-Field + Index ergänzen; Views filtern via "
-            "`core.TenantUser.objects.filter(tenant_id=..., user=request.user, is_active=True)`."
-        ) if len(with_tenant) >= 3 else "",
-    }
-
-
-def _detect_auth_user_model(repo: str) -> str:
-    """Liest ``AUTH_USER_MODEL`` aus ``config/settings/base.py`` (oder Fallback)."""
-    import re
-    repo_path = _cfg.repos_root / repo
-    candidates = [
-        repo_path / "config" / "settings" / "base.py",
-        repo_path / "config" / "settings.py",
-        repo_path / "settings.py",
-    ]
-    for p in candidates:
-        if not p.is_file():
-            continue
-        try:
-            text = p.read_text("utf-8")
-        except OSError:
-            continue
-        m = re.search(r'AUTH_USER_MODEL\s*=\s*["\']([^"\']+)["\']', text)
-        if m:
-            return m.group(1)
-    return "auth.User"   # Django-Default
-
-
-def _inspect_dev_run(repo: str) -> dict:
-    """Pilot-Lesson-Learned #6 — extrahiert dev_run-Hinweise aus dem Repo.
-
-    Sucht ``bin/start-dev.sh``, ``docker-compose*.yml``, ``requirements.txt``,
-    ``pyproject.toml`` und gibt Port, Command, DB-Port, Deps-Drift zurück.
-    Leere/teilweise Ergebnisse sind erlaubt — Brief zeigt nur was tatsächlich
-    gefunden wurde.
-    """
-    import re
-    repo_path = _cfg.repos_root / repo
-    out: dict = {"repo_path": f"~/github/{repo}"}
-
-    # start-dev.sh
-    start_sh = repo_path / "bin" / "start-dev.sh"
-    if start_sh.is_file():
-        try:
-            text = start_sh.read_text("utf-8")
-        except OSError:
-            text = ""
-        out["start_command"] = "bin/start-dev.sh"
-        # DEFAULT_PORT=8092 oder runserver 0.0.0.0:8092
-        m = re.search(r"DEFAULT_PORT\s*=\s*(\d+)", text)
-        if not m:
-            m = re.search(r"runserver\s+0\.0\.0\.0:(\d+)", text)
-        if m:
-            out["http_port"] = int(m.group(1))
-        # PID/LOG-Files
-        m = re.search(r'LOG_FILE\s*=\s*"([^"]+)"', text)
-        if m:
-            out["log_file"] = m.group(1)
-        m = re.search(r'PID_FILE\s*=\s*"([^"]+)"', text)
-        if m:
-            out["pid_file"] = m.group(1)
-        # Stop-Script
-        if (repo_path / "bin" / "stop-dev.sh").is_file():
-            out["stop_command"] = "bin/stop-dev.sh"
-
-    # docker-compose Mappings für 5432 (Postgres)
-    for compose_name in ("docker-compose.dev.yml", "docker-compose.yml"):
-        p = repo_path / compose_name
-        if not p.is_file():
-            continue
-        try:
-            text = p.read_text("utf-8")
-        except OSError:
-            continue
-        m = re.search(r'"?(?:127\.0\.0\.1:)?(\d+):5432"?', text)
-        if m:
-            out["db_port"] = int(m.group(1))
-        m = re.search(r'"?(?:127\.0\.0\.1:)?(\d+):6379"?', text)
-        if m:
-            out["redis_port"] = int(m.group(1))
-        out["compose_file"] = compose_name
-        break
-
-    # Requirements-Drift: pyproject.toml-Deps vs requirements.txt
-    pyproject = repo_path / "pyproject.toml"
-    req_txt = repo_path / "requirements.txt"
-    drift_warning = None
-    if pyproject.is_file() and req_txt.is_file():
-        try:
-            pp_text = pyproject.read_text("utf-8")
-            req_text = req_txt.read_text("utf-8")
-        except OSError:
-            pp_text = req_text = ""
-        # Sehr einfache Heuristik: Package-Namen aus [tool.poetry.dependencies]-Section
-        m = re.search(r'\[tool\.poetry\.dependencies\](.+?)(?:\n\[|\Z)', pp_text, re.S)
-        if m:
-            pp_deps = set()
-            for line in m.group(1).splitlines():
-                ln = line.strip()
-                if not ln or ln.startswith("#") or ln.startswith("python"):
-                    continue
-                mm = re.match(r'([A-Za-z0-9_\-]+)\s*=', ln)
-                if mm:
-                    pp_deps.add(mm.group(1).lower().replace("_", "-"))
-            req_deps = set()
-            for line in req_text.splitlines():
-                ln = line.strip()
-                if not ln or ln.startswith("#"):
-                    continue
-                mm = re.match(r'([A-Za-z0-9_\-]+)', ln)
-                if mm:
-                    req_deps.add(mm.group(1).lower().replace("_", "-"))
-            missing = pp_deps - req_deps
-            # IIL-internal git-deps ignorieren
-            missing = {d for d in missing if not d.startswith("iil-")}
-            if missing:
-                drift_warning = sorted(missing)
-    if drift_warning:
-        out["requirements_drift"] = drift_warning
-
-    # requirements.txt install-Hint
-    if req_txt.is_file():
-        out["requirements_install"] = (
-            "pip3 install --user --break-system-packages -r requirements.txt"
-        )
-
-    # Test-URLs ableiten — wenn http_port bekannt
-    port = out.get("http_port")
-    if port:
-        # versuchen healthz-URL aus Spec-screen abzuleiten — Caller setzt das ggf. nach
-        out["bind"] = "0.0.0.0"
-        out["test_url"] = f"http://localhost:{port}/healthz/  # ggf. <app-mount>/healthz/"
-        out["public_test_url"] = (
-            f"http://88.99.38.75:{port}/healthz/  # ggf. <app-mount>/healthz/"
-        )
-
-    return out
-
-
-def _inspect_infra_context(workspace_root: str = "~/github") -> dict:
-    """Pilot-Lesson-Learned #7 + #8 — parsed INFRASTRUCTURE.md.
-
-    Liefert: server_name/public_ipv4, port_neighbors (aus Service-Tabelle),
-    cloud_firewall (ID + default_open_ports), live_listening_ports.
-    Bei fehlender Datei: nur live_listening_ports aus ``ss``-Snapshot.
-    """
-    from pathlib import Path
-    import re
-    import subprocess
-
-    out: dict = {"infra_doc": f"{workspace_root}/INFRASTRUCTURE.md"}
-    infra = Path(workspace_root.replace("~", str(Path.home()))) / "INFRASTRUCTURE.md"
-    if infra.is_file():
-        try:
-            text = infra.read_text("utf-8")
-        except OSError:
-            text = ""
-        # Public-IP + Server-Name
-        m = re.search(r'\*\*Public IPv4:\*\*\s*`([\d.]+)`', text)
-        if m:
-            out["server_public_ipv4"] = m.group(1)
-        m = re.search(r'\*\*Server:\*\*\s*`?([\w\-]+)`?', text)
-        if m:
-            out["server_name"] = m.group(1)
-        # Cloud-Provider
-        m = re.search(r'\((Hetzner|AWS|GCP|Azure)[^)]*\)', text, re.I)
-        if m:
-            out["cloud_provider"] = m.group(1).lower() + "-cloud"
-        # Cloud-Firewall-Block
-        m = re.search(r'firewall[-_]?\d+\s*\(id=(\d+)\)', text)
-        if m:
-            out["cloud_firewall_id"] = int(m.group(1))
-            out["cloud_firewall_name"] = "firewall-1"
-        m = re.search(r'erlauben nur\s+\*\*([\d,\s\-+]+)', text)
-        if m:
-            ports = re.findall(r'\d+', m.group(1))
-            out["cloud_firewall_default_open"] = [int(p) for p in ports]
-        # Port-Tabelle parsen — Markdown-Zeilen mit | Port | Bind | Service | ...
-        neighbors = []
-        for line in text.splitlines():
-            if "|" not in line or "---" in line or "Bind" in line:
-                continue
-            cells = [c.strip().strip("*` ") for c in line.split("|")]
-            if len(cells) < 5:
-                continue
-            port_cell = cells[1] if len(cells) > 1 else ""
-            if not port_cell.isdigit():
-                continue
-            port = int(port_cell)
-            svc_cell = cells[3] if len(cells) > 3 else ""
-            if svc_cell:
-                neighbors.append({"port": port, "app": svc_cell})
-        if neighbors:
-            out["port_neighbors"] = neighbors[:20]
-
-    # Live-Listening-Snapshot
-    try:
-        ss_out = subprocess.run(
-            ["ss", "-tln"], capture_output=True, text=True, timeout=5
-        )
-        live = []
-        for line in ss_out.stdout.splitlines():
-            m = re.search(r'(\d+\.\d+\.\d+\.\d+):(80\d{2}|87\d{2}|85\d{2}|81\d{2})\s', line)
-            if m:
-                bind = m.group(1)
-                p = int(m.group(2))
-                live.append({"port": p, "bind": bind})
-        if live:
-            # Dedupe nach (bind, port)
-            seen = set()
-            out["live_listening_ports"] = [
-                x for x in live if (x["bind"], x["port"]) not in seen
-                and not seen.add((x["bind"], x["port"]))
-            ][:25]
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    return out
+# _inspect_django_models, _detect_tenant_pattern, _detect_auth_user_model,
+# _inspect_dev_run, _inspect_infra_context — imported from .genesor.introspect_django above.
 
 
 def build_impl_brief(record: dict, screen_id: str) -> str | None:
@@ -5690,86 +5303,7 @@ def build_impl_brief_html(brief_md: str, repo: str, kd_name: str, screen_id: str
 """
 
 
-def build_uc_export_json(ucs: list[dict], kds: list[dict], coverage: dict) -> str:
-    """Strukturierter JSON-Export für Weiterverwendung (Workshop 2026-05-26 #5).
-
-    Schema: ``{schema_version, generated_at, source, summary, kds, ucs, coverage}``.
-    Maschinenlesbar — Konsumenten: Backstage-Plugin, Excel-Export, Linear-Sync,
-    PDF-Reportgenerator. SSoT bleibt YAML im git; dieser Export ist Read-Only-
-    Snapshot zum Build-Zeitpunkt.
-    """
-    from datetime import datetime
-    real_count = coverage["uc_realized_count"]
-    unres = coverage["uc_unresolved"]
-    matrix = coverage["matrix"]
-
-    # KDs (nur spec-KDs, vereinfacht)
-    kds_out = []
-    for kd in kds:
-        if kd.get("kind", "spec") != "spec":
-            continue
-        d = kd.get("data", {}) or {}
-        adr_local = (d.get("adr", {}) or {}).get("local") or ""
-        kds_out.append({
-            "repo": kd["repo"],
-            "kd_name": kd["kd"],
-            "adr_local": adr_local,
-            "klass": d.get("class"),
-            "spec_role": d.get("spec_role") or "default",
-            "sunset_after": (d.get("off_ramp", {}) or {}).get("sunset_after"),
-            "n_screens": len([s for s in (d.get("screens") or []) if isinstance(s, dict)]),
-            "render_url": f"./render/{kd['repo']}-{kd['kd']}.html",
-        })
-
-    # UCs (vollständig flat)
-    ucs_out = []
-    for uc in ucs:
-        gid = f"{uc['repo']}:{uc['uc_id']}"
-        try:
-            rel_src = str(uc["source_file"].relative_to(_cfg.repos_root))
-        except (ValueError, KeyError):
-            rel_src = str(uc.get("source_file", ""))
-        ucs_out.append({
-            "uc_id_global": gid,
-            "uc_id_local": uc["uc_id"],
-            "repo": uc["repo"],
-            "name": uc["name"],
-            "primaer_akteur": uc.get("akteur") or None,
-            "sekundaer_akteure": uc.get("sekundaer") or [],
-            "realisiert_von_klickdummy": uc.get("realisiert_von") or None,
-            "related_screens": uc.get("related_screens") or [],
-            "fv_bezug": uc.get("fv_bezug") or None,
-            "prio": uc.get("prio") or None,
-            "status": uc.get("status") or "draft",
-            "source_file": rel_src,
-            "coverage": {
-                "realized_count": real_count.get(gid, 0),
-                "unresolved_refs": unres.get(gid, []),
-            },
-        })
-
-    # Coverage-Matrix als Liste (JSON kann keine tuple-keys)
-    matrix_out = [
-        {"uc_id_global": gid, "repo": r, "kd_name": k, "screens": screens}
-        for (gid, r, k), screens in matrix.items()
-    ]
-
-    payload = {
-        "schema_version": "1.0",
-        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        "source": "klickdummy_lineage.py --genesor (ADR-211 Rev 16)",
-        "summary": {
-            "n_ucs": len(ucs_out),
-            "n_kds": len(kds_out),
-            "n_realized_ucs": sum(1 for v in real_count.values() if v > 0),
-            "n_coverage_cells": sum(len(v) for v in matrix.values()),
-            "repos": sorted({u["repo"] for u in ucs_out} | {k["repo"] for k in kds_out}),
-        },
-        "kds": kds_out,
-        "ucs": ucs_out,
-        "coverage_matrix": matrix_out,
-    }
-    return json.dumps(payload, indent=2, ensure_ascii=False)
+# build_uc_export_json — imported from .genesor.export above.
 
 
 def _repo_of_path(p: Path) -> str | None:
@@ -6230,6 +5764,9 @@ def main() -> int:
         vendored_repos={r.strip() for r in args.vendored_repos.split(",") if r.strip()},
     )
     _cfg.genesor_out = _genesor_out
+    # Sync: genesor-Sub-Module lesen _cfg via get_cfg() aus genesor.config —
+    # set_cfg() aktualisiert diesen Singleton, damit beide Wege denselben Wert sehen.
+    set_cfg(_cfg)
 
     if args.gen_impl_brief:
         try:
