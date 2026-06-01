@@ -3,6 +3,12 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.13.4] — 2026-06-01
+
+### Added
+- Spec-Sicht: Screen-ID + Titel am Kopf jedes Panels (zeigt welcher Tab/Screen aktiv ist).
+- Favicon 🌱 in Render- und Genesor-Seiten (behebt 404 für favicon.ico).
+
 ## [1.13.3] — 2026-06-01
 
 ### Fixed
