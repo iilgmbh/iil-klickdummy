@@ -39,6 +39,15 @@ import yaml
 
 from .gen_e2e import is_fragile_selector, render_assertion
 
+# Kanonisches Feedback-Widget (widget.js, PAT-Modal + GitHub-direct) — wird in den
+# Render injiziert (platform:ADR-211 Rev 13), ersetzt das alte inline-Widget.
+try:
+    FEEDBACK_WIDGET_JS = (
+        Path(__file__).resolve().parent / "snippets" / "feedback-widget" / "widget.js"
+    ).read_text(encoding="utf-8")
+except Exception:  # noqa: BLE001
+    FEEDBACK_WIDGET_JS = "/* widget.js nicht gefunden */"
+
 ROOT = Path(__file__).resolve().parent.parent
 MOCKUPS_DIR = ROOT / "docs" / "01-architektur" / "mockups"
 CONTRACTS_DIR = ROOT / "docs" / "01-architektur" / "contracts"
@@ -573,127 +582,132 @@ def _screen_coverage(s: dict) -> tuple[int, int, list[str], list[str]]:
     return n_exec, n_prose, prose_ids, fragile_ids
 
 
-def build_trace_strip(s: dict, klass: str, role: str, accept_status: dict) -> str:
-    """Kompakter, spec-abgeleiteter Chip-Streifen pro Screen (Spec-Sicht/X-Ray)."""
-    chips: list[str] = []
+def _gh_issue_url(repo: str, sid: str, kd_name: str, s: dict, kind: str) -> str:
+    """Vorausgefüllter GitHub-New-Issue-Link, um eine fehlende Spec-Angabe anzulegen.
 
-    # 📋 Betroffene Use Cases
+    kind ∈ {use-case, off-ramp, parity}. Org via detect_org(repo) — kein Hardcode.
+    """
+    from urllib.parse import quote
+
+    org = detect_org(repo)
+    persona = ", ".join(s.get("personas") or s.get("persona") or []) if isinstance(s.get("personas") or s.get("persona"), list) else str(s.get("personas") or "—")
+    titles = {
+        "use-case": f"UC: {kd_name}/{sid}",
+        "off-ramp": f"off_ramp_status fehlt: {kd_name}/{sid}",
+        "parity": f"parity_acceptance fehlt: {kd_name}/{sid}",
+    }
+    body = (
+        f"Aus Klickdummy-Spec-Sicht (platform:ADR-211).\n\n"
+        f"- **Klickdummy:** {kd_name}\n- **Screen:** `{sid}` — {s.get('title', '')}\n"
+        f"- **Personas:** {persona}\n- **Zweck:** {s.get('purpose', '—')}\n\n"
+        f"**Aufgabe ({kind}):** fehlende Spec-Angabe ergänzen.\n"
+    )
+    return (
+        f"https://github.com/{org}/{repo}/issues/new"
+        f"?labels={quote(kind)}&title={quote(titles.get(kind, kind))}&body={quote(body)}"
+    )
+
+
+def build_trace_strip(
+    s: dict, klass: str, role: str, accept_status: dict, repo: str = "", kd_name: str = "", sid: str = ""
+) -> str:
+    """Gelabeltes Spec-Sicht-Panel pro Screen (X-Ray) — substanzielle Inhalte +
+    aktionierbare „anlegen"-Buttons für fehlende Pflicht-Angaben (ADR-211 Co-Creation)."""
+    rows: list[str] = []
+
+    def row(icon: str, key: str, value_html: str, missing: bool = False) -> None:
+        cls = "tr-v tr-missing" if missing else "tr-v"
+        rows.append(
+            f'<div class="tr-row"><span class="tr-k">{icon} {html.escape(key)}</span>'
+            f'<span class="{cls}">{value_html}</span></div>'
+        )
+
+    def act(kind: str, label: str) -> str:
+        if not (repo and kd_name and sid):
+            return ""
+        return (
+            f' <a class="tr-act" target="_blank" rel="noopener" '
+            f'href="{html.escape(_gh_issue_url(repo, sid, kd_name, s, kind))}">{html.escape(label)}</a>'
+        )
+
+    # 📋 Use Cases — echte Namen oder anlegen-Button
     ucs, uc_src = _screen_use_cases(s)
     if ucs:
-        shown = ", ".join(html.escape(u) for u in ucs[:3])
-        more = f" +{len(ucs) - 3}" if len(ucs) > 3 else ""
-        chips.append(
-            f'<span class="tr-chip" title="Betroffene Use Cases (Spec-Feld: {uc_src}): '
-            f'{html.escape(", ".join(ucs))}">📋 UC: {shown}{more}</span>'
-        )
+        row("📋", "Use Cases", html.escape(", ".join(ucs)) + f' <span class="tr-dim">({uc_src})</span>')
     else:
-        chips.append(
-            '<span class="tr-chip tr-missing" title="Kein UC-Bezug in der Spec — '
-            'ergänzen via screen.use_cases: [..] oder konzept_ref: [..]">'
-            '📋 UC nicht deklariert</span>'
-        )
+        row("📋", "Use Cases", "nicht deklariert" + act("use-case", "+ UC anlegen"), missing=True)
 
-    # 📦 Entities + Datenfelder
+    # 📦 Daten — Entities + Datenfelder mit Typ
     konsumiert = s.get("konsumiert_entities") or []
     lokal = s.get("lokale_entities") or []
     datafields = s.get("datafields") or []
-    ent_names: list[str] = []
-    for e in list(konsumiert) + list(lokal):
-        if isinstance(e, dict):
-            ent_names.append(str(e.get("name") or e.get("entity") or "?"))
-        else:
-            ent_names.append(str(e))
-    n_ent = len(ent_names)
-    n_df = len(datafields) if isinstance(datafields, list) else 0
-    if n_ent or n_df:
-        title = "Entities: " + (", ".join(html.escape(x) for x in ent_names) or "—")
-        if n_df:
-            title += f" · {n_df} Datenfeld(er)"
-        df_part = f" · {n_df} Feld(er)" if n_df else ""
-        ent_word = "Entität" if n_ent == 1 else "Entitäten"
-        chips.append(
-            f'<span class="tr-chip" title="{title}">📦 {n_ent} {ent_word}{df_part}</span>'
-        )
+    ent_names = [
+        str(e.get("name") or e.get("entity") or "?") if isinstance(e, dict) else str(e)
+        for e in list(konsumiert) + list(lokal)
+    ]
+    df_parts = []
+    if isinstance(datafields, list):
+        for d in datafields:
+            if isinstance(d, dict):
+                nm = d.get("name", "?")
+                ty = d.get("type")
+                df_parts.append(f"{nm}:{ty}" if ty else str(nm))
+            else:
+                df_parts.append(str(d))
+    if ent_names or df_parts:
+        val = "Entitäten: " + (html.escape(", ".join(ent_names)) or "—")
+        if df_parts:
+            val += ' · <span class="tr-dim">Felder:</span> ' + html.escape(", ".join(df_parts))
+        row("📦", "Daten", val)
     else:
-        chips.append(
-            '<span class="tr-chip tr-missing" title="Keine Entities/Datenfelder '
-            'deklariert — ergänzen via konsumiert_entities / lokale_entities / '
-            'datafields">📦 keine Daten deklariert</span>'
-        )
+        row("📦", "Daten", "keine Entities/Datenfelder deklariert", missing=True)
 
-    # 🏷 class · role (I2)
-    chips.append(
-        f'<span class="tr-chip" title="Spec-Klasse (I2) · Spec-Rolle">'
-        f'🏷 {html.escape(klass)} · {html.escape(role)}</span>'
-    )
-
-    # 🚦 Off-Ramp-Status (I3)
+    # 🏷 Status — class/role/off-ramp/pipeline
     ors = s.get("off_ramp_status")
+    pipeline = s.get("pipeline_status") or "klickdummy"
+    status_bits = [f"class <b>{html.escape(klass)}</b>", f"role <b>{html.escape(role)}</b>", f"pipeline <b>{html.escape(str(pipeline))}</b>"]
     if ors:
-        cls = _OFFRAMP_CHIP_CLASS.get(str(ors), "tr-static")
-        chips.append(
-            f'<span class="tr-chip {cls}" title="Off-Ramp-Status (I3, Spec-Feld: '
-            f'off_ramp_status)">🚦 {html.escape(str(ors))}</span>'
-        )
+        status_bits.insert(2, f'off-ramp <b>{html.escape(str(ors))}</b>')
+        row("🏷", "Status", " · ".join(status_bits))
     else:
-        chips.append(
-            '<span class="tr-chip tr-missing" title="off_ramp_status fehlt '
-            '(I3-Pflichtfeld) — Spec ergänzen">🚦 off-ramp fehlt</span>'
-        )
+        row("🏷", "Status", " · ".join(status_bits) + " · <span class='tr-miss-inline'>off-ramp fehlt</span>" + act("off-ramp", "+ off-ramp"))
 
-    # ✓/⚠ Acceptance (kompakt, mit Frische)
+    # ✓ Abnahme — who/when je Achse
+    acc_parts = []
     for axis, info in (accept_status or {}).items():
         label = "PO-Sign-Off" if axis == "spec_signed" else "Workshop-Walk"
         st = info.get("status")
         if st == "signed":
-            chips.append(
-                f'<span class="tr-chip tr-ok" title="{label}: '
-                f'{html.escape(info.get("latest_by") or "?")} · {info.get("latest_date")}">'
-                f'✓ {html.escape(axis)} {info.get("age_days")}d</span>'
-            )
+            acc_parts.append(f'✓ {label}: {html.escape(info.get("latest_by") or "?")} · {info.get("latest_date")} ({info.get("age_days")}d)')
         elif st == "stale":
-            chips.append(
-                f'<span class="tr-chip tr-warn" title="{label}: letzter Eintrag '
-                f'{info.get("age_days")}d alt — neue Abnahme empfohlen">'
-                f'⚠ {html.escape(axis)} {info.get("age_days")}d</span>'
-            )
+            acc_parts.append(f'⚠ {label}: {info.get("age_days")}d alt — neue Abnahme empfohlen')
+    if acc_parts:
+        row("✓", "Abnahme", " · ".join(acc_parts))
+    else:
+        row("✓", "Abnahme", "keine Sign-Offs", missing=True)
 
-    # 🎯 Parity-Coverage (I1, aus parity_acceptance — selbe Klassifikation wie gen_e2e)
+    # 🎯 Coverage — n/m + prose-only/fragil aufgeschlüsselt
     n_exec, n_prose, prose_ids, fragile_ids = _screen_coverage(s)
     total = n_exec + n_prose
     if total:
-        extra = []
-        if n_prose:
-            extra.append(f"{n_prose} prose-only")
-        if fragile_ids:
-            extra.append(f"⚠{len(fragile_ids)} fragil")
-        suffix = (" · " + " · ".join(extra)) if extra else ""
-        tcls = "tr-ok" if (n_prose == 0 and not fragile_ids) else "tr-warn"
-        title = f"Parity-Coverage (aus parity_acceptance): {n_exec}/{total} ausführbar"
+        val = f"{n_exec}/{total} ausführbar"
         if prose_ids:
-            title += " · prose-only: " + ", ".join(html.escape(x) for x in prose_ids)
+            val += ' · <span class="tr-dim">prose-only:</span> ' + html.escape(", ".join(prose_ids))
         if fragile_ids:
-            title += " · fragile Selektoren: " + ", ".join(html.escape(x) for x in fragile_ids)
-        chips.append(
-            f'<span class="tr-chip {tcls}" title="{title}">🎯 {n_exec}/{total} ausführbar{suffix}</span>'
-        )
+            val += ' · <span class="tr-miss-inline">fragil:</span> ' + html.escape(", ".join(fragile_ids))
+        row("🎯", "Coverage (I1)", val)
     else:
-        chips.append(
-            '<span class="tr-chip tr-missing" title="Keine parity_acceptance-Checks '
-            '(I1) — Spec ergänzen">🎯 keine Parity-Checks</span>'
-        )
+        row("🎯", "Coverage (I1)", "keine parity_acceptance-Checks" + act("parity", "+ Parity"), missing=True)
 
-    # ❓ Validierungsfrage
+    # ❓ Validierungsfrage — echter Text
     vf = s.get("validierungsfrage")
     if vf:
-        chips.append(
-            f'<span class="tr-chip tr-q" title="{html.escape(str(vf))}">❓ Validierungsfrage</span>'
-        )
+        row("❓", "Validierung", f'»{html.escape(str(vf))}«')
 
     return (
         '<div class="trace-strip" aria-label="Spec-Sicht (X-Ray)">'
-        '<span class="trace-label">🔍 Spec-Sicht</span>'
-        + "".join(chips)
+        '<div class="trace-label">🔍 Spec-Sicht <span class="tr-dim">— spec-abgeleitet, in Prod ausgeblendet</span></div>'
+        + "".join(rows)
         + "</div>"
     )
 
@@ -816,19 +830,19 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   .render-mode {{ font-size: 11px; color: #9ca3af; text-align: center; padding: 6px; background: #eef1f5; }}
   .empty-state {{ text-align: center; padding: 40px; color: #6b7280; }}
   .placeholder {{ background: #fef0d0; }}
-  /* Spec-Layer (X-Ray) — Trace-Strip pro Screen, nur bei body.spec-view sichtbar */
+  /* Spec-Layer (X-Ray) — gelabeltes Inhalts-Panel pro Screen, nur bei body.spec-view */
   .trace-strip {{ display: none; }}
-  body.spec-view .trace-strip {{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 10px; background: #1f2937; border-radius: 6px; }}
-  .trace-strip .trace-label {{ color: #93c5fd; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-right: 4px; }}
-  .tr-chip {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #374151; color: #e5e7eb; cursor: help; border: 1px solid #4b5563; }}
-  .tr-chip.tr-missing {{ background: #4b5563; color: #fca5a5; border-color: #6b7280; border-style: dashed; }}
-  .tr-chip.tr-ok {{ background: #065f46; color: #d1fae5; border-color: #047857; }}
-  .tr-chip.tr-warn {{ background: #78350f; color: #fef3c7; border-color: #92400e; }}
-  .tr-chip.tr-static {{ background: #374151; color: #d1d5db; }}
-  .tr-chip.tr-staging {{ background: #1e3a8a; color: #bfdbfe; border-color: #1d4ed8; }}
-  .tr-chip.tr-green {{ background: #065f46; color: #d1fae5; border-color: #047857; }}
-  .tr-chip.tr-removed {{ background: #7f1d1d; color: #fecaca; border-color: #991b1b; }}
-  .tr-chip.tr-q {{ background: #4c1d95; color: #ede9fe; border-color: #6d28d9; }}
+  body.spec-view .trace-strip {{ display: block; margin-top: 8px; padding: 10px 14px; background: #1f2937; border-radius: 6px; font-size: 12.5px; line-height: 1.5; }}
+  .trace-strip .trace-label {{ color: #93c5fd; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }}
+  .tr-row {{ display: flex; gap: 12px; padding: 4px 0; border-top: 1px solid #374151; align-items: baseline; }}
+  .tr-k {{ color: #93c5fd; font-weight: 600; min-width: 140px; flex-shrink: 0; }}
+  .tr-v {{ color: #e5e7eb; flex: 1; }}
+  .tr-v b {{ color: #fff; }}
+  .tr-v.tr-missing {{ color: #fca5a5; font-style: italic; }}
+  .tr-dim {{ color: #9ca3af; }}
+  .tr-miss-inline {{ color: #fca5a5; }}
+  .tr-act {{ display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid #34d399; border-radius: 4px; color: #34d399 !important; text-decoration: none; font-size: 11px; font-weight: 600; font-style: normal; }}
+  .tr-act:hover {{ background: #34d399; color: #06281d !important; }}
   /* Spec-Sicht-Toggle im Header */
   .spec-toggle {{ display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; font-size: 13px; cursor: pointer; color: #374151; }}
   .spec-toggle.on {{ background: #1f2937; color: #fff; border-color: #1f2937; }}
@@ -920,39 +934,14 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 
 <div class="render-mode">Render-Mode: Auto-Generator v2 aus screens-spec.yaml · synthetische Beispiel-Daten, kein Backend</div>
 
-<!-- Feedback-Widget pro Screen — per platform:ADR-211 Rev 13 §Co-Creation A-light -->
-<div class="fb" id="fb-widget">
-  <div class="fb-head" onclick="document.getElementById('fb-body').classList.toggle('hidden')">
-    <span>💬 Feedback zu diesem Screen</span>
-    <span>▾</span>
-  </div>
-  <div class="fb-body" id="fb-body">
-    <div class="screen-ctx">Aktiver Screen: <b><span id="fb-current-screen">—</span></b> · Persona: <b><span id="fb-current-persona">alle</span></b></div>
-    <label>Kategorie</label>
-    <select id="fb-cat">
-      <option value="missing-content">Inhalt fehlt / unvollständig</option>
-      <option value="wrong-content">Inhalt falsch</option>
-      <option value="layout">Layout / Reihenfolge</option>
-      <option value="persona-missing">Persona-Sicht fehlt</option>
-      <option value="data-unrealistic">Beispiel-Daten unrealistisch</option>
-      <option value="idea">Vorschlag</option>
-    </select>
-    <label>Acceptance</label>
-    <select id="fb-verdict">
-      <option value="">— wählen —</option>
-      <option value="accepted">✓ Accepted</option>
-      <option value="needs-change">✎ Needs-Change</option>
-      <option value="rejected">✗ Rejected</option>
-    </select>
-    <label>Was sollte anders sein?</label>
-    <textarea id="fb-text" placeholder="Beschreibung — was hast Du erwartet? Was fehlt?"></textarea>
-    <div class="row">
-      <button onclick="fbDownload()">📥 Download JSON</button>
-      <button class="secondary" onclick="fbClipboard()">📋 In Clipboard</button>
-    </div>
-    <div class="status" id="fb-status"></div>
-  </div>
-</div>
+<!-- Feedback-Widget pro Screen — kanonisches widget.js (PAT-Modal + GitHub-direct),
+     platform:ADR-211 Rev 13 §Co-Creation. Ersetzt das alte inline-Download/Clipboard-Widget. -->
+<script>
+  window.KLICKDUMMY_SPEC = {{ id: "{kd_name}", version: "1.0", klickdummy_class: "{klass}" }};
+  window.KLICKDUMMY_FEEDBACK_REPO = "{feedback_repo}";
+  window.KLICKDUMMY_FEEDBACK_FORCE = true;
+</script>
+<script>__FEEDBACK_WIDGET_JS_PLACEHOLDER__</script>
 
 <script>
   // Sowohl Top-Tabs als auch Sidebar-Buttons fungieren als Navigation
@@ -1283,8 +1272,8 @@ def generate_render_fallback(record: dict, out_dir: Path,
                 entity_panels.append((ename, True, ent_desc_html + table_html))
             else:
                 stub_html = (
-                    f'<p style="color:#6b7280;font-size:13px;">Konsumiert von externem Klickdummy '
-                    f'<code>(siehe consumes_from-Block)</code>. Beispiel-Daten via integriertem Cross-KD-Render.</p>'
+                    '<p style="color:#6b7280;font-size:13px;">Konsumiert von externem Klickdummy '
+                    '<code>(siehe consumes_from-Block)</code>. Beispiel-Daten via integriertem Cross-KD-Render.</p>'
                 )
                 entity_panels.append((ename, False, stub_html))
 
@@ -1543,7 +1532,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
         )
 
         # Spec-Layer (X-Ray): kompakter, spec-abgeleiteter Trace-Strip pro Screen
-        trace_html = build_trace_strip(s, klass, role, accept_status)
+        trace_html = build_trace_strip(s, klass, role, accept_status, repo=repo, kd_name=kd_name, sid=sid)
 
         screen_sections.append(
             f'<section class="screen" id="screen-{html.escape(sid)}" data-personas="{per_data}">'
@@ -1625,9 +1614,11 @@ def generate_render_fallback(record: dict, out_dir: Path,
         custom_css_link=custom_css_link,
         skin_switcher_html=skin_switcher,
         initial_skin=html.escape(initial_skin),
+        feedback_repo=html.escape(f"{detect_org(repo)}/{repo}"),
     )
     # JS-Inject (nach .format(), damit JS-{}-Klammern nicht als Format-Placeholder interpretiert werden)
     html_out = html_out.replace("__SKIN_SWITCHER_JS_PLACEHOLDER__", SKIN_SWITCHER_JS)
+    html_out = html_out.replace("__FEEDBACK_WIDGET_JS_PLACEHOLDER__", FEEDBACK_WIDGET_JS)
     render_dir = out_dir / "render"
     render_dir.mkdir(parents=True, exist_ok=True)
     out_path = render_dir / f"{repo}-{kd_name}.html"
@@ -4454,7 +4445,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
         )
         if u_refs:
             details_inner += (
-                f'<dt style="color:#b91c1c;">⚠ unresolved</dt><dd style="color:#b91c1c;">'
+                '<dt style="color:#b91c1c;">⚠ unresolved</dt><dd style="color:#b91c1c;">'
                 + ", ".join(f'<code>{html.escape(x)}</code>' for x in u_refs)
                 + "</dd>"
             )
@@ -5278,7 +5269,7 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
                 existing_models_lines.append(f"| `{fname}` | `{ftype}` | {detail or '—'} |")
             existing_models_lines.append("")
         else:
-            existing_models_lines.append(f"⚠ **Im Repo NICHT gefunden** — Brief-Declaration ist möglicherweise falsch (Spec-Drift)\n")
+            existing_models_lines.append("⚠ **Im Repo NICHT gefunden** — Brief-Declaration ist möglicherweise falsch (Spec-Drift)\n")
     existing_models_section = "\n".join(existing_models_lines) or "*Keine.*"
 
     # Drift-Sektion: KD-Spec ↔ echtes Model — immer Output (auch wenn fields_typed fehlt)
@@ -5322,7 +5313,7 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
             only_in_spec = spec_keys - real_keys
             only_in_real = real_keys - spec_keys
             common = spec_keys & real_keys
-            drift_lines.append(f"\n⚠ **KD-Spec hat keine `fields_typed`** (nur Field-Namen-Liste) — Drift-Check Field-Name-only.")
+            drift_lines.append("\n⚠ **KD-Spec hat keine `fields_typed`** (nur Field-Namen-Liste) — Drift-Check Field-Name-only.")
             drift_lines.append(f"\n**Match Spec ↔ Real (Name-only):** {', '.join(f'`{f}`' for f in sorted(common)) or '—'}")
             if only_in_spec:
                 drift_lines.append(f"\n**KD nennt Felder die Real-Model NICHT hat:** {', '.join(f'`{f}`' for f in sorted(only_in_spec))} — Spec-Drift, ggf. Cleanup oder Mapping nötig")

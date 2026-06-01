@@ -251,16 +251,16 @@ def test_v14_topic_missing(tmp_path):
     assert manage._spec_topic(p) is None
 
 
-# --- v1.7: Spec-Layer (X-Ray) Trace-Strip ----------------------------------
+# --- v1.7: Spec-Layer (X-Ray) Panel ----------------------------------------
 
 def test_v17_trace_strip_declared_fields():
-    """Deklarierte Spec-Felder erscheinen als Chips im Trace-Strip."""
+    """Deklarierte Spec-Felder erscheinen als gelabelte Panel-Zeilen mit echtem Inhalt."""
     from iil_klickdummy import lineage
     screen = {
         "id": "akte", "title": "Akte",
         "use_cases": ["vergabe-pruefen", "los-verwalten"],
         "konsumiert_entities": [{"name": "Vergabe"}, {"name": "Los"}],
-        "datafields": [{"name": "az"}],
+        "datafields": [{"name": "az", "type": "string"}],
         "off_ramp_status": "parity-staging",
         "validierungsfrage": "Erkennt der Prüfer den Status?",
         "parity_acceptance": [
@@ -269,24 +269,36 @@ def test_v17_trace_strip_declared_fields():
         ],
     }
     out = lineage.build_trace_strip(screen, "stub-demo", "root", {})
-    assert "vergabe-pruefen" in out
-    assert "use_cases" in out             # Provenance im title
-    assert "tr-staging" in out            # off-ramp-Status farbcodiert
-    assert "📦 2 Entitäten · 1 Feld(er)" in out
-    assert "❓ Validierungsfrage" in out
-    assert "🎯 1/1 ausführbar" in out
+    assert 'class="tr-row"' in out                  # Panel-Zeilen statt Chips
+    assert "vergabe-pruefen, los-verwalten" in out  # echte UC-Namen
+    assert "Vergabe, Los" in out                    # echte Entity-Namen
+    assert "az:string" in out                       # Datenfeld mit Typ
+    assert "parity-staging" in out                  # off-ramp im Status
+    assert "Erkennt der Prüfer den Status?" in out  # Validierungsfrage-Text
+    assert "1/1 ausführbar" in out
 
 
 def test_v17_trace_strip_missing_fields_evidence_discipline():
-    """Fehlt ein Feld → 'nicht deklariert'-Chip mit exaktem Spec-Feld (kein Erfinden)."""
+    """Fehlt ein Feld → 'nicht deklariert' + (mit repo/kd/sid) anlegen-Button."""
     from iil_klickdummy import lineage
     out = lineage.build_trace_strip({"id": "leer", "title": "Leer"},
                                     "mock", "default", {})
     assert "tr-missing" in out
-    assert "UC nicht deklariert" in out
-    assert "screen.use_cases" in out      # exaktes Feld zum Ergänzen
-    assert "off_ramp_status fehlt" in out
-    assert "keine Parity-Checks" in out
+    assert "nicht deklariert" in out          # UC-Zeile
+    assert "off-ramp fehlt" in out
+    assert "keine parity_acceptance-Checks" in out
+
+
+def test_v17_trace_strip_uc_create_button():
+    """Fehlende UC + repo/kd/sid → vorausgefüllter GitHub-Issue-Link (Co-Creation)."""
+    from iil_klickdummy import lineage
+    out = lineage.build_trace_strip(
+        {"id": "cockpit", "title": "Cockpit"}, "mock", "default", {},
+        repo="meiki-hub", kd_name="buergerportal", sid="cockpit",
+    )
+    assert "tr-act" in out
+    assert "issues/new" in out
+    assert "labels=use-case" in out
 
 
 def test_v17_trace_strip_coverage_matches_gen_e2e():
@@ -307,9 +319,9 @@ def test_v17_trace_strip_coverage_matches_gen_e2e():
     assert prose_ids == ["s.prosa"]
     assert fragile_ids == ["s.fragile"]
     out = lineage.build_trace_strip(screen, "spec-demo", "default", {})
-    assert "🎯 2/3 ausführbar" in out
-    assert "1 prose-only" in out
-    assert "⚠1 fragil" in out
+    assert "2/3 ausführbar" in out
+    assert "prose-only:" in out and "s.prosa" in out
+    assert "fragil:" in out and "s.fragile" in out
 
 
 def test_v17_trace_strip_renders_into_screen_section(tmp_path):

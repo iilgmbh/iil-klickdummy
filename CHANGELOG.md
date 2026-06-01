@@ -3,6 +3,24 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.10.0] — 2026-06-01
+
+### Changed — Render: Spec-Sicht als Inhalts-Panel + kanonisches Widget
+
+- **Spec-Sicht (X-Ray)** von dünner Chip-Reihe → **gelabeltes Inhalts-Panel** pro
+  Screen: echte Werte statt Icon-Chips — Use-Case-Namen, Entitäten + Datenfelder
+  (mit Typ), Status (class/role/off-ramp/pipeline), Abnahme (who/when/Frische),
+  Coverage-Aufschlüsselung (executable/prose-only/fragil), Validierungsfrage-Text.
+- **Co-Creation-Buttons:** fehlende Pflicht-Angaben (UC, off_ramp_status,
+  parity_acceptance) bekommen einen `[+ anlegen]`-Button → vorausgefülltes
+  GitHub-Issue (`detect_org`-Ziel, kein Hardcode). Schließt die „nicht
+  deklariert"-Lücke aktionierbar (ADR-211 Co-Creation).
+- **Feedback-Widget:** Render bettet jetzt das **kanonische `widget.js`**
+  (GitHub-direct + PAT-Modal) ein statt des alten inline-Download/Clipboard-
+  Widgets — via `__FEEDBACK_WIDGET_JS_PLACEHOLDER__`-Inject (analog Skin-Switcher),
+  konfiguriert über `window.KLICKDUMMY_*`.
+- Tests angepasst/ergänzt (Panel-Format, UC-Button); 58 grün, 3.10-Parse + ruff clean.
+
 ## [1.9.0] — 2026-06-01
 
 ### Added — discovery_push v1.6-Schema: Producer-Seite der ADR-215-§Amendment-1-Auflagen
