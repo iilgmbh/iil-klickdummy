@@ -3,6 +3,23 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.11.0] — 2026-06-01
+
+### Added — `klickdummy-from-django`: Brownfield-Reverse-Onboarding
+
+- Neues Modul/CLI `from_django` (`klickdummy-from-django`): leitet aus einer
+  **existierenden Django-App** ein `screens-spec.yaml`-**Skelett** ab — URLConf →
+  Screens (Pages) + Aktionen (POST-Endpoints getrennt), `models.py` → Entity-
+  Katalog mit Feldtypen, `app_name` → `spec_id`. **Statisches Parsing** (`ast` +
+  Regex), **keine** Django-Runtime/DB nötig → läuft sicher gegen jeden Source-Tree.
+- `class: spec-demo` (realer Code-Pfad existiert) + Kuratier-Kommentare
+  (Entity-Katalog, Aktions-Liste, TODO-Marker). Startpunkt für menschliche
+  Kuratierung; nächster Schritt `klickdummy-gen-e2e` gegen die echte App
+  (Parity-Bridge) → iterieren bis parity-grün = verifizierte Spec-Erfassung.
+- Macht Brownfield-Onboarding reproduzierbar (Blaupause „Schritt für Schritt
+  alle Repos"). 2 neue Tests; gegen `writing-hub/outlines` gedogfoodt
+  (4 Screens, 7 Aktionen, 2 Models).
+
 ## [1.10.0] — 2026-06-01
 
 ### Changed — Render: Spec-Sicht als Inhalts-Panel + kanonisches Widget
