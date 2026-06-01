@@ -3,6 +3,15 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.15.0] — 2026-06-01
+
+### Added — gen_e2e: parametrisierte Routen + Auth für ausführbare Parity-Suite (#28)
+
+- **`route_example`** (Screen-Feld): konkrete Beispiel-URL mit echten IDs/UUIDs. `klickdummy-gen-e2e` bevorzugt sie vor `route` → kein `<uuid:pk>`-404 mehr gegen Renderer #2 (echte App).
+- **Parametrisierte `route` ohne `route_example`** → Check wird `@pytest.mark.skip` mit klarem Grund (statt 404-Rauschen); Manifest weist es als `skip_reason: parametrised_route` aus.
+- **`auth`-Block** (Top-Level): `storage_state` / `login_fixture` / `required`. gen_e2e bindet ihn als `autouse`-Fixture ein. `login_required`-Screen ohne `auth` → skip mit Grund `login_required_no_auth`.
+- `screen_route()` gibt jetzt `(url, is_parametrised)` zurück. Schema um `route_example`, `login_required`, `auth` erweitert (alle optional, rückwärtskompatibel). 4 neue Tests; 64 grün, 3.10-safe.
+
 ## [1.14.0] — 2026-06-01
 
 ### Added — Klickdummy-Capture-Gate: strukturiertes Issue-Form statt thin-prefill

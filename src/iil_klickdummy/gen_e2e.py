@@ -59,12 +59,26 @@ def load_spec(path: pathlib.Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def screen_route(sc: dict) -> str:
-    """Explizite `route` oder Konvention `/<id>`."""
+_PARAM_PATTERN = re.compile(r"<[^>]+>")
+
+
+def screen_route(sc: dict) -> tuple[str, bool]:
+    """Gibt (url, is_parametrised) zurück.
+
+    Bevorzugt `route_example` (konkrete URL mit echten IDs) vor `route`.
+    Gibt `is_parametrised=True`, wenn `route` Django-Parameter enthält
+    (`<uuid:pk>` etc.) und kein `route_example` gesetzt ist — der Caller
+    erzeugt dann einen skip statt einer 404-URL.
+    """
+    example = sc.get("route_example")
+    if example:
+        r = str(example)
+        return (r if r.startswith("/") else "/" + r), False
     r = sc.get("route")
     if r:
-        return r if r.startswith("/") else "/" + r
-    return "/" + str(sc.get("id", ""))
+        full = r if r.startswith("/") else "/" + r
+        return full, bool(_PARAM_PATTERN.search(full))
+    return "/" + str(sc.get("id", "")), False
 
 
 # -- Assertion-Vokabular ------------------------------------------------------
@@ -166,11 +180,38 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
     # genau zwei Leerzeilen verbunden ⇒ `ruff format`-konform (Adopter-CI grün).
     blocks: list[str] = []
 
+    # Auth-Fixture (optional): erzeugt autouse-Fixture wenn Spec einen `auth`-Block hat.
+    spec_auth = spec.get("auth") or {}
+    auth_blocks: list[str] = []
+    if spec_auth:
+        storage = spec_auth.get("storage_state")
+        login_fixture = spec_auth.get("login_fixture")
+        if storage:
+            auth_blocks.append(
+                f"@pytest.fixture(autouse=True)\n"
+                f"def _auth(page: Page):\n"
+                f'    """Auth via storage_state aus Spec-Block."""\n'
+                f"    page.context.add_cookies([])\n"
+                f"    page.context.set_storage_state(path={_q(storage)})"
+            )
+        elif login_fixture:
+            auth_blocks.append(
+                f"@pytest.fixture(autouse=True)\n"
+                f"def _auth({login_fixture}: Page):\n"
+                f'    """Auth via Login-Fixture `{login_fixture}` aus Spec-Block."""\n'
+                f"    pass  # Fixture übernimmt Login"
+            )
+
     for sc in screens:
         sid = sc.get("id", "screen")
         stitle = sc.get("title", sid)
-        route = screen_route(sc)
+        route, is_parametrised = screen_route(sc)
         screen_comment = f"# ── Screen: {sid} · {stitle}  (route {route}) ──"
+
+        # Auth-Pflicht: `login_required` in Spec + kein auth-Block → alle Checks skip
+        login_required = sc.get("login_required", False) or spec_auth.get("required", False)
+        auth_missing = login_required and not spec_auth
+
         pas = sc.get("parity_acceptance", []) or []
         if not pas:
             blocks.append(f"{screen_comment}\n# (keine parity_acceptance im Screen {sid})")
@@ -182,10 +223,43 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
             fn = f"test_{ident(sid)}__{ident(acc_id)}"
             prefix = f"{screen_comment}\n" if first else ""
             first = False
+
+            # Skip-Grund bestimmen (Priorität: parametrisiert > login_required > kein assert)
+            if is_parametrised:
+                skip_reason = (
+                    f"parametrisierte Route {_q(route)} — bitte `route_example` in der Spec "
+                    f"ergänzen (konkrete URL mit echten IDs/UUIDs)"
+                )
+                skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
+                                 "skip_reason": "parametrised_route"})
+                blocks.append(
+                    f"{prefix}@pytest.mark.skip(reason={skip_reason})\n"
+                    f"def {fn}(page: Page):\n"
+                    f'    """[{sid}] {check}"""\n'
+                    f"    pass  # route_example fehlt — würde 404 produzieren"
+                )
+                continue
+
+            if auth_missing:
+                skip_reason = (
+                    f"login_required=True für Screen {_q(sid)} — "
+                    f"bitte `auth`-Block in der Spec ergänzen (storage_state oder login_fixture)"
+                )
+                skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
+                                 "skip_reason": "login_required_no_auth"})
+                blocks.append(
+                    f"{prefix}@pytest.mark.skip(reason={skip_reason})\n"
+                    f"def {fn}(page: Page):\n"
+                    f'    """[{sid}] {check}"""\n'
+                    f"    pass  # auth-Setup fehlt — kein Login möglich"
+                )
+                continue
+
             a = pa.get("assert")
             line = render_assertion(a)
             if line is None:
-                skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", "")})
+                skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
+                                 "skip_reason": "no_assert"})
                 blocks.append(
                     f'{prefix}@pytest.mark.skip(reason="kein ausführbares `assert` — Prosa-Parity")\n'
                     f"def {fn}(page: Page):\n"
@@ -207,7 +281,8 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
 
     # header endet mit '\n' nach BASE; '\n\n' davor ⇒ zwei Leerzeilen vor dem
     # ersten Block; Blöcke mit '\n\n\n' (zwei Leerzeilen) verbunden; ein \n am Ende.
-    body = (header + "\n\n" + "\n\n\n".join(blocks) + "\n") if blocks else header + "\n"
+    all_blocks = auth_blocks + blocks
+    body = (header + "\n\n" + "\n\n\n".join(all_blocks) + "\n") if all_blocks else header + "\n"
     stats = {
         "executable": n_exec,
         "skipped": len(skipped),
