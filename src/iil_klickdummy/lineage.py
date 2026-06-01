@@ -3163,7 +3163,7 @@ def build_genesor_html(records: list[dict],
                     )
 
                 rows.append(f"""
-    <tr class="kd-row {'render-only' if is_render_only else ''}" data-detail-id="detail-{idx}" data-drift-status="{d_status}" data-org="{html.escape(org)}" onclick="toggleDetail(this)">
+    <tr class="kd-row {'render-only' if is_render_only else ''}" data-detail-id="detail-{idx}" data-drift-status="{d_status}" data-org="{html.escape(org)}" data-repo="{html.escape(repo)}" data-class="{html.escape(klass)}" data-role="{html.escape(role)}" onclick="toggleDetail(this)">
       <td class="org-cell">{org_cell}</td>
       <td class="repo-cell">{repo_cell}</td>
       <td><span class="toggle">▸</span> {badge} <b>{html.escape(r["kd"])}</b><br/>{mockup_missing_badge}{mockup_generate_btn}<span class="muted">{html.escape(title)}</span></td>
@@ -3497,6 +3497,29 @@ def build_genesor_html(records: list[dict],
   .surface-screen-pill.staging {{ background: #fed7aa; color: #9a3412; border-color: #fdba74; }}
   .surface-screen-pill.prod    {{ background: #dcfce7; color: #166534; border-color: #86efac; }}
   .surface-screen-pill.disabled {{ background: #f1f5f9; color: #94a3b8; cursor: not-allowed; opacity: 0.5; }}
+
+  /* ── Repo-Rail Master-Detail (KONZ-iil-klickdummy-002) ───────────────── */
+  .genesor-layout {{ display: grid; grid-template-columns: 232px 1fr; align-items: start; gap: 0; }}
+  .genesor-layout > main {{ min-width: 0; overflow-x: auto; }}
+  .repo-rail {{ position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    background: #fff; border-right: 1px solid #e3e8ee; padding: 14px 0; }}
+  .repo-rail .rail-facet {{ padding: 0 14px 10px; display: flex; align-items: center; gap: 6px; }}
+  .repo-rail .rail-facet label {{ font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; }}
+  .repo-rail .rail-facet select {{ flex: 1; padding: 4px 8px; border: 1px solid #e3e8ee; border-radius: 6px; font-size: 13px; }}
+  .repo-rail .rail-head {{ font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; padding: 6px 14px; }}
+  .repo-rail .rail-item {{ display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    border: 0; background: none; cursor: pointer; padding: 8px 14px; font-size: 13px; color: #1f2937;
+    border-left: 3px solid transparent; }}
+  .repo-rail .rail-item:hover {{ background: #eef2ff; }}
+  .repo-rail .rail-item.active {{ background: #eef2ff; border-left-color: #1e3a8a; font-weight: 600; color: #1e3a8a; }}
+  .repo-rail .rail-item .dot {{ width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }}
+  .repo-rail .rail-item .glabel {{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+  .repo-rail .rail-item .count {{ font-size: 11px; color: #64748b; background: #f1f5f9; border-radius: 10px; padding: 1px 8px; }}
+  .repo-rail .rail-item.active .count {{ background: #fff; }}
+  @media (max-width: 900px) {{
+    .genesor-layout {{ grid-template-columns: 1fr; }}
+    .repo-rail {{ position: static; max-height: none; border-right: 0; border-bottom: 1px solid #e3e8ee; }}
+  }}
 </style>
 </head>
 <body>
@@ -3540,6 +3563,20 @@ def build_genesor_html(records: list[dict],
   }})();
 </script>
 
+<div class="genesor-layout">
+<aside class="repo-rail" id="repo-rail">
+  <div class="rail-facet">
+    <label for="facet-select">Linse</label>
+    <select id="facet-select">
+      <option value="repo">Repo</option>
+      <option value="org">Org</option>
+      <option value="class">Class</option>
+      <option value="role">Rolle</option>
+    </select>
+  </div>
+  <div class="rail-head" id="rail-head">Repos</div>
+  <nav id="rail-nav"></nav>
+</aside>
 <main>
 
 <div class="stats">
@@ -3625,6 +3662,7 @@ def build_genesor_html(records: list[dict],
 </table>
 
 </main>
+</div><!-- /genesor-layout -->
 
 <!-- ── Surface-Modal (Pilot-Memo §Surface-Modal) ──────────── -->
 <div id="surface-modal" class="surface-modal" aria-hidden="true">
@@ -3768,7 +3806,7 @@ document.addEventListener('keydown', e => {{
 
 // Drift-Center Filter (Pilot-Memo 2026-05-26)
 (function() {{
-  const state = {{ org: 'all', drift: 'all', search: '' }};
+  const state = {{ org: 'all', drift: 'all', search: '', facet: 'repo', group: null }};
 
   function applyFilters() {{
     const rows = document.querySelectorAll('#genesor-table tbody tr.kd-row');
@@ -3780,7 +3818,9 @@ document.addEventListener('keydown', e => {{
       const matchOrg = state.org === 'all' || org === state.org;
       const matchDrift = state.drift === 'all' || drift === state.drift;
       const matchSearch = !state.search || text.includes(state.search);
-      const show = matchOrg && matchDrift && matchSearch;
+      const groupVal = row.dataset[state.facet] || '';
+      const matchGroup = !state.group || groupVal === state.group;
+      const show = matchOrg && matchDrift && matchSearch && matchGroup;
       row.classList.toggle('hidden', !show);
       const detailId = row.dataset.detailId;
       const detail = detailId ? document.getElementById(detailId) : null;
@@ -3838,6 +3878,81 @@ document.addEventListener('keydown', e => {{
       applyMasterSurface(btn.dataset.masterSurface);
     }});
   }});
+
+  // ── Repo-Rail Master-Detail (KONZ-iil-klickdummy-002) ──────────────────
+  const FACET_LABEL = {{ repo: 'Repos', org: 'Orgs', 'class': 'Klassen', role: 'Rollen' }};
+  const DRIFT_RANK = {{ 'partial': 3, 'stale': 2, 'no-brief': 1, 'in-sync': 0 }};
+  const DRIFT_DOT  = {{ 'partial': '#f97316', 'stale': '#eab308', 'no-brief': '#cbd5e1', 'in-sync': '#16a34a' }};
+
+  function buildRail() {{
+    const facet = state.facet;
+    const rows = document.querySelectorAll('#genesor-table tbody tr.kd-row');
+    const groups = {{}};
+    rows.forEach(row => {{
+      const g = row.dataset[facet] || '—';
+      if (!groups[g]) groups[g] = {{ count: 0, worst: -1 }};
+      groups[g].count++;
+      const dr = DRIFT_RANK[row.dataset.driftStatus];
+      if (dr !== undefined && dr > groups[g].worst) groups[g].worst = dr;
+    }});
+    const head = document.getElementById('rail-head');
+    if (head) head.textContent = FACET_LABEL[facet] || facet;
+    const nav = document.getElementById('rail-nav');
+    if (!nav) return;
+    const keys = Object.keys(groups).sort((a, b) => {{
+      const d = groups[b].count - groups[a].count;
+      return d !== 0 ? d : a.localeCompare(b);
+    }});
+    const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    let buf = '<button class="rail-item' + (state.group ? '' : ' active') + '" data-group="">'
+      + '<span class="dot" style="background:#e2e8f0"></span>'
+      + '<span class="glabel">Alle ' + (FACET_LABEL[facet] || '') + '</span>'
+      + '<span class="count">' + rows.length + '</span></button>';
+    keys.forEach(k => {{
+      const worst = groups[k].worst;
+      let color = '#e2e8f0';
+      Object.keys(DRIFT_RANK).forEach(s => {{ if (DRIFT_RANK[s] === worst) color = DRIFT_DOT[s]; }});
+      buf += '<button class="rail-item' + (k === state.group ? ' active' : '') + '" data-group="' + esc(k) + '">'
+        + '<span class="dot" style="background:' + color + '"></span>'
+        + '<span class="glabel">' + esc(k) + '</span>'
+        + '<span class="count">' + groups[k].count + '</span></button>';
+    }});
+    nav.innerHTML = buf;
+    nav.querySelectorAll('.rail-item').forEach(b => {{
+      b.addEventListener('click', () => {{
+        const g = b.dataset.group;
+        location.hash = g ? ('#/' + facet + '/' + encodeURIComponent(g)) : ('#/' + facet + '/');
+      }});
+    }});
+  }}
+
+  function readHash() {{
+    let h = location.hash || '';
+    h = (h.indexOf('#/') === 0) ? h.substring(2) : '';
+    const slash = h.indexOf('/');
+    if (slash >= 0) {{
+      const facet = h.substring(0, slash);
+      const group = h.substring(slash + 1);
+      if (['repo','org','class','role'].indexOf(facet) >= 0) {{
+        state.facet = facet;
+        state.group = group ? decodeURIComponent(group) : null;
+        const sel = document.getElementById('facet-select');
+        if (sel) sel.value = state.facet;
+      }}
+    }}
+  }}
+
+  function syncFromHash() {{ readHash(); buildRail(); applyFilters(); }}
+
+  const facetSel = document.getElementById('facet-select');
+  if (facetSel) facetSel.addEventListener('change', () => {{
+    state.facet = facetSel.value;
+    state.group = null;
+    location.hash = '#/' + state.facet + '/';
+    syncFromHash();
+  }});
+  window.addEventListener('hashchange', syncFromHash);
+  syncFromHash();
 
   // Initial-State aus URL-Params
   const params = new URLSearchParams(window.location.search);
