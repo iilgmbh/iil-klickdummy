@@ -137,15 +137,15 @@ def test_should_detect_org_from_git_remote(forms_spec):
     assert org == "meiki-lra"
 
 
-def test_should_build_discovery_entry_with_v15_schema(forms_spec):
+def test_should_build_discovery_entry_with_v16_schema(forms_spec):
     import yaml
 
     repo_root = forms_spec.parents[4]
     spec = yaml.safe_load(forms_spec.read_text(encoding="utf-8"))
     entry = discovery_push.build_discovery_entry(repo_root, forms_spec, spec)
 
-    # v1.5-Schema-Felder
-    assert entry["schema_version"] == "v1.5"
+    # v1.6-Schema (§Amendment 1) — Basisfelder unverändert
+    assert entry["schema_version"] == "v1.6"
     assert entry["spec_id"] == "meiki:klickdummy-spec-test"
     assert entry["version"] == "0.1"
     assert entry["klickdummy_class"] == "mock"
@@ -157,7 +157,93 @@ def test_should_build_discovery_entry_with_v15_schema(forms_spec):
     assert entry["personas"] == ["sachbearbeiter", "teamleitung"]
     assert "Test-Klickdummy" in entry["embedding_text"]
     assert entry["sunset_after"] == "2027-05-21"
-    assert "T" in entry["last_seen"]  # ISO-Format
+    assert "T" in entry["last_seen"]
+
+
+def test_should_emit_registry_key_and_provenance_fields(forms_spec):
+    """§Amendment 1 P1/P2: registry_key + Provenance/Drift-Anker."""
+    import yaml
+
+    repo_root = forms_spec.parents[4]
+    spec = yaml.safe_load(forms_spec.read_text(encoding="utf-8"))
+    entry = discovery_push.build_discovery_entry(repo_root, forms_spec, spec)
+
+    # registry_key = org/repo + path_rel + spec_id (REC-2)
+    assert entry["registry_key"].startswith("meiki-lra/meiki-hub:")
+    assert entry["registry_key"].endswith("#meiki:klickdummy-spec-test")
+    # Provenance (REC-1/6): spec_sha256 ist Drift-Anker; source_repo gesetzt
+    assert entry["spec_sha256"].startswith("sha256:")
+    assert entry["source_repo"] == "meiki-lra/meiki-hub"
+    assert entry["generated_at"] == entry["last_seen"]
+    # Fixture hat kein .git/HEAD → Provenance-Ref/SHA tolerant None
+    assert entry["source_ref"] is None
+    assert entry["commit_sha"] is None
+
+
+def test_should_default_filter_and_visibility_fields(forms_spec):
+    """§Amendment 1 P4/P5/P8: Default visibility=org, discoverable soft-true, Filterfelder."""
+    import yaml
+
+    repo_root = forms_spec.parents[4]
+    spec = yaml.safe_load(forms_spec.read_text(encoding="utf-8"))
+    entry = discovery_push.build_discovery_entry(repo_root, forms_spec, spec)
+
+    assert entry["visibility_scope"] == "org"          # least-exposure default (REC-6)
+    assert entry["discoverable"] is True               # soft-migrate default (REC-14)
+    assert entry["pipeline_status"] == "klickdummy"
+    assert entry["off_ramp_status"] == "static"
+    assert entry["tombstone"] is False
+    assert entry["embedding_input_schema"] == discovery_push.EMBEDDING_INPUT_SCHEMA
+
+
+def test_should_respect_explicit_discovery_block(forms_spec):
+    """discovery.visibility_scope + discoverable=false werden aus der Spec übernommen."""
+    import yaml
+
+    repo_root = forms_spec.parents[4]
+    spec = yaml.safe_load(forms_spec.read_text(encoding="utf-8"))
+    spec["discovery"] = {"visibility_scope": "public-demo", "discoverable": False}
+    entry = discovery_push.build_discovery_entry(repo_root, forms_spec, spec)
+    assert entry["visibility_scope"] == "public-demo"
+    assert entry["discoverable"] is False
+
+
+def test_should_skip_non_allowed_class_in_collect(tmp_path, capsys):
+    """Ingestion-Guard (REC-7): class außerhalb der I2-Klassen wird nicht gepusht."""
+    repo_root = tmp_path / "demo-hub"
+    spec_dir = repo_root / "klickdummy/x"
+    spec_dir.mkdir(parents=True)
+    (repo_root / ".git").mkdir()
+    (repo_root / ".git" / "config").write_text(
+        '[remote "origin"]\n  url = git@github.com:achimdehnert/demo-hub.git\n', encoding="utf-8"
+    )
+    (spec_dir / "screens-spec.yaml").write_text(
+        'spec_id: demo:klickdummy-spec-x\nspec_version: "0.1"\nclass: bogus\n'
+        "screens:\n  - {id: a, title: A, parity_acceptance: []}\n",
+        encoding="utf-8",
+    )
+    entries = discovery_push.collect_entries(repo_root)
+    assert entries == []
+    assert "nicht push-berechtigt" in capsys.readouterr().err
+
+
+def test_should_build_signed_snapshot_with_sha256():
+    """§Amendment 1 P6: Snapshot trägt selbst-verifizierenden sha256 + Envelope-Version."""
+    entries = [{"registry_key": "a", "x": 1}, {"registry_key": "b", "x": 2}]
+    snap = discovery_push.build_snapshot(entries)
+    assert snap["count"] == 2
+    assert snap["sha256"].startswith("sha256:")
+    assert snap["registry_schema_version"] == discovery_push.REGISTRY_SCHEMA_VERSION
+    # deterministisch (sort_keys) — gleicher Input ⇒ gleicher Hash
+    assert discovery_push.build_snapshot(entries)["sha256"] == snap["sha256"]
+
+
+def test_should_wrap_push_payload_in_versioned_envelope():
+    """§Amendment 1 P3: Push-Envelope trägt api_version + registry_schema_version (REC-4/10)."""
+    payload = discovery_push.build_payload([{"registry_key": "a"}])
+    assert payload["api_version"] == discovery_push.API_VERSION
+    assert payload["registry_schema_version"] == discovery_push.REGISTRY_SCHEMA_VERSION
+    assert payload["entries"] == [{"registry_key": "a"}]
 
 
 def test_should_build_conversation_entry_with_correct_genre(bot_spec):
