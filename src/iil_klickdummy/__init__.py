@@ -30,7 +30,7 @@ __author__ = "iil GmbH"
 from . import (  # noqa: F401
     check_i1, check_i2, check_i3, check_i4,
     extract_requirements, gen_e2e, inventory, install_snippets, registry,
-    sync_to_orchestrator, discovery_push,
+    sync_to_orchestrator, discovery_push, from_django,
 )
 # Hinweis: `manage` wird hier NICHT eager importiert — das Modul existiert
 # (noch) nicht; ein eager Import würde das gesamte Paket beim Laden crashen

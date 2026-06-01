@@ -362,3 +362,52 @@ def test_v18_discovery_push_module_present():
     assert hasattr(iil_klickdummy, "discovery_push")
     from iil_klickdummy import discovery_push
     assert callable(getattr(discovery_push, "main", None))
+
+
+# --- v1.11: klickdummy-from-django (Brownfield-Reverse-Onboarding) ----------
+
+def test_v111_from_django_parses_urls_and_models(tmp_path):
+    """URLConf → Screens/Aktionen, models.py → Entity-Katalog (statisch, kein Django)."""
+    from iil_klickdummy import from_django
+    app = tmp_path / "outlines"
+    app.mkdir()
+    (app / "urls.py").write_text(
+        'app_name = "outlines"\n'
+        'urlpatterns = [\n'
+        '  path("", views.OutlineListView.as_view(), name="list"),\n'
+        '  path("<uuid:pk>/", views.OutlineDetailView.as_view(), name="detail"),\n'
+        '  path("<uuid:pk>/delete/", views.OutlineDeleteView.as_view(), name="delete"),\n'
+        ']\n', encoding="utf-8")
+    (app / "models.py").write_text(
+        "class Outline(models.Model):\n"
+        "    title = models.CharField(max_length=200)\n"
+        "    body = models.TextField()\n"
+        "    owner = models.ForeignKey('auth.User', on_delete=models.CASCADE)\n",
+        encoding="utf-8")
+    name, entries = from_django.parse_urls(app)
+    assert name == "outlines"
+    pages = [e["name"] for e in entries if not e["action"]]
+    actions = [e["name"] for e in entries if e["action"]]
+    assert "list" in pages and "detail" in pages
+    assert "delete" in actions          # DeleteView/verb → Aktion, kein Screen
+    models = from_django.parse_models(app)
+    assert models[0]["name"] == "Outline"
+    assert ("title", "string") in models[0]["fields"]
+    assert ("owner", "ref") in models[0]["fields"]
+
+
+def test_v111_from_django_builds_spec_demo_skeleton(tmp_path):
+    """Skelett ist class: spec-demo (Brownfield), enthält Screens + Entity-Katalog."""
+    from iil_klickdummy import from_django
+    entries = [
+        {"name": "list", "route": "/", "view": "XListView", "action": False},
+        {"name": "delete", "route": "/x/delete/", "view": "XDeleteView", "action": True},
+    ]
+    models = [{"name": "Outline", "fields": [("title", "string")]}]
+    spec = from_django.build_spec("outlines", entries, models, "writing-hub")
+    assert "spec_id: writing-hub:klickdummy-spec-outlines" in spec
+    assert "class: spec-demo" in spec
+    assert "conforms_to: platform:ADR-211" in spec
+    assert "- id: list" in spec                 # Page → Screen
+    assert "delete" not in spec.split("screens:")[1]  # Aktion NICHT als Screen
+    assert "Outline(title:string)" in spec      # Entity-Katalog-Kommentar
