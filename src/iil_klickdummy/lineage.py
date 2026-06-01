@@ -1100,34 +1100,28 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <script>
 // UC-anlegen "in Arbeit"-State via localStorage (Issue #25)
 (function() {{
+  var INFLIGHT = '⏳ UC anlegen in Arbeit';
   function makeInflightHtml(key) {{
-    return '<span class="tr-act tr-act-inflight" '
-      + 'data-uc-reset="' + key + '" '
-      + 'title="Issue angelegt — noch nicht in Spec. Klicken zum Zurücksetzen.">⏳ UC anlegen in Arbeit</span>';
+    return '<span class="tr-act tr-act-inflight" data-uc-reset="' + key + '" '
+      + 'title="Issue angelegt — noch nicht in Spec. Klicken zum Zurücksetzen.">' + INFLIGHT + '</span>';
   }}
+  // Event-Delegation: ein einziger Handler für alle Inflight-Spans, auch in versteckten Tabs
+  document.addEventListener('click', function(e) {{
+    var t = e.target.closest ? e.target.closest('.tr-act-inflight[data-uc-reset]') : null;
+    if (!t) return;
+    try {{ localStorage.removeItem(t.dataset.ucReset); }} catch(err) {{}}
+    location.reload();
+  }});
   function markInflight(el) {{
     var key = el.dataset.ucKey;
     try {{ localStorage.setItem(key, '1'); }} catch(e) {{}}
     el.outerHTML = makeInflightHtml(key);
-    // Reset-Handler am neuen Span registrieren
-    var span = document.querySelector('[data-uc-reset="' + key + '"]');
-    if (span) {{ span.addEventListener('click', function() {{ resetInflight(span, key); }}); }}
-  }}
-  function resetInflight(span, key) {{
-    try {{ localStorage.removeItem(key); }} catch(e) {{}}
-    // Original-Link wiederherstellen: Seite neu laden ist am sichersten
-    location.reload();
   }}
   function initInflight() {{
     document.querySelectorAll('a.tr-act[data-uc-key]').forEach(function(el) {{
       var key = el.dataset.ucKey;
       try {{
-        if (localStorage.getItem(key)) {{
-          el.outerHTML = makeInflightHtml(key);
-          var span = document.querySelector('[data-uc-reset="' + key + '"]');
-          if (span) {{ span.addEventListener('click', function() {{ resetInflight(span, key); }}); }}
-          return;
-        }}
+        if (localStorage.getItem(key)) {{ el.outerHTML = makeInflightHtml(key); return; }}
       }} catch(e) {{}}
       el.addEventListener('click', function() {{ markInflight(el); }});
     }});
