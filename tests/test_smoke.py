@@ -270,7 +270,7 @@ def test_v17_trace_strip_declared_fields():
     }
     out = lineage.build_trace_strip(screen, "stub-demo", "root", {})
     assert 'class="tr-row"' in out                  # Panel-Zeilen statt Chips
-    assert "vergabe-pruefen, los-verwalten" in out  # echte UC-Namen
+    assert "vergabe-pruefen" in out and "los-verwalten" in out  # echte UC-Namen (in <details>)
     assert "Vergabe, Los" in out                    # echte Entity-Namen
     assert "az:string" in out                       # Datenfeld mit Typ
     assert "parity-staging" in out                  # off-ramp im Status
