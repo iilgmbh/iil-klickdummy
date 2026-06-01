@@ -3,6 +3,39 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.9.0] — 2026-06-01
+
+### Added — discovery_push v1.6-Schema: Producer-Seite der ADR-215-§Amendment-1-Auflagen
+
+Arbeitet die **Producer-seitigen** Härtungs-Auflagen aus `platform:ADR-215`
+§Amendment 1 ein (ADR ist `accepted`; diese Auflagen sind verbindlich vor
+Produktiv-Aktivierung). Discovery-Entry-Schema `v1.5` → **`v1.6`**, rein additiv:
+
+- **Provenance/Drift-Anker** (REC-1/6): `source_repo`, `source_ref`, `commit_sha`,
+  `spec_sha256`, `generated_at` — Registry-Eintrag ist abgeleiteter Index mit
+  Rückführung auf den exakten Spec-Stand. `_git_provenance` liest `.git` ohne
+  Subprozess (tolerant → null).
+- **Upsert-Identität** `registry_key` = org/repo + path_rel + spec_id (REC-2).
+- **Ingestion-Guard** (REC-7): nur die vier I2-Klassen sind push-berechtigt;
+  andere werden mit Hinweis übersprungen (kein vacuous push).
+- **Governance-Gate** `discovery.discoverable` (REC-14): Sichtbarkeit aus der
+  Spec, nicht aus technischem Push. **Soft-Migrate** (analog I2 Rev-12): nicht
+  deklariert → Default true mit Warnung.
+- **Sichtbarkeit** `visibility_scope ∈ {repo,org,allowlist,public-demo}`,
+  Default `org` = geringste Exposition (REC-6).
+- **Filter/Lifecycle-Felder** `pipeline_status`, `off_ramp_status`, `tombstone`
+  (REC-5/16).
+- **Versionierter Push-Envelope** `{api_version, registry_schema_version,
+  generated_at, entries}` + `X-Registry-Schema-Version`-Header + konfigurierbarer
+  `--timeout` (REC-4/10).
+- **Signierter Fallback-Snapshot** `--snapshot` mit selbst-verifizierendem
+  `sha256` (REC-3, Producer-Hälfte).
+
+**Bewusst NICHT hier** (Orchestrator-/Consumer-Seite, separates Go): TTL/Tombstone-
+*Enforcement*, Org-Filter/Visibility auf der *Query*, Audit-*Storage*, Picker-
+Snapshot-*Konsum* (meiki-hub), Search-Eval-Suite + Skalentest (bei
+`klickdummy-search`). 9 neue Tests; 3.10-Parse verifiziert.
+
 ## [1.8.0] — 2026-06-01
 
 ### Added — `discovery_push`: Spec → pgvector-Discovery-Push (Stage 1.5 PoC)
