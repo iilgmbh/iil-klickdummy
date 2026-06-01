@@ -302,15 +302,14 @@ def test_v17_trace_strip_uc_create_button():
 
 
 def test_uc_button_inflight_markers():
-    """UC-anlegen-Button enthält localStorage-Key + onclick-Handler (Issue #25)."""
+    """UC-anlegen-Button trägt data-uc-key (Issue #25); Page-Level-Script übernimmt Init."""
     from iil_klickdummy import lineage
     out = lineage.build_trace_strip(
         {"id": "cockpit", "title": "Cockpit"}, "mock", "default", {},
         repo="meiki-hub", kd_name="buergerportal", sid="cockpit",
     )
     assert "kd-uc-inflight:meiki-hub:buergerportal:cockpit:use-case" in out
-    assert "tr-act-inflight" in out          # CSS-Klasse für "in Arbeit"-Zustand
-    assert "localStorage" in out             # JS-Persistenz-Snippet vorhanden
+    assert 'data-uc-key=' in out             # Key auf dem Link, kein inline-JS
 
 
 def test_v17_trace_strip_coverage_matches_gen_e2e():

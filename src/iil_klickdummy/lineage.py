@@ -574,28 +574,12 @@ def build_trace_strip(
             return ""
         ls_key = f"kd-uc-inflight:{repo}:{kd_name}:{sid}:{kind}"
         issue_url = html.escape(_gh_issue_url(repo, sid, kd_name, s, kind))
-        # Inline-Check: wenn localStorage-Key gesetzt → "in Arbeit"-Zustand rendern
-        init_js = (
-            f"(function(){{"
-            f"try{{var v=localStorage.getItem({html.escape(repr(ls_key))});"
-            f"if(v){{var el=document.currentScript.previousElementSibling;"
-            f"if(el&&el.classList.contains('tr-act')){{el.outerHTML="
-            f"'<span class=\"tr-act tr-act-inflight\" title=\"Issue wurde angelegt — noch nicht in der Spec\">&#x23F3; UC anlegen in Arbeit</span>';}}"
-            f"}}}}catch(e){{}}"
-            f"}})();"
-        )
-        onclick_js = (
-            f"(function(el){{"
-            f"try{{localStorage.setItem({html.escape(repr(ls_key))},'1');}}catch(e){{}}"
-            f"setTimeout(function(){{"
-            f"el.outerHTML='<span class=\"tr-act tr-act-inflight\" title=\"Issue wurde angelegt — noch nicht in der Spec\">&#x23F3; UC anlegen in Arbeit</span>';"
-            f"}},80);"
-            f"}})(this);"
-        )
+        # data-uc-key trägt den localStorage-Schlüssel; das Page-Level-Script
+        # (am Ende von generate_render_fallback) übernimmt Init + Click-Handler.
         return (
             f' <a class="tr-act" target="_blank" rel="noopener" '
-            f'href="{issue_url}" onclick="{html.escape(onclick_js)}">{html.escape(label)}</a>'
-            f'<script>{init_js}</script>'
+            f'data-uc-key="{html.escape(ls_key)}" '
+            f'href="{issue_url}">{html.escape(label)}</a>'
         )
 
     # 📋 Use Cases — echte Namen oder anlegen-Button
@@ -1101,6 +1085,33 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
     await navigator.clipboard.writeText(JSON.stringify(fbCollect(), null, 2));
     document.getElementById('fb-status').textContent = "✓ im Clipboard.";
   }}
+</script>
+
+<script>
+// UC-anlegen "in Arbeit"-State via localStorage (Issue #25)
+(function() {{
+  var INFLIGHT_HTML = '<span class="tr-act tr-act-inflight" title="Issue wurde angelegt — noch nicht in der Spec">⏳ UC anlegen in Arbeit</span>';
+  function markInflight(el) {{
+    try {{ localStorage.setItem(el.dataset.ucKey, '1'); }} catch(e) {{}}
+    el.outerHTML = INFLIGHT_HTML;
+  }}
+  function initInflight() {{
+    document.querySelectorAll('a.tr-act[data-uc-key]').forEach(function(el) {{
+      try {{
+        if (localStorage.getItem(el.dataset.ucKey)) {{
+          el.outerHTML = INFLIGHT_HTML;
+          return;
+        }}
+      }} catch(e) {{}}
+      el.addEventListener('click', function() {{ markInflight(el); }});
+    }});
+  }}
+  if (document.readyState === 'loading') {{
+    document.addEventListener('DOMContentLoaded', initInflight);
+  }} else {{
+    initInflight();
+  }}
+}})();
 </script>
 
 </body>
