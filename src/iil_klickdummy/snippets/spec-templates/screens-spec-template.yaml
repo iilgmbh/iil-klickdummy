@@ -2,6 +2,7 @@
 $schema: https://raw.githubusercontent.com/achimdehnert/platform/main/packages/iil-klickdummy/src/iil_klickdummy/schemas/screens-spec.schema.json
 spec_id: REPO:klickdummy-spec-NAME        # ↳ anpassen
 spec_version: "0.1"
+spec_schema_version: "1.1"                # Schema-Generation: 1.1 = + screen.use_cases[] (Spec-Layer/X-Ray)
 spec_date: "YYYY-MM-DD"
 title: NAME — Klickdummy
 adr:
@@ -23,6 +24,7 @@ off_ramp:
 screens:
   - id: example
     title: Example Screen
+    use_cases: [example-use-case]         # ↳ betroffene Use Cases (Spec-Layer/X-Ray-Chip)
     parity_acceptance:
       - { id: example.first-check, check: "Erste Acceptance-Behauptung" }
     off_ramp_status: static

@@ -3,6 +3,28 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.7.0] — 2026-06-01
+
+### Added — Spec-Layer (X-Ray): per-Screen Trace-Strip
+
+- Globaler Toggle **„Spec-Sicht"** (Header-Button + Taste `s`) blendet pro Screen
+  einen kompakten, **spec-abgeleiteten** Chip-Streifen ein: betroffene Use Cases,
+  Entities/Datenfelder, `class`/`role` (I2), `off_ramp_status` (I3), Acceptance
+  (mit Frische), und **Parity-Coverage** (I1: `n/m` ausführbar, prose-only,
+  fragile Selektoren). Toggle AUS = unveränderte Echt-App-Illusion für den
+  Stakeholder-Walkthrough; AN = volle Nachvollziehbarkeit für Reviewer.
+- **Evidenz-Disziplin in der UI:** fehlt ein Feld, rendert ein gestrichelter
+  „nicht deklariert"-Chip mit dem **exakten Spec-Feld zum Ergänzen** (Muster aus
+  `akte_next` generalisiert) — nie erfunden.
+- Coverage nutzt **dieselbe SoR wie `gen_e2e`** (`render_assertion` /
+  `is_fragile_selector`), keine Duplikat-Logik.
+- Use-Case-Quelle: `screen.use_cases[]` (neu) > `konzept_ref[]` > `akte_next.uc`.
+- **Schema:** `screen.use_cases[]` jetzt explizit in `screens-spec.schema.json`
+  dokumentiert (vorher nur via `additionalProperties` toleriert). Schema-Generation
+  **1.1** (Baseline 1.0 + `use_cases`); Template deklariert `spec_schema_version: "1.1"`.
+- ADR-211-konform (rein additiv, spec-gespeist, I1–I3 unberührt) — kein neuer
+  Platform-ADR (vgl. `adr-threshold.md`). Reversibel durch Entfernen des Toggles.
+
 ## [1.6.1] — 2026-05-31
 
 ### Fixed — `gen_e2e` Output `ruff format`-konform (Adopter-Blocker)

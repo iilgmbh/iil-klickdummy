@@ -249,3 +249,81 @@ def test_v14_topic_missing(tmp_path):
     p = tmp_path / "spec.yaml"
     p.write_text("spec_id: x\nspec_version: '0.1'\nclass: mock\nscreens: []\n")
     assert manage._spec_topic(p) is None
+
+
+# --- v1.7: Spec-Layer (X-Ray) Trace-Strip ----------------------------------
+
+def test_v17_trace_strip_declared_fields():
+    """Deklarierte Spec-Felder erscheinen als Chips im Trace-Strip."""
+    from iil_klickdummy import lineage
+    screen = {
+        "id": "akte", "title": "Akte",
+        "use_cases": ["vergabe-pruefen", "los-verwalten"],
+        "konsumiert_entities": [{"name": "Vergabe"}, {"name": "Los"}],
+        "datafields": [{"name": "az"}],
+        "off_ramp_status": "parity-staging",
+        "validierungsfrage": "Erkennt der Prüfer den Status?",
+        "parity_acceptance": [
+            {"id": "akte.title", "check": "Titel sichtbar",
+             "assert": {"action": "visible", "selector": "[data-testid=title]"}},
+        ],
+    }
+    out = lineage.build_trace_strip(screen, "stub-demo", "root", {})
+    assert "vergabe-pruefen" in out
+    assert "use_cases" in out             # Provenance im title
+    assert "tr-staging" in out            # off-ramp-Status farbcodiert
+    assert "📦 2 Entitäten · 1 Feld(er)" in out
+    assert "❓ Validierungsfrage" in out
+    assert "🎯 1/1 ausführbar" in out
+
+
+def test_v17_trace_strip_missing_fields_evidence_discipline():
+    """Fehlt ein Feld → 'nicht deklariert'-Chip mit exaktem Spec-Feld (kein Erfinden)."""
+    from iil_klickdummy import lineage
+    out = lineage.build_trace_strip({"id": "leer", "title": "Leer"},
+                                    "mock", "default", {})
+    assert "tr-missing" in out
+    assert "UC nicht deklariert" in out
+    assert "screen.use_cases" in out      # exaktes Feld zum Ergänzen
+    assert "off_ramp_status fehlt" in out
+    assert "keine Parity-Checks" in out
+
+
+def test_v17_trace_strip_coverage_matches_gen_e2e():
+    """Coverage-Klassifikation nutzt dieselbe SoR wie gen_e2e (executable vs prose vs fragil)."""
+    from iil_klickdummy import lineage
+    screen = {
+        "id": "s", "title": "S",
+        "parity_acceptance": [
+            {"id": "s.ok", "check": "stabil",
+             "assert": {"action": "visible", "selector": "[data-testid=x]"}},
+            {"id": "s.fragile", "check": "fragil",
+             "assert": {"action": "visible", "selector": ".css-klasse"}},
+            {"id": "s.prosa", "check": "nur Prosa, kein assert"},
+        ],
+    }
+    n_exec, n_prose, prose_ids, fragile_ids = lineage._screen_coverage(screen)
+    assert n_exec == 2 and n_prose == 1
+    assert prose_ids == ["s.prosa"]
+    assert fragile_ids == ["s.fragile"]
+    out = lineage.build_trace_strip(screen, "spec-demo", "default", {})
+    assert "🎯 2/3 ausführbar" in out
+    assert "1 prose-only" in out
+    assert "⚠1 fragil" in out
+
+
+def test_v17_trace_strip_renders_into_screen_section(tmp_path):
+    """Render-Pfad bettet je echtem Screen genau einen Trace-Strip + globalen Toggle ein."""
+    import yaml
+    from importlib.resources import files
+    from iil_klickdummy import lineage
+    spec = yaml.safe_load(
+        files("iil_klickdummy.snippets.spec-templates")
+        .joinpath("screens-spec-template.yaml").read_text())
+    record = {"data": spec, "kd": "x", "repo": "iil-klickdummy",
+              "path": tmp_path / "screens-spec.yaml"}
+    out_html = lineage.generate_render_fallback(record, tmp_path).read_text()
+    n_screens = len([s for s in spec.get("screens", []) if s.get("id")])
+    assert out_html.count('class="trace-strip"') == n_screens
+    assert 'id="spec-toggle"' in out_html
+    assert "body.spec-view" in out_html
