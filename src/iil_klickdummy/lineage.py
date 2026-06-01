@@ -3081,9 +3081,13 @@ def build_genesor_html(records: list[dict],
                 if kd_mockup is None:
                     from urllib.parse import quote as _quote
                     _issue_title = f'[klickdummy] {r["kd"]} bauen'
+                    # Idempotenz-Schlüssel (KONZ-iil-klickdummy-001, Teil A): identisch zum
+                    # Sentinel von klickdummy_sync.py (find_existing_issue) — so erkennt der Sync
+                    # button-erzeugte Issues und legt keine Dublette an / kann sie rekonziliieren.
                     _issue_body = (
                         f'Mockup für {repo}:{r["kd"]} bauen gemäß ADR-211, '
-                        f'angefordert über genesor.'
+                        f'angefordert über genesor.\n\n'
+                        f'<!-- klickdummy-sync:{r["kd"]} -->'
                     )
                     _issue_url = (
                         f'https://github.com/{detect_org(repo)}/{repo}/issues/new'
