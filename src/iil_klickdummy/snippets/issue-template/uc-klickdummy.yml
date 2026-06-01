@@ -1,0 +1,91 @@
+name: "🎯 Use-Case (Klickdummy)"
+description: "Fehlende Use-Case-Angabe zu einem Klickdummy-Screen ergänzen (Spec-Sicht → [+ anlegen])."
+title: "UC: "
+labels: ["uc-draft", "needs-domain-review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Vom Initiator zu füllen** — Opus/Sonnet können Domänen-Wahrheit nicht erfinden.
+        Felder mit `*` sind Pflicht; GitHub blockiert das Absenden ohne sie.
+        _Spec-Anker (Klickdummy/Screen/Route) steht im Titel._
+
+  - type: input
+    id: anker
+    attributes:
+      label: "Klickdummy-Anker"
+      description: "kd / screen / route / spec_id — vom [+ anlegen]-Button vorausgefüllt"
+      placeholder: "kd=… · screen=… · route=… · spec_id=…"
+    validations:
+      required: true
+
+  - type: input
+    id: persona
+    attributes:
+      label: "Akteur / Persona"
+      description: "Aus Spec vorbefüllt — bestätigen oder anpassen"
+      placeholder: "z. B. planer, projektleitung"
+    validations:
+      required: true
+
+  - type: input
+    id: ziel
+    attributes:
+      label: "Ziel / Nutzen (1 Satz)"
+      description: "Warum gibt es diesen Screen / diesen Use Case?"
+      placeholder: "Der Akteur kann …, um …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: hauptszenario
+    attributes:
+      label: "Hauptszenario (3–7 Schritte)"
+      description: "Normaler Ablauf ohne Fehler"
+      placeholder: "1. Akteur öffnet …\n2. System zeigt …\n3. Akteur wählt …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: akzeptanz
+    attributes:
+      label: "Akzeptanz / 'fertig wenn' (≥ 1, testbar)"
+      description: "Speist später klickdummy-gen-e2e Parity-Checks — konkret und verifizierbar"
+      placeholder: "- [ ] Screen rendert mit …\n- [ ] Button X führt zu …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: daten
+    attributes:
+      label: "Betroffene Daten / Felder (aus Spec vorbefüllt)"
+      description: "Aus spec.datafields — optional ergänzen/korrigieren"
+    validations:
+      required: false
+
+  - type: input
+    id: vorbedingung
+    attributes:
+      label: "Auslöser / Vorbedingung"
+      placeholder: "z. B. Akteur ist eingeloggt, Datensatz X existiert"
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternativen
+    attributes:
+      label: "Alternativen / Fehlerfälle"
+      placeholder: "3a. Wenn … → System zeigt …"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: prio
+    attributes:
+      label: "Priorität"
+      options:
+        - "P3 (kann warten)"
+        - "P2 (normal)"
+        - "P1 (wichtig)"
+    validations:
+      required: false
