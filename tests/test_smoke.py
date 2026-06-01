@@ -301,6 +301,18 @@ def test_v17_trace_strip_uc_create_button():
     assert "labels=use-case" in out
 
 
+def test_uc_button_inflight_markers():
+    """UC-anlegen-Button enthält localStorage-Key + onclick-Handler (Issue #25)."""
+    from iil_klickdummy import lineage
+    out = lineage.build_trace_strip(
+        {"id": "cockpit", "title": "Cockpit"}, "mock", "default", {},
+        repo="meiki-hub", kd_name="buergerportal", sid="cockpit",
+    )
+    assert "kd-uc-inflight:meiki-hub:buergerportal:cockpit:use-case" in out
+    assert "tr-act-inflight" in out          # CSS-Klasse für "in Arbeit"-Zustand
+    assert "localStorage" in out             # JS-Persistenz-Snippet vorhanden
+
+
 def test_v17_trace_strip_coverage_matches_gen_e2e():
     """Coverage-Klassifikation nutzt dieselbe SoR wie gen_e2e (executable vs prose vs fragil)."""
     from iil_klickdummy import lineage

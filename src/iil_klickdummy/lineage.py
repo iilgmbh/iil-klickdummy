@@ -572,9 +572,30 @@ def build_trace_strip(
     def act(kind: str, label: str) -> str:
         if not (repo and kd_name and sid):
             return ""
+        ls_key = f"kd-uc-inflight:{repo}:{kd_name}:{sid}:{kind}"
+        issue_url = html.escape(_gh_issue_url(repo, sid, kd_name, s, kind))
+        # Inline-Check: wenn localStorage-Key gesetzt → "in Arbeit"-Zustand rendern
+        init_js = (
+            f"(function(){{"
+            f"try{{var v=localStorage.getItem({html.escape(repr(ls_key))});"
+            f"if(v){{var el=document.currentScript.previousElementSibling;"
+            f"if(el&&el.classList.contains('tr-act')){{el.outerHTML="
+            f"'<span class=\"tr-act tr-act-inflight\" title=\"Issue wurde angelegt — noch nicht in der Spec\">&#x23F3; UC anlegen in Arbeit</span>';}}"
+            f"}}}}catch(e){{}}"
+            f"}})();"
+        )
+        onclick_js = (
+            f"(function(el){{"
+            f"try{{localStorage.setItem({html.escape(repr(ls_key))},'1');}}catch(e){{}}"
+            f"setTimeout(function(){{"
+            f"el.outerHTML='<span class=\"tr-act tr-act-inflight\" title=\"Issue wurde angelegt — noch nicht in der Spec\">&#x23F3; UC anlegen in Arbeit</span>';"
+            f"}},80);"
+            f"}})(this);"
+        )
         return (
             f' <a class="tr-act" target="_blank" rel="noopener" '
-            f'href="{html.escape(_gh_issue_url(repo, sid, kd_name, s, kind))}">{html.escape(label)}</a>'
+            f'href="{issue_url}" onclick="{html.escape(onclick_js)}">{html.escape(label)}</a>'
+            f'<script>{init_js}</script>'
         )
 
     # 📋 Use Cases — echte Namen oder anlegen-Button
@@ -790,6 +811,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   .tr-miss-inline {{ color: #fca5a5; }}
   .tr-act {{ display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid #34d399; border-radius: 4px; color: #34d399 !important; text-decoration: none; font-size: 11px; font-weight: 600; font-style: normal; }}
   .tr-act:hover {{ background: #34d399; color: #06281d !important; }}
+  .tr-act-inflight {{ display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid #f59e0b; border-radius: 4px; color: #92400e !important; background: #fef3c7; font-size: 11px; font-weight: 600; cursor: default; }}
   /* Spec-Sicht-Toggle im Header */
   .spec-toggle {{ display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; font-size: 13px; cursor: pointer; color: #374151; }}
   .spec-toggle.on {{ background: #1f2937; color: #fff; border-color: #1f2937; }}
