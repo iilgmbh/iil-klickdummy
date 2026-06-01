@@ -3,6 +3,11 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.13.3] — 2026-06-01
+
+### Fixed
+- Inflight-Reset via Event-Delegation: `querySelector` nach `outerHTML` fand Spans in versteckten `has-tabs`-Sections nicht. Fix: `document.addEventListener('click')` + `closest()` fängt alle Inflight-Klicks zuverlässig ab.
+
 ## [1.13.2] — 2026-06-01
 
 ### Fixed
