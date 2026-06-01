@@ -582,10 +582,16 @@ def build_trace_strip(
             f'href="{issue_url}">{html.escape(label)}</a>'
         )
 
-    # 📋 Use Cases — echte Namen oder anlegen-Button
+    # 📋 Use Cases — klappbare Liste oder anlegen-Button
     ucs, uc_src = _screen_use_cases(s)
     if ucs:
-        row("📋", "Use Cases", html.escape(", ".join(ucs)) + f' <span class="tr-dim">({uc_src})</span>')
+        items = "".join(f'<li>{html.escape(u)}</li>' for u in ucs)
+        uc_val = (
+            f'<details class="tr-uc-details"><summary>{len(ucs)} UC(s)'
+            f' <span class="tr-dim">({html.escape(uc_src)})</span></summary>'
+            f'<ul class="tr-uc-list">{items}</ul></details>'
+        )
+        row("📋", "Use Cases", uc_val)
     else:
         row("📋", "Use Cases", "nicht deklariert" + act("use-case", "+ UC anlegen"), missing=True)
 
@@ -795,7 +801,11 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   .tr-miss-inline {{ color: #fca5a5; }}
   .tr-act {{ display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid #34d399; border-radius: 4px; color: #34d399 !important; text-decoration: none; font-size: 11px; font-weight: 600; font-style: normal; }}
   .tr-act:hover {{ background: #34d399; color: #06281d !important; }}
-  .tr-act-inflight {{ display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid #f59e0b; border-radius: 4px; color: #92400e !important; background: #fef3c7; font-size: 11px; font-weight: 600; cursor: default; }}
+  .tr-act-inflight {{ display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid #f59e0b; border-radius: 4px; color: #92400e !important; background: #fef3c7; font-size: 11px; font-weight: 600; cursor: pointer; }}
+  .tr-act-inflight:hover {{ background: #fde68a; }}
+  details.tr-uc-details {{ display: inline; }}
+  details.tr-uc-details > summary {{ display: inline; cursor: pointer; color: #06c; font-size: 12px; }}
+  ul.tr-uc-list {{ margin: 4px 0 2px 16px; padding: 0; font-size: 11px; color: #374151; }}
   /* Spec-Sicht-Toggle im Header */
   .spec-toggle {{ display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; font-size: 13px; cursor: pointer; color: #374151; }}
   .spec-toggle.on {{ background: #1f2937; color: #fff; border-color: #1f2937; }}
@@ -1090,16 +1100,32 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <script>
 // UC-anlegen "in Arbeit"-State via localStorage (Issue #25)
 (function() {{
-  var INFLIGHT_HTML = '<span class="tr-act tr-act-inflight" title="Issue wurde angelegt — noch nicht in der Spec">⏳ UC anlegen in Arbeit</span>';
+  function makeInflightHtml(key) {{
+    return '<span class="tr-act tr-act-inflight" '
+      + 'data-uc-reset="' + key + '" '
+      + 'title="Issue angelegt — noch nicht in Spec. Klicken zum Zurücksetzen.">⏳ UC anlegen in Arbeit</span>';
+  }}
   function markInflight(el) {{
-    try {{ localStorage.setItem(el.dataset.ucKey, '1'); }} catch(e) {{}}
-    el.outerHTML = INFLIGHT_HTML;
+    var key = el.dataset.ucKey;
+    try {{ localStorage.setItem(key, '1'); }} catch(e) {{}}
+    el.outerHTML = makeInflightHtml(key);
+    // Reset-Handler am neuen Span registrieren
+    var span = document.querySelector('[data-uc-reset="' + key + '"]');
+    if (span) {{ span.addEventListener('click', function() {{ resetInflight(span, key); }}); }}
+  }}
+  function resetInflight(span, key) {{
+    try {{ localStorage.removeItem(key); }} catch(e) {{}}
+    // Original-Link wiederherstellen: Seite neu laden ist am sichersten
+    location.reload();
   }}
   function initInflight() {{
     document.querySelectorAll('a.tr-act[data-uc-key]').forEach(function(el) {{
+      var key = el.dataset.ucKey;
       try {{
-        if (localStorage.getItem(el.dataset.ucKey)) {{
-          el.outerHTML = INFLIGHT_HTML;
+        if (localStorage.getItem(key)) {{
+          el.outerHTML = makeInflightHtml(key);
+          var span = document.querySelector('[data-uc-reset="' + key + '"]');
+          if (span) {{ span.addEventListener('click', function() {{ resetInflight(span, key); }}); }}
           return;
         }}
       }} catch(e) {{}}
