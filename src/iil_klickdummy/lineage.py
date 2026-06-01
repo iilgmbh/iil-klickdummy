@@ -608,11 +608,14 @@ def build_trace_strip(
             return ""
         ls_key = f"kd-uc-inflight:{repo}:{kd_name}:{sid}:{kind}"
         issue_url = html.escape(_gh_issue_url(repo, sid, kd_name, s, kind))
-        # data-uc-key trägt den localStorage-Schlüssel; das Page-Level-Script
-        # (am Ende von generate_render_fallback) übernimmt Init + Click-Handler.
+        # data-uc-key  — localStorage-Schlüssel (Screen-Level-Basis).
+        # data-uc-subtab-selector — JS liest beim Click den aktiven Sub-Tab-Namen
+        # aus dem nächsten .sub-tabs-Container und hängt ihn an Schlüssel + Issue-Titel.
+        # Kein aktiver Sub-Tab → verhält sich wie bisher.
         return (
             f' <a class="tr-act" target="_blank" rel="noopener" '
             f'data-uc-key="{html.escape(ls_key)}" '
+            f'data-uc-subtab-selector=".sub-tabs .sub-tab.active" '
             f'href="{issue_url}">{html.escape(label)}</a>'
         )
 
@@ -943,6 +946,9 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   window.KLICKDUMMY_FEEDBACK_FORCE = true;
 </script>
 <script>__FEEDBACK_WIDGET_JS_PLACEHOLDER__</script>
+<!-- fb-current-subtab: hidden Tracker für aktiven Sub-Tab (Issue #34).
+     JS (Sub-Tab-Switch-Handler) schreibt textContent; fbCollect() + UC-anlegen lesen es. -->
+<span id="fb-current-subtab" style="display:none"></span>
 
 <script>
   // Sowohl Top-Tabs als auch Sidebar-Buttons fungieren als Navigation
@@ -1091,8 +1097,17 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       btn.classList.add('active');
       const panel = container.querySelector('#sub-' + subId);
       if (panel) panel.classList.add('active');
+      // fb-current-subtab: Feedback-Widget + UC-anlegen können aktiven Sub-Tab lesen
+      const subtabEl = document.getElementById('fb-current-subtab');
+      if (subtabEl) subtabEl.textContent = btn.textContent.replace(/^📊\s*/, '').trim();
     }});
   }});
+  // Initial: ersten aktiven Sub-Tab setzen (falls Sub-Tabs vorhanden)
+  (function() {{
+    const first = document.querySelector('.sub-tabs .sub-tab.active');
+    const subtabEl = document.getElementById('fb-current-subtab');
+    if (first && subtabEl) subtabEl.textContent = first.textContent.replace(/^📊\s*/, '').trim();
+  }})();
 
   // Feedback-Widget — Payload kennt aktuellen Screen + Persona
   const KD_META = {{
@@ -1110,6 +1125,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       feedback_scope: "screen",
       acceptance_verdict: document.getElementById('fb-verdict')?.value || null,
       screen_id: document.getElementById('fb-current-screen').textContent,
+      active_subtab: (document.getElementById('fb-current-subtab')?.textContent || null) || null,
       persona_filter: document.getElementById('fb-current-persona').textContent,
       kategorie: document.getElementById('fb-cat').value,
       text: document.getElementById('fb-text').value,
@@ -1137,31 +1153,52 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 
 <script>
 // UC-anlegen "in Arbeit"-State via localStorage (Issue #25)
+// Sub-Tab-Awareness (Issue #34): data-uc-subtab-selector → sub-tab-spezifischer Key + Titel
 (function() {{
   var INFLIGHT = '⏳ UC anlegen in Arbeit';
   function makeInflightHtml(key) {{
     return '<span class="tr-act tr-act-inflight" data-uc-reset="' + key + '" '
       + 'title="Issue angelegt — noch nicht in Spec. Klicken zum Zurücksetzen.">' + INFLIGHT + '</span>';
   }}
-  // Event-Delegation: ein einziger Handler für alle Inflight-Spans, auch in versteckten Tabs
+  // Aktiven Sub-Tab-Namen ermitteln (null wenn kein Sub-Tab aktiv)
+  function activeSubtab(el) {{
+    var sel = el.dataset.ucSubtabSelector;
+    if (!sel) return null;
+    var btn = document.querySelector(sel);
+    return btn ? btn.textContent.replace(/^📊\\s*/, '').trim() : null;
+  }}
+  // Key + Issue-URL um Sub-Tab-Suffix erweitern
+  function resolveKeyAndUrl(el) {{
+    var baseKey = el.dataset.ucKey;
+    var href = el.href;
+    var subtab = activeSubtab(el);
+    if (subtab) {{
+      var suffix = ':subtab:' + subtab;
+      return {{
+        key: baseKey + suffix,
+        href: href + '&title=' + encodeURIComponent(' [' + subtab + ']')
+      }};
+    }}
+    return {{ key: baseKey, href: href }};
+  }}
+  // Event-Delegation: ein einziger Handler für alle Inflight-Spans
   document.addEventListener('click', function(e) {{
     var t = e.target.closest ? e.target.closest('.tr-act-inflight[data-uc-reset]') : null;
     if (!t) return;
     try {{ localStorage.removeItem(t.dataset.ucReset); }} catch(err) {{}}
     location.reload();
   }});
-  function markInflight(el) {{
-    var key = el.dataset.ucKey;
+  function markInflight(el, key, href) {{
     try {{ localStorage.setItem(key, '1'); }} catch(e) {{}}
     el.outerHTML = makeInflightHtml(key);
   }}
   function initInflight() {{
     document.querySelectorAll('a.tr-act[data-uc-key]').forEach(function(el) {{
-      var key = el.dataset.ucKey;
+      var resolved = resolveKeyAndUrl(el);
       try {{
-        if (localStorage.getItem(key)) {{ el.outerHTML = makeInflightHtml(key); return; }}
+        if (localStorage.getItem(resolved.key)) {{ el.outerHTML = makeInflightHtml(resolved.key); return; }}
       }} catch(e) {{}}
-      el.addEventListener('click', function() {{ markInflight(el); }});
+      el.addEventListener('click', function() {{ markInflight(el, resolved.key, resolved.href); }});
     }});
   }}
   if (document.readyState === 'loading') {{
@@ -2042,6 +2079,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="status" id="fb-status"></div>
   </div>
 </div>
+<span id="fb-current-subtab" style="display:none"></span>
 
 <script>
   // Mermaid render
@@ -2058,6 +2096,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       klickdummy_class: window.KLICKDUMMY_SPEC.klickdummy_class,
       feedback_scope: document.getElementById('fb-scope').value,
       acceptance_verdict: document.getElementById('fb-verdict')?.value || null,
+      active_subtab: (document.getElementById('fb-current-subtab')?.textContent || null) || null,
       kategorie: document.getElementById('fb-cat').value,
       betroffener_kd: document.getElementById('fb-kd').value || null,
       text: document.getElementById('fb-text').value,

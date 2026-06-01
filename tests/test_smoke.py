@@ -314,6 +314,37 @@ def test_uc_button_inflight_markers():
     assert 'data-uc-key=' in out             # Key auf dem Link, kein inline-JS
 
 
+def test_uc_button_subtab_aware():
+    """UC-anlegen-Button trägt data-uc-subtab-selector (Issue #34) für sub-tab-spezifischen Key."""
+    from iil_klickdummy import lineage
+    out = lineage.build_trace_strip(
+        {"id": "cockpit", "title": "Cockpit"}, "mock", "default", {},
+        repo="meiki-hub", kd_name="buergerportal", sid="cockpit",
+    )
+    assert 'data-uc-subtab-selector=' in out
+    assert ".sub-tabs .sub-tab.active" in out
+
+
+def test_fbcollect_active_subtab_in_render(tmp_path):
+    """generate_render_fallback HTML enthält fb-current-subtab-Element + active_subtab in fbCollect."""
+    import pathlib, yaml
+    from iil_klickdummy import lineage
+    spec = {
+        "spec_id": "test-kd", "spec_version": "0.1", "spec_schema_version": "1.1",
+        "title": "Test", "class": "mock",
+        "off_ramp": {"unit": "per-screen", "rule": "test"},
+        "screens": [{"id": "s1", "title": "S1", "route": "/s1/"}],
+    }
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(yaml.dump(spec))
+    record = {"spec_id": "test-kd", "path": spec_path, "data": spec,
+              "repo": "test-repo", "kd": "test-kd"}
+    out_path = lineage.generate_render_fallback(record, tmp_path)
+    content = out_path.read_text()
+    assert 'id="fb-current-subtab"' in content, "fb-current-subtab-Element fehlt"
+    assert "active_subtab" in content, "active_subtab in fbCollect fehlt"
+
+
 def test_v17_trace_strip_coverage_matches_gen_e2e():
     """Coverage-Klassifikation nutzt dieselbe SoR wie gen_e2e (executable vs prose vs fragil)."""
     from iil_klickdummy import lineage
