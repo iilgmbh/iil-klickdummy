@@ -3,6 +3,18 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.21.1] — 2026-06-02
+
+### Fixed — stories-manifest: korrekte relative Tiefe + Shell-Präfix
+
+- v1.21.0 legte das Manifest nach `out_dir` mit Shells `<kd>/index.html` —
+  aber `../../` aus `kd/<repo>/klickdummy/<kd>/index.html` zeigt auf
+  **`kd/<repo>/`** (zwei Ebenen hoch), nicht `kd/<repo>/klickdummy/`. Folge:
+  Banner-Fetch 404 → Story-Walk lud nicht (live verifiziert).
+- `build_manifest(repo_root, shell_prefix="")` + 3. CLI-Arg `[shell_prefix]`:
+  Manifest gehört nach `kd/<repo>/`, prev/next_shell = `klickdummy/<kd>/index.html`.
+  Regen ruft mit `out_dir=kd/<repo>` + `shell_prefix=klickdummy/`.
+
 ## [1.21.0] — 2026-06-02
 
 ### Added — Stories-Manifest für den Genesor/Vendored-Layout (`klickdummy-stories-manifest`)
