@@ -81,6 +81,70 @@ try:
 except Exception:  # noqa: BLE001
     FEEDBACK_WIDGET_JS = "/* widget.js nicht gefunden */"
 
+# Story-Banner-JS: lädt ../../stories-manifest.json (neben klickdummy-browser.html)
+# und baut den Story-Banner im Render ein. Fetch scheitert bei file://-Protokoll
+# oder fehlendem Manifest — dann bleibt der Banner versteckt (silent fail).
+STORY_BANNER_JS = r"""
+(function() {
+  var KD_NAME = document.getElementById('story-banner-js')
+    ? document.getElementById('story-banner-js').dataset.kd : null;
+  if (!KD_NAME) return;
+  var MANIFEST_PATH = '../../stories-manifest.json';
+  var activeStoryIdx = 0;
+  var entries = [];
+  function dot(active) {
+    return '<span style="width:8px;height:8px;border-radius:50%;background:' +
+      (active ? '#fff' : 'rgba(255,255,255,.35)') + ';display:inline-block"></span>';
+  }
+  function showEntry(idx) {
+    var e = entries[idx];
+    if (!e) return;
+    document.getElementById('sb-story-title').textContent = e.story_title;
+    document.getElementById('sb-step-num').textContent = e.step_index + 1;
+    document.getElementById('sb-step-total').textContent = e.step_total;
+    var dots = '';
+    for (var i = 0; i < e.step_total; i++) dots += dot(i === e.step_index);
+    document.getElementById('sb-dots').innerHTML = dots;
+    var prev = document.getElementById('sb-prev');
+    var next = document.getElementById('sb-next');
+    if (e.prev_shell) {
+      prev.href = '../../' + e.prev_shell;
+      document.getElementById('sb-prev-label').textContent = e.prev_label || '←';
+      prev.style.display = '';
+    } else { prev.style.display = 'none'; }
+    if (e.next_shell) {
+      next.href = '../../' + e.next_shell;
+      document.getElementById('sb-next-label').textContent = e.next_label || '→';
+      next.style.display = '';
+    } else { next.style.display = 'none'; }
+    if (entries.length > 1) {
+      var sw = document.getElementById('sb-story-switch');
+      sw.innerHTML = entries.map(function(en, i) {
+        return i === idx
+          ? '<strong>' + en.story_title + '</strong>'
+          : '<a href="#" data-si="' + i + '" style="color:#9bb3d4">' + en.story_title + '</a>';
+      }).join(' · ');
+      sw.querySelectorAll('a[data-si]').forEach(function(a) {
+        a.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          activeStoryIdx = parseInt(a.dataset.si, 10);
+          showEntry(activeStoryIdx);
+        });
+      });
+    }
+    document.getElementById('story-banner').style.display = 'flex';
+  }
+  fetch(MANIFEST_PATH)
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(m) {
+      if (!m) return;
+      entries = m.kd_to_stories[KD_NAME] || [];
+      if (entries.length > 0) showEntry(activeStoryIdx);
+    })
+    .catch(function() {});
+})();
+"""
+
 ROOT = Path(__file__).resolve().parent.parent
 MOCKUPS_DIR = ROOT / "docs" / "01-architektur" / "mockups"
 CONTRACTS_DIR = ROOT / "docs" / "01-architektur" / "contracts"
@@ -876,6 +940,17 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body class="{body_class}">
 
+<!-- Story-Banner: sichtbar wenn stories-manifest.json gefunden + KD in einer Story -->
+<div id="story-banner" style="display:none;background:#1a3a6c;color:#fff;padding:8px 20px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-weight:600">📖 <span id="sb-story-title"></span></span>
+  <span style="opacity:.7;font-size:11px">Schritt <span id="sb-step-num"></span> / <span id="sb-step-total"></span></span>
+  <span id="sb-dots" style="display:flex;gap:4px;align-items:center"></span>
+  <a id="sb-prev" href="#" style="color:#fff;text-decoration:none;padding:3px 10px;border:1px solid rgba(255,255,255,.4);border-radius:4px;font-size:12px">← <span id="sb-prev-label"></span></a>
+  <a id="sb-next" href="#" style="color:#fff;text-decoration:none;padding:3px 10px;border:1px solid rgba(255,255,255,.4);border-radius:4px;font-size:12px"><span id="sb-next-label"></span> →</a>
+  <span id="sb-story-switch" style="margin-left:auto;font-size:11px;opacity:.8"></span>
+</div>
+__STORY_BANNER_JS_PLACEHOLDER__
+
 <header class="topbar">
   <h1>{title}</h1>
   <div>
@@ -949,6 +1024,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <!-- fb-current-subtab: hidden Tracker für aktiven Sub-Tab (Issue #34).
      JS (Sub-Tab-Switch-Handler) schreibt textContent; fbCollect() + UC-anlegen lesen es. -->
 <span id="fb-current-subtab" style="display:none"></span>
+<script id="story-banner-js" data-kd="{kd_name}">__STORY_BANNER_JS_PLACEHOLDER__</script>
 
 <script>
   // Sowohl Top-Tabs als auch Sidebar-Buttons fungieren als Navigation
@@ -1694,6 +1770,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
     # JS-Inject (nach .format(), damit JS-{}-Klammern nicht als Format-Placeholder interpretiert werden)
     html_out = html_out.replace("__SKIN_SWITCHER_JS_PLACEHOLDER__", SKIN_SWITCHER_JS)
     html_out = html_out.replace("__FEEDBACK_WIDGET_JS_PLACEHOLDER__", FEEDBACK_WIDGET_JS)
+    html_out = html_out.replace("__STORY_BANNER_JS_PLACEHOLDER__", STORY_BANNER_JS)
     render_dir = out_dir / "render"
     render_dir.mkdir(parents=True, exist_ok=True)
     out_path = render_dir / f"{repo}-{kd_name}.html"

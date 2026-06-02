@@ -3,6 +3,23 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.17.0] — 2026-06-02
+
+### Added — Story-Banner im Render: KD kennt seine Story-Zugehörigkeit (approach b)
+
+- **`write_stories_manifest(output_dir, kds, stories)`** in `registry.py`: erzeugt
+  `stories-manifest.json` neben Browser-HTML. Enthält `kd_to_stories`-Map mit
+  `step_index`, `step_total`, `prev/next_shell` (repo-root-relativ), Labels.
+  `render_browser_html` schreibt Manifest automatisch wenn Stories vorhanden.
+- **Story-Banner im Render** (`RENDER_FALLBACK_TEMPLATE` in `lineage.py`): jeder
+  generierte KD-Render enthält einen hidden `#story-banner`-Div + Banner-JS.
+  Das JS lädt `../../stories-manifest.json` via fetch — bei Erfolg blendet sich
+  der Banner ein mit Story-Titel, Schritt-Zähler, ●-Dots, Weiter/Zurück-Links.
+  Multi-Story-KD: Story-Switcher rechts im Banner. Silent fail bei `file://`
+  oder fehlendem Manifest → Banner bleibt versteckt, kein Fehler.
+- `data-kd="{kd_name}"` auf dem Banner-JS-Script-Tag — KD-Name für Manifest-Lookup.
+- 2 neue Smoke-Tests; 43 grün; 3.10-safe.
+
 ## [1.16.0] — 2026-06-02
 
 ### Added — Story-Picker: geführte KD-Touren im Browser (platform:ADR-211 §Story-Navigation)
