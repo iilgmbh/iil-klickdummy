@@ -514,6 +514,73 @@ def test_v116_browser_html_no_stories_no_toggle(tmp_path):
     assert 'display:none' in html                  # Toggle versteckt (keine Stories)
 
 
+def _mk_kds(tmp_path, names):
+    import pathlib
+    for kd_name in names:
+        spec_dir = tmp_path / "klickdummy" / kd_name
+        spec_dir.mkdir(parents=True, exist_ok=True)
+        (spec_dir / "screens-spec.yaml").write_text(
+            f"spec_id: test:klickdummy-spec-{kd_name}\nspec_version: '0.1'\n"
+            f"class: mock\ntitle: {kd_name.title()}\nadr: {{local: test:ADR-1}}\n"
+        )
+
+
+def test_v119_validate_stories_clean(tmp_path):
+    """KONZ-004 A3: valide story.yaml → keine Fehler."""
+    import yaml
+    from iil_klickdummy import check_stories
+    _mk_kds(tmp_path, ("recherche", "angebot"))
+    sdir = tmp_path / "klickdummy" / "stories"; sdir.mkdir()
+    (sdir / "j.yaml").write_text(yaml.dump({
+        "id": "test:story-journey", "title": "Journey",
+        "steps": [{"kd": "recherche", "label": "1"}, {"kd": "angebot", "label": "2"}],
+    }))
+    assert check_stories.validate_stories(tmp_path) == []
+
+
+def test_v119_validate_stories_unknown_kd(tmp_path):
+    """step.kd ohne KD-Match → Fehler (vorher nur stderr-Silent-Skip)."""
+    import yaml
+    from iil_klickdummy import check_stories
+    _mk_kds(tmp_path, ("recherche",))
+    sdir = tmp_path / "klickdummy" / "stories"; sdir.mkdir()
+    (sdir / "j.yaml").write_text(yaml.dump({
+        "id": "test:story-journey", "title": "Journey",
+        "steps": [{"kd": "tippfehler-kd", "label": "1"}],
+    }))
+    errs = check_stories.validate_stories(tmp_path)
+    assert any("tippfehler-kd" in e for e in errs)
+
+
+def test_v119_validate_stories_schema_violations(tmp_path):
+    """Fehlender title + ungültiges id-Pattern → Schema-Fehler gesammelt."""
+    import yaml
+    from iil_klickdummy import check_stories
+    _mk_kds(tmp_path, ("recherche",))
+    sdir = tmp_path / "klickdummy" / "stories"; sdir.mkdir()
+    (sdir / "bad.yaml").write_text(yaml.dump({
+        "id": "INVALID ID", "steps": [{"kd": "recherche"}],
+    }))
+    errs = check_stories.validate_stories(tmp_path)
+    assert len(errs) >= 2  # title fehlt + id-Pattern
+
+
+def test_v119_validate_stories_no_dir_is_pass(tmp_path):
+    """Kein stories/-Verzeichnis → leer (rückwärtskompatibel)."""
+    from iil_klickdummy import check_stories
+    _mk_kds(tmp_path, ("recherche",))
+    assert check_stories.validate_stories(tmp_path) == []
+
+
+def test_v119_story_schema_resource_present():
+    """story.schema.json ist als Paket-Resource verfügbar."""
+    import json
+    from importlib.resources import files
+    txt = (files("iil_klickdummy") / "schemas" / "story.schema.json").read_text()
+    schema = json.loads(txt)
+    assert "steps" in schema["required"]
+
+
 def test_v116_browser_html_with_stories_has_toggle(tmp_path):
     """render_browser_html mit Stories enthält Story-Toggle + STORIES-Variable."""
     from iil_klickdummy import registry
