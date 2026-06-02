@@ -1163,6 +1163,13 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   function setSpecView(on) {{
     document.body.classList.toggle('spec-view', on);
     if (specToggle) specToggle.classList.toggle('on', on);
+    // Bug-Fix (UX-Test 2026-06-02): Panel sitzt am Screen-Ende, oft unter dem
+    // Fold → ohne Scroll sieht der Nutzer nach dem Toggle scheinbar nichts.
+    if (on) requestAnimationFrame(() => {{
+      const strip = [...document.querySelectorAll('.trace-strip')]
+        .find(s => s.offsetParent !== null);
+      if (strip) strip.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+    }});
   }}
   if (specToggle) {{
     specToggle.addEventListener('click', () =>
