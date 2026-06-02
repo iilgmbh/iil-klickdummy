@@ -658,6 +658,9 @@ def test_v121_stories_manifest_vendored_shells(tmp_path):
     assert a0["step_total"] == 2 and a0["step_index"] == 0
     assert a0["next_shell"] == "b/index.html"   # Vendored-Layout, nicht shell_path
     assert m["kd_to_stories"]["b"][0]["prev_shell"] == "a/index.html"
+    # shell_prefix (Manifest in kd/<repo>/, Renders in kd/<repo>/klickdummy/<kd>/)
+    mp = gen_stories_manifest.build_manifest(tmp_path, "klickdummy/")
+    assert mp["kd_to_stories"]["a"][0]["next_shell"] == "klickdummy/b/index.html"
 
 
 def test_v121_stories_manifest_no_stories_is_none(tmp_path):
