@@ -941,7 +941,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <body class="{body_class}">
 
 <!-- Story-Banner: sichtbar wenn stories-manifest.json gefunden + KD in einer Story -->
-<div id="story-banner" style="display:none;background:#1a3a6c;color:#fff;padding:8px 20px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<div id="story-banner" style="display:none;background:#1a3a6c;color:#fff;padding:8px 20px;font-size:13px;align-items:center;gap:12px;flex-wrap:wrap">
   <span style="font-weight:600">📖 <span id="sb-story-title"></span></span>
   <span style="opacity:.7;font-size:11px">Schritt <span id="sb-step-num"></span> / <span id="sb-step-total"></span></span>
   <span id="sb-dots" style="display:flex;gap:4px;align-items:center"></span>
@@ -1023,6 +1023,10 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <!-- fb-current-subtab: hidden Tracker für aktiven Sub-Tab (Issue #34).
      JS (Sub-Tab-Switch-Handler) schreibt textContent; fbCollect() + UC-anlegen lesen es. -->
 <span id="fb-current-subtab" style="display:none"></span>
+<!-- fb-current-persona: hidden Tracker für aktiven Persona-Filter.
+     applyPersonaFilter() schreibt textContent, fbCollect() liest es. War nie
+     gerendert → applyPersonaFilter crashte (TypeError, UX-Test 2026-06-02). -->
+<span id="fb-current-persona" style="display:none">alle</span>
 <script id="story-banner-js" data-kd="{kd_name}">__STORY_BANNER_JS_PLACEHOLDER__</script>
 
 <script>
@@ -1054,7 +1058,8 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 
   function applyPersonaFilter() {{
     const p = personaSelect.value;
-    document.getElementById('fb-current-persona').textContent = p === '__all__' ? 'alle' : p;
+    const fbPersona = document.getElementById('fb-current-persona');
+    if (fbPersona) fbPersona.textContent = p === '__all__' ? 'alle' : p;
     const visibleScreens = [];
     tabs.forEach(t => {{
       const screenPersonas = (t.dataset.personas || '').split(',').filter(Boolean);
@@ -1211,7 +1216,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       acceptance_verdict: document.getElementById('fb-verdict')?.value || null,
       screen_id: document.getElementById('fb-current-screen').textContent,
       active_subtab: (document.getElementById('fb-current-subtab')?.textContent || null) || null,
-      persona_filter: document.getElementById('fb-current-persona').textContent,
+      persona_filter: (document.getElementById('fb-current-persona')?.textContent || 'alle'),
       kategorie: document.getElementById('fb-cat').value,
       text: document.getElementById('fb-text').value,
       ts: new Date().toISOString(),

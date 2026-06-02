@@ -601,3 +601,49 @@ def test_v117_render_contains_story_banner(tmp_path):
     _before = content[: content.index("var MANIFEST_PATH")]
     assert _before.rfind("<script") > _before.rfind("</script>"), \
         "Story-Banner-JS steht roh im Body statt in einem <script>-Tag"
+
+
+def test_uxfix_story_banner_hidden_by_default(tmp_path):
+    """UX-Test 2026-06-02 / P2: Story-Banner-Div darf NICHT per Inline-Style
+    sichtbar sein (doppeltes display: → display:flex gewann → leerer Banner auf
+    jedem Render ohne Story). Default muss display:none sein, genau EINE
+    display-Deklaration; JS schaltet auf flex nur bei aktiver Story."""
+    import re
+    import yaml
+    from iil_klickdummy import lineage
+    spec = {
+        "spec_id": "test-kd", "spec_version": "0.1", "spec_schema_version": "1.1",
+        "title": "Test", "class": "mock",
+        "off_ramp": {"unit": "per-screen", "rule": "test"},
+        "screens": [{"id": "s1", "title": "S1", "route": "/s1/"}],
+    }
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(yaml.dump(spec))
+    record = {"spec_id": "test-kd", "path": spec_path, "data": spec,
+              "repo": "test-repo", "kd": "test-kd"}
+    content = lineage.generate_render_fallback(record, tmp_path).read_text()
+    m = re.search(r'<div id="story-banner" style="([^"]*)"', content)
+    assert m, "story-banner-Div nicht gefunden"
+    style = m.group(1)
+    assert style.count("display:") == 1, f"doppelte display-Deklaration: {style}"
+    assert "display:none" in style, f"Story-Banner muss default versteckt sein: {style}"
+
+
+def test_uxfix_persona_tracker_element_present(tmp_path):
+    """UX-Test 2026-06-02 / P1: fb-current-persona muss im DOM existieren —
+    applyPersonaFilter() schreibt darauf; fehlte → TypeError, Persona-Filter tot."""
+    import yaml
+    from iil_klickdummy import lineage
+    spec = {
+        "spec_id": "test-kd", "spec_version": "0.1", "spec_schema_version": "1.1",
+        "title": "Test", "class": "mock",
+        "off_ramp": {"unit": "per-screen", "rule": "test"},
+        "screens": [{"id": "s1", "title": "S1", "route": "/s1/"}],
+    }
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(yaml.dump(spec))
+    record = {"spec_id": "test-kd", "path": spec_path, "data": spec,
+              "repo": "test-repo", "kd": "test-kd"}
+    content = lineage.generate_render_fallback(record, tmp_path).read_text()
+    assert 'id="fb-current-persona"' in content, \
+        "fb-current-persona-Element fehlt → applyPersonaFilter crasht (TypeError)"

@@ -3,6 +3,25 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.18.2] — 2026-06-02
+
+### Fixed — Zwei UX-Bugs im KD-Render (Playwright-UX-Test)
+
+- **Persona-Filter war funktionslos (P1):** `applyPersonaFilter()` schrieb auf
+  `#fb-current-persona`, dieses Element wurde aber **nie gerendert** → `TypeError`
+  in der ersten Zeile → der Tab-Filter-Code dahinter lief nie (Persona-Auswahl
+  ohne jede Wirkung; auch der Feedback-Submit las dieselbe tote ID). Fix: hidden
+  `#fb-current-persona`-Tracker ergänzt (analog `#fb-current-subtab`) + beide
+  Zugriffe null-geguarded. Verifiziert: Persona „bieter" blendet jetzt korrekt
+  die nicht-passenden Screens aus.
+- **Story-Banner immer sichtbar & leer (P2):** der Inline-Style von
+  `#story-banner` enthielt **zwei** `display:`-Deklarationen
+  (`display:none;…;display:flex`) → `flex` gewann → leerer „📖 Schritt /"-Balken
+  auf jedem Render ohne aktive Story (inkl. live). Fix: verirrtes `display:flex`
+  aus dem Inline-Style entfernt; JS schaltet bei aktiver Story auf flex.
+- Beide im `RENDER_FALLBACK_TEMPLATE` → galt für **alle** KD-Renders aller Repos.
+  2 neue Regressionstests (74 grün); browser-verifiziert (Playwright).
+
 ## [1.18.1] — 2026-06-02
 
 ### Fixed — Story-Banner-JS leakte als sichtbarer Text im KD-Render
