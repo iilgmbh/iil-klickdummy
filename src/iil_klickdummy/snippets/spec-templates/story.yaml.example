@@ -1,0 +1,37 @@
+# Klickdummy Story-Datei — Vorlage (platform:ADR-211 §Story-Navigation)
+#
+# Ablage: klickdummy/stories/<slug>.yaml im Consumer-Repo
+# Jede Story definiert eine geführte KD-Tour für den Story-Walk-Modus im Browser.
+#
+# Mehrere Stories pro Repo möglich — ein KD darf in mehreren Stories erscheinen.
+# Entfernung/Umbenennung eines KDs → Story-Step wird beim nächsten
+# `klickdummy-browser`-Lauf übersprungen (stderr-Warning, kein Abbruch).
+
+id: "<repo>:story-<slug>"       # z.B. ausschreibungs-hub:story-bieter-journey
+title: "<Anzeige-Titel>"        # erscheint im Story-Dropdown
+description: "<optional>"       # kurze Beschreibung (z.B. für Hover-Tooltip)
+persona: <persona-key>          # optional — für späteren Persona-Filter (z.B. bieter)
+
+steps:
+  - kd: <verzeichnis-name>      # = KlickdummyMeta.name (Unterverzeichnis von klickdummy/)
+    label: "1. <Schritt-Label>" # erscheint im Stepper
+  - kd: <verzeichnis-name-2>
+    label: "2. <Schritt-Label>"
+  # weitere Schritte …
+
+# Beispiel (ausschreibungs-hub Bieter-Journey):
+#
+# id: "ausschreibungs-hub:story-bieter-journey"
+# title: "Bieter-Journey — Ausschreibung bis Einreichung"
+# persona: bieter
+# steps:
+#   - kd: submission-workflow-phase-recherche
+#     label: "1. Ausschreibung suchen"
+#   - kd: angebot
+#     label: "2. Angebot vorbereiten"
+#   - kd: kalkulations-check
+#     label: "3. Kalkulation prüfen"
+#   - kd: submission-workflow-phase-unterlagen
+#     label: "4. Unterlagen zusammenstellen"
+#   - kd: submission-workflow-phase-submission
+#     label: "5. Einreichen"

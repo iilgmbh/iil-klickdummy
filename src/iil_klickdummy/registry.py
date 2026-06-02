@@ -180,10 +180,55 @@ def discover_cross_repo(
     return out
 
 
+def discover_stories(
+    repo_root: pathlib.Path,
+    klickdummies: list[KlickdummyMeta],
+) -> list[dict]:
+    """Scannt klickdummy/stories/*.yaml und löst step.kd gegen KD-Liste auf.
+
+    Gibt Liste von Story-Dicts zurück; Steps mit unbekanntem kd-Namen werden
+    übersprungen (stderr-Warning, kein Abbruch). Kein stories/-Verzeichnis →
+    leere Liste (rückwärtskompatibel).
+    """
+    stories_dir = repo_root / "klickdummy" / "stories"
+    if not stories_dir.exists():
+        return []
+    kd_index = {k.name: i for i, k in enumerate(klickdummies)}
+    out: list[dict] = []
+    for p in sorted(stories_dir.glob("*.yaml")) + sorted(stories_dir.glob("*.yml")):
+        try:
+            raw = _load_spec(p)
+        except Exception:
+            continue
+        if not raw or not raw.get("id") or not raw.get("title") or not raw.get("steps"):
+            print(f"  ⚠ story {p.name}: id/title/steps fehlen — übersprungen", file=sys.stderr)
+            continue
+        resolved_steps: list[dict] = []
+        for step in raw.get("steps") or []:
+            kd_name = step.get("kd", "")
+            idx = kd_index.get(kd_name)
+            if idx is None:
+                print(f"  ⚠ story {raw['id']}: kd={kd_name!r} nicht gefunden — Step übersprungen", file=sys.stderr)
+                continue
+            resolved_steps.append({"kd_name": kd_name, "label": step.get("label", kd_name), "kd_index": idx})
+        if not resolved_steps:
+            print(f"  ⚠ story {raw['id']}: keine gültigen Steps — übersprungen", file=sys.stderr)
+            continue
+        out.append({
+            "id": raw["id"],
+            "title": raw["title"],
+            "description": raw.get("description", ""),
+            "persona": raw.get("persona", ""),
+            "steps": resolved_steps,
+        })
+    return out
+
+
 def render_browser_html(
     klickdummies: list[KlickdummyMeta],
     output: pathlib.Path,
     repo_label: str = "(current repo)",
+    stories: list[dict] | None = None,
 ) -> None:
     """Schreibt statische Browser-HTML mit Listbox + iframe (Single-Repo)."""
     template = files("iil_klickdummy.snippets") / "browser" / "browser.html.tmpl"
@@ -203,6 +248,7 @@ def render_browser_html(
         for k in klickdummies
     ]
     html = tmpl_text.replace("__KLICKDUMMIES_JSON__", json.dumps(data, ensure_ascii=False, indent=2))
+    html = html.replace("__STORIES_JSON__", json.dumps(stories or [], ensure_ascii=False, indent=2))
     html = html.replace("__REPO_LABEL__", repo_label)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")
@@ -212,6 +258,7 @@ def render_cross_repo_browser_html(
     triples: list[tuple[str, str, KlickdummyMeta]],
     output: pathlib.Path,
     base_label: str = "cross-repo",
+    stories: list[dict] | None = None,
 ) -> None:
     """v1.3: Browser-HTML aus mehreren Repos. shell_path wird absolut/repo-prefixed.
 
@@ -240,6 +287,7 @@ def render_cross_repo_browser_html(
         for org, repo, k in triples
     ]
     html = tmpl_text.replace("__KLICKDUMMIES_JSON__", json.dumps(data, ensure_ascii=False, indent=2))
+    html = html.replace("__STORIES_JSON__", json.dumps(stories or [], ensure_ascii=False, indent=2))
     html = html.replace("__REPO_LABEL__", f"cross-repo · {base_label} · {len(data)} Klickdummies")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")
@@ -353,8 +401,11 @@ def main(argv: list[str]) -> int:
         print(f"  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
         return 0
 
+    stories = discover_stories(repo_root, klickdummies)
+    if stories:
+        print(f"  Stories: {len(stories)} gefunden ({', '.join(s['id'] for s in stories)})", file=sys.stderr)
     out_path = pathlib.Path(args.output).expanduser().resolve()
-    render_browser_html(klickdummies, out_path, repo_label=repo_root.name)
+    render_browser_html(klickdummies, out_path, repo_label=repo_root.name, stories=stories)
     print(f"  → Browser geschrieben: {out_path}", file=sys.stderr)
     if args.serve is not None:
         return _serve(out_path, args.serve)
