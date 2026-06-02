@@ -3,6 +3,24 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.20.0] — 2026-06-02
+
+### Added — Flow-Kohärenz-Lint `klickdummy-flow` (UC-Story-Line, KONZ-004 Move 2)
+
+- **`check_flow.py` + Console-Script `klickdummy-flow`**: validiert den
+  Screen-Flow-DAG (`screens[].next_screens` / `voraussetzung_screen`) je
+  KD-Spec — heute vom Genesor als Lineage-Graph gerendert, aber **unvalidiert**
+  (nicht im Schema). Findings:
+  - **error**: dangling `next_screens`/`voraussetzung_screen` (Ziel kein Screen
+    der Spec) → Exit≠0.
+  - **warning**: Vorwärts/Rückwärts-Asymmetrie (next ↔ voraussetzung uneinig),
+    Zyklus, **Flow-Schritt ohne `use_cases`** (Stringenz-Lücke der UC-Story-Line).
+  - **info**: isolierter Screen, „kein Flow deklariert" (≥2 Screens, 0 Kanten).
+- Dogfood ausschreibungs-hub: fand reale Asymmetrie (`lose_auswahl` ↔
+  `ausschreibung_detail`) + 14 Flow-Schritte ohne `use_cases`. 5 neue Tests.
+- Macht die UC-Story-Line **erzwingbar** (Consumer-CI ruft `klickdummy-flow`),
+  ohne neues SoR-Artefakt — Flow bleibt in der Spec. Hintergrund: KONZ-004.
+
 ## [1.19.1] — 2026-06-02
 
 ### Fixed — Spec-Sicht-Heading spiegelt aktiven Sub-Tab (Feedback-Widget-Bug)
