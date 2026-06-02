@@ -3,6 +3,20 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.18.1] — 2026-06-02
+
+### Fixed — Story-Banner-JS leakte als sichtbarer Text im KD-Render
+
+- `RENDER_FALLBACK_TEMPLATE` enthielt `__STORY_BANNER_JS_PLACEHOLDER__`
+  **zweimal**: einmal korrekt in `<script id="story-banner-js">` (Body-Ende),
+  einmal **roh** direkt nach dem Banner-Div (ohne `<script>`-Wrapper). Da
+  `str.replace` alle Vorkommen ersetzt, wurde das JS oben im Body als
+  sichtbarer Quelltext gerendert (Bug-Report 2026-06-02). Der nackte
+  Platzhalter wurde entfernt — Banner-Div bleibt oben, Script am Body-Ende.
+- Regressionstest verschärft: prüft jetzt, dass das Banner-JS genau **einmal**
+  und ausschließlich **innerhalb** eines `<script>`-Tags vorkommt (Marker-
+  Präsenz allein hätte den Leak nicht gefangen).
+
 ## [1.18.0] — 2026-06-02
 
 ### Added — Repo-Linse im Genesor einklappbar (mehr Platz für den Inhalt)
