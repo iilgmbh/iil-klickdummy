@@ -455,3 +455,81 @@ def test_v111_from_django_builds_spec_demo_skeleton(tmp_path):
     assert "- id: list" in spec                 # Page → Screen
     assert "delete" not in spec.split("screens:")[1]  # Aktion NICHT als Screen
     assert "Outline(title:string)" in spec      # Entity-Katalog-Kommentar
+
+
+# --- v1.16: Story-Picker (Browser-Story-Walk, platform:ADR-211 §Story-Navigation) ---
+
+def test_v116_discover_stories_no_dir(tmp_path):
+    """discover_stories gibt [] zurück wenn kein stories/-Verzeichnis existiert."""
+    from iil_klickdummy import registry
+    result = registry.discover_stories(tmp_path, [])
+    assert result == []
+
+
+def test_v116_discover_stories_resolves_steps(tmp_path):
+    """discover_stories löst step.kd gegen KD-Liste auf und gibt Story zurück."""
+    import yaml
+    from iil_klickdummy import registry
+    # KDs anlegen (min. Spec)
+    for kd_name in ("recherche", "angebot"):
+        spec_dir = tmp_path / "klickdummy" / kd_name
+        spec_dir.mkdir(parents=True)
+        (spec_dir / "screens-spec.yaml").write_text(
+            f"spec_id: test:klickdummy-spec-{kd_name}\nspec_version: '0.1'\n"
+            f"class: mock\ntitle: {kd_name.title()}\nadr: {{local: test:ADR-1}}\n"
+        )
+    kds = registry.discover_klickdummies(tmp_path)
+    assert len(kds) == 2
+    # Story anlegen
+    stories_dir = tmp_path / "klickdummy" / "stories"
+    stories_dir.mkdir()
+    (stories_dir / "test-journey.yaml").write_text(yaml.dump({
+        "id": "test:story-journey",
+        "title": "Test-Journey",
+        "steps": [
+            {"kd": "recherche", "label": "1. Recherche"},
+            {"kd": "angebot", "label": "2. Angebot"},
+        ],
+    }))
+    stories = registry.discover_stories(tmp_path, kds)
+    assert len(stories) == 1
+    assert stories[0]["id"] == "test:story-journey"
+    assert len(stories[0]["steps"]) == 2
+    assert stories[0]["steps"][0]["kd_name"] == "recherche"
+    assert stories[0]["steps"][1]["label"] == "2. Angebot"
+
+
+def test_v116_browser_html_no_stories_no_toggle(tmp_path):
+    """render_browser_html ohne Stories enthält keinen Story-Toggle (rückwärtskompatibel)."""
+    from iil_klickdummy import registry
+    kd = registry.KlickdummyMeta(
+        name="x", path="klickdummy/x/screens-spec.yaml", shell_path=None,
+        spec_id="test:kd-x", spec_version="0.1", klickdummy_class="mock",
+        title="X", adr_local=None, sister_of=[],
+    )
+    out = tmp_path / "browser.html"
+    registry.render_browser_html([kd], out, stories=[])
+    html = out.read_text()
+    assert "STORIES" in html                       # JS-Variable vorhanden
+    assert 'display:none' in html                  # Toggle versteckt (keine Stories)
+
+
+def test_v116_browser_html_with_stories_has_toggle(tmp_path):
+    """render_browser_html mit Stories enthält Story-Toggle + STORIES-Variable."""
+    from iil_klickdummy import registry
+    kd = registry.KlickdummyMeta(
+        name="recherche", path="klickdummy/recherche/screens-spec.yaml", shell_path=None,
+        spec_id="test:kd-r", spec_version="0.1", klickdummy_class="mock",
+        title="Recherche", adr_local=None, sister_of=[],
+    )
+    story = {
+        "id": "test:story-journey", "title": "Test-Journey",
+        "description": "", "persona": "",
+        "steps": [{"kd_name": "recherche", "label": "1. Recherche", "kd_index": 0}],
+    }
+    out = tmp_path / "browser.html"
+    registry.render_browser_html([kd], out, stories=[story])
+    html = out.read_text()
+    assert "Story-Walk" in html
+    assert "test:story-journey" in html
+    assert "story-stepper" in html

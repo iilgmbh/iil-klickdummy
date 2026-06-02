@@ -3,6 +3,23 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.16.0] — 2026-06-02
+
+### Added — Story-Picker: geführte KD-Touren im Browser (platform:ADR-211 §Story-Navigation)
+
+- **`discover_stories(repo_root, klickdummies)`** in `registry.py`: scannt
+  `klickdummy/stories/*.yaml`, löst `step.kd` (Verzeichnisname) gegen die
+  KD-Liste auf, gibt Story-Dicts mit `kd_index` zurück. Unbekannte Steps →
+  stderr-Warning, kein Abbruch. Kein `stories/`-Verzeichnis → `[]` (rückwärtskompatibel).
+- **`render_browser_html` / `render_cross_repo_browser_html`**: neuer optionaler
+  `stories`-Parameter; setzt `__STORIES_JSON__`-Placeholder im Template.
+- **`browser.html.tmpl` v1.2**: Mode-Toggle `🗂 Frei | 📖 Story-Walk` (nur sichtbar
+  wenn ≥1 Story vorhanden), Story-Select-Dropdown, Stepper-Liste mit ✅/●/○-Icons,
+  Weiter/Zurück-Buttons, Visited-State via localStorage — rückwärtskompatibel
+  (ohne Stories: Toggle versteckt, Verhalten wie v1.1).
+- **`snippets/spec-templates/story.yaml.example`**: Vorlage für Consumer-Repos.
+- 4 neue Smoke-Tests; 41 grün; 3.10-safe.
+
 ## [1.15.1] — 2026-06-01
 
 ### Fixed — Sub-Tab-aware UC anlegen + Feedback-Widget (#34)
