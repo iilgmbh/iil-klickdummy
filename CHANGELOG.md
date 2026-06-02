@@ -3,6 +3,20 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.18.0] — 2026-06-02
+
+### Added — Repo-Linse im Genesor einklappbar (mehr Platz für den Inhalt)
+
+- Die Repo-Rail („Linse") im Genesor-Overview lässt sich per ◀-Button
+  einklappen — der sichtbare Inhaltsbereich (`main`) wird dadurch voll breit,
+  abgeschnittene Tabellenspalten (Replaces, Sunset, Personas) werden sichtbar.
+  Eingeklappt erscheint ein `▶ Linse`-Button oben im Inhalt zum Ausklappen.
+- Zustand persistiert in `localStorage` (`genesor_rail_collapsed`) — gleiches
+  Muster wie der Skin-Switcher. Default: ausgeklappt (Verhalten wie bisher).
+- Reine Template-Erweiterung in `lineage.py` (CSS + 2 Buttons + Toggle-IIFE),
+  3.10-safe (alle Klammern verdoppelt, kein PEP-701). 72 Tests grün, keine
+  neuen ruff-Befunde.
+
 ## [1.17.1] — 2026-06-02
 
 ### Fixed — Screen-Titel im Topbar dynamisch (Bug #40)

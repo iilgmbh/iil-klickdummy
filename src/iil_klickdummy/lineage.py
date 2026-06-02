@@ -3685,6 +3685,19 @@ def build_genesor_html(records: list[dict],
     .genesor-layout {{ grid-template-columns: 1fr; }}
     .repo-rail {{ position: static; max-height: none; border-right: 0; border-bottom: 1px solid #e3e8ee; }}
   }}
+
+  /* ── Repo-Linse ein-/ausklappen — mehr Platz für den Inhalt ───────────── */
+  .rail-toggle {{ flex: 0 0 auto; border: 1px solid #e3e8ee; background: #fff; color: #6b7280;
+    border-radius: 6px; cursor: pointer; font-size: 12px; line-height: 1; padding: 5px 7px; }}
+  .rail-toggle:hover {{ background: #eef2ff; color: #1e3a8a; }}
+  .genesor-layout.rail-collapsed {{ grid-template-columns: 0 1fr; }}
+  .genesor-layout.rail-collapsed .repo-rail {{ overflow: hidden; visibility: hidden;
+    min-width: 0; padding: 0; border-right: 0; }}
+  .rail-expand {{ display: none; }}
+  .genesor-layout.rail-collapsed .rail-expand {{ display: inline-flex; align-items: center; gap: 6px;
+    position: sticky; top: 8px; margin: 0 0 10px; border: 1px solid #e3e8ee; background: #fff;
+    color: #1e3a8a; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 5px 10px; }}
+  .rail-expand:hover {{ background: #eef2ff; }}
 </style>
 </head>
 <body>
@@ -3738,11 +3751,13 @@ def build_genesor_html(records: list[dict],
       <option value="class">Class</option>
       <option value="role">Rolle</option>
     </select>
+    <button type="button" id="rail-collapse" class="rail-toggle" title="Linse einklappen" aria-label="Linse einklappen">◀</button>
   </div>
   <div class="rail-head" id="rail-head">Repos</div>
   <nav id="rail-nav"></nav>
 </aside>
 <main>
+<button type="button" id="rail-expand" class="rail-expand" title="Linse ausklappen" aria-label="Linse ausklappen">▶ Linse</button>
 
 <div class="stats">
   <div class="kv"><span class="n">{n_kds}</span><span class="lbl">Klickdummies</span></div>
@@ -4175,6 +4190,24 @@ document.querySelectorAll('th.sortable').forEach(th => {{
     }});
   }});
 }});
+
+// ── Repo-Linse ein-/ausklappen (localStorage-persistent) ─────────────────
+(function() {{
+  const KEY = 'genesor_rail_collapsed';
+  const layout = document.querySelector('.genesor-layout');
+  if (!layout) return;
+  const btnCollapse = document.getElementById('rail-collapse');
+  const btnExpand = document.getElementById('rail-expand');
+  function apply(collapsed) {{
+    layout.classList.toggle('rail-collapsed', collapsed);
+    try {{ localStorage.setItem(KEY, collapsed ? '1' : '0'); }} catch(e) {{}}
+  }}
+  let saved = '0';
+  try {{ saved = localStorage.getItem(KEY) || '0'; }} catch(e) {{}}
+  apply(saved === '1');
+  if (btnCollapse) btnCollapse.addEventListener('click', () => apply(true));
+  if (btnExpand) btnExpand.addEventListener('click', () => apply(false));
+}})();
 </script>
 
 </body>
