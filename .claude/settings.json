@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push origin *)",
+      "Bash(git push origin * --force-with-lease)",
+      "Bash(git fetch *)",
+      "Bash(git rebase *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr create *)",
+      "Bash(make *)",
+      "mcp__github__merge_pull_request",
+      "mcp__github__update_pull_request_branch",
+      "mcp__github__create_pull_request"
+    ]
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "git push and force-with-lease on feature branches (feat/*, fix/*) in iil-klickdummy",
+      "git rebase and conflict resolution in iil-klickdummy",
+      "merging open PRs via GitHub API in iil-klickdummy",
+      "running make targets (regen, test, build) in iil-klickdummy"
+    ]
+  }
+}
