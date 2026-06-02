@@ -17,6 +17,15 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
   Kein `stories/`-Verzeichnis → PASS (rückwärtskompatibel).
 - Hintergrund + Abwägung (UI-Tool abgelehnt): `docs/konzepte/KONZ-iil-klickdummy-004.md`.
 
+### Fixed — Spec-Sicht: Panel beim Aktivieren in den Viewport scrollen
+
+- `setSpecView(on)` scrollt jetzt beim Einschalten das sichtbare `.trace-strip`
+  (Spec-Panel des aktiven Screens) per `scrollIntoView` in den Viewport. Vorher
+  togglete es nur `body.spec-view` — das Panel sitzt am Screen-Ende, oft unter
+  dem Fold (verifiziert: phase-unterlagen Panel-Top 730 bei Viewport 720,
+  `scrollY` blieb 0) → Nutzer sah nach „Spec-Sicht"-Klick scheinbar keine
+  Änderung. Renderer-weit (UX-Test-Befund 2026-06-02).
+
 ## [1.18.2] — 2026-06-02
 
 ### Fixed — Zwei UX-Bugs im KD-Render (Playwright-UX-Test)
