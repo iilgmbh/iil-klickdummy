@@ -3,6 +3,18 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.19.1] — 2026-06-02
+
+### Fixed — Spec-Sicht-Heading spiegelt aktiven Sub-Tab (Feedback-Widget-Bug)
+
+- Sub-Tab-Wechsel aktualisierte `fb-current-subtab` (für Feedback/UC-anlegen),
+  aber **nicht** die sichtbare Spec-Sicht-Überschrift (`tr-screen-title`) — die
+  blieb screen-statisch (z.B. „nachunternehmer — Nachunternehmer-Auswahl…").
+  Jetzt hängt der Sub-Tab-Handler ` › <aktiver-subtab>` an die Heading des
+  jeweiligen Screen-`.trace-strip` (nur bei ≥2 Sub-Tabs); Initial-Befüllung je
+  Screen. Renderer-weit. Bug-Report via Feedback-Widget 2026-06-02
+  (bau-beschaffung/nachunternehmer).
+
 ## [1.19.0] — 2026-06-02
 
 ### Added — Story-Validierung (Fail-Fast) statt render-zeitigem Silent-Skip (KONZ-004 A3)
