@@ -572,6 +572,75 @@ def test_v119_validate_stories_no_dir_is_pass(tmp_path):
     assert check_stories.validate_stories(tmp_path) == []
 
 
+def test_v120_flow_dangling_is_error(tmp_path):
+    """KONZ-004 Move 2: next_screens auf unbekannten Screen → error."""
+    import yaml
+    from iil_klickdummy import check_flow
+    sd = tmp_path / "klickdummy" / "kd"; sd.mkdir(parents=True)
+    (sd / "screens-spec.yaml").write_text(yaml.dump({
+        "spec_id": "t:klickdummy-spec-kd", "title": "KD", "class": "mock",
+        "screens": [
+            {"id": "a", "next_screens": ["gibtsnicht"], "use_cases": ["UC-1"]},
+            {"id": "b", "use_cases": ["UC-2"]},
+        ],
+    }))
+    f = check_flow.validate_flow(tmp_path)
+    assert any(x["code"] == "dangling-next" and x["severity"] == "error" for x in f)
+
+
+def test_v120_flow_asymmetry_is_warning(tmp_path):
+    """voraussetzung_screen ohne passende next_screens-Gegenkante → warning."""
+    import yaml
+    from iil_klickdummy import check_flow
+    sd = tmp_path / "klickdummy" / "kd"; sd.mkdir(parents=True)
+    (sd / "screens-spec.yaml").write_text(yaml.dump({
+        "spec_id": "t:klickdummy-spec-kd", "title": "KD", "class": "mock",
+        "screens": [
+            {"id": "a", "next_screens": [], "use_cases": ["UC-1"]},
+            {"id": "b", "voraussetzung_screen": "a", "use_cases": ["UC-2"]},
+        ],
+    }))
+    f = check_flow.validate_flow(tmp_path)
+    assert any(x["code"] == "edge-asymmetry" and x["severity"] == "warning" for x in f)
+
+
+def test_v120_flow_step_without_uc_is_warning(tmp_path):
+    """Flow-Screen ohne use_cases → warning (Stringenz-Lücke)."""
+    import yaml
+    from iil_klickdummy import check_flow
+    sd = tmp_path / "klickdummy" / "kd"; sd.mkdir(parents=True)
+    (sd / "screens-spec.yaml").write_text(yaml.dump({
+        "spec_id": "t:klickdummy-spec-kd", "title": "KD", "class": "mock",
+        "screens": [
+            {"id": "a", "next_screens": ["b"], "use_cases": ["UC-1"]},
+            {"id": "b", "voraussetzung_screen": "a"},  # kein use_cases
+        ],
+    }))
+    f = check_flow.validate_flow(tmp_path)
+    assert any(x["code"] == "step-without-uc" and "b" in x["msg"] for x in f)
+
+
+def test_v120_flow_clean_has_no_errors(tmp_path):
+    """Konsistenter Flow mit UCs → keine errors/warnings."""
+    import yaml
+    from iil_klickdummy import check_flow
+    sd = tmp_path / "klickdummy" / "kd"; sd.mkdir(parents=True)
+    (sd / "screens-spec.yaml").write_text(yaml.dump({
+        "spec_id": "t:klickdummy-spec-kd", "title": "KD", "class": "mock",
+        "screens": [
+            {"id": "a", "next_screens": ["b"], "use_cases": ["UC-1"]},
+            {"id": "b", "voraussetzung_screen": "a", "next_screens": [], "use_cases": ["UC-2"]},
+        ],
+    }))
+    f = check_flow.validate_flow(tmp_path)
+    assert [x for x in f if x["severity"] in ("error", "warning")] == []
+
+
+def test_v120_flow_no_dir_is_empty(tmp_path):
+    from iil_klickdummy import check_flow
+    assert check_flow.validate_flow(tmp_path) == []
+
+
 def test_v119_story_schema_resource_present():
     """story.schema.json ist als Paket-Resource verfügbar."""
     import json
