@@ -3,6 +3,20 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.19.0] — 2026-06-02
+
+### Added — Story-Validierung (Fail-Fast) statt render-zeitigem Silent-Skip (KONZ-004 A3)
+
+- **`schemas/story.schema.json`** (neu): JSON-Schema für `klickdummy/stories/<slug>.yaml`
+  (`id`-Pattern `repo:story-<slug>`, `title`+`steps` required, `steps[].kd` required,
+  `additionalProperties:false`).
+- **`check_stories.py` + Console-Script `klickdummy-stories`**: scannt
+  `klickdummy/stories/*.yaml`, validiert gegen das Schema **und** löst `step.kd`
+  gegen die KD-Liste auf. Sammelt **alle** Fehler, Exit≠0 — macht den bisherigen
+  render-zeitigen stderr-Silent-Skip (`discover_stories`) zu einem harten Build-Gate.
+  Kein `stories/`-Verzeichnis → PASS (rückwärtskompatibel).
+- Hintergrund + Abwägung (UI-Tool abgelehnt): `docs/konzepte/KONZ-iil-klickdummy-004.md`.
+
 ## [1.18.2] — 2026-06-02
 
 ### Fixed — Zwei UX-Bugs im KD-Render (Playwright-UX-Test)

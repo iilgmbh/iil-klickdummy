@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://iil.gmbh/schemas/klickdummy-story.schema.json",
+  "title": "Klickdummy Story (geführte KD-Tour)",
+  "description": "Schema für klickdummy/stories/<slug>.yaml (platform:ADR-211 §Story-Navigation). KONZ-iil-klickdummy-004: Fail-Fast statt render-zeitiger stderr-Warning.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "steps"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "repo:story-<slug> — z.B. ausschreibungs-hub:story-bieter-journey",
+      "pattern": "^[a-z0-9][a-z0-9-]*:story-[a-z0-9][a-z0-9-]*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Anzeige-Titel (Story-Dropdown)"
+    },
+    "description": {
+      "type": "string",
+      "description": "optionale Kurzbeschreibung (Hover-Tooltip)"
+    },
+    "persona": {
+      "type": "string",
+      "description": "optionaler Persona-Key (z.B. bieter) für späteren Persona-Filter"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "geordnete Schritte der Tour",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kd"],
+        "properties": {
+          "kd": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verzeichnisname des KD (= KlickdummyMeta.name, Unterverzeichnis von klickdummy/)"
+          },
+          "label": {
+            "type": "string",
+            "description": "Schritt-Label im Stepper (Default: kd-Name)"
+          }
+        }
+      }
+    }
+  }
+}
