@@ -15,3 +15,6 @@ htmlcov/
 .playwright-mcp/
 # Auto-generated /next cache
 NEXT.md
+
+# Temporäre Screenshots / Mockup-PNGs im Root
+/*.png
