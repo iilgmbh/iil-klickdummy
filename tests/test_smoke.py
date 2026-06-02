@@ -533,3 +533,63 @@ def test_v116_browser_html_with_stories_has_toggle(tmp_path):
     assert "Story-Walk" in html
     assert "test:story-journey" in html
     assert "story-stepper" in html
+
+
+# --- v1.17: Story-Manifest + In-Render-Banner --------------------------------
+
+def test_v117_write_stories_manifest(tmp_path):
+    """write_stories_manifest erzeugt kd_to_stories-Map mit prev/next-Shell-Pfaden."""
+    import json as _json
+    from iil_klickdummy import registry
+    kd_r = registry.KlickdummyMeta(
+        name="recherche", path="klickdummy/recherche/screens-spec.yaml",
+        shell_path="klickdummy/recherche/shell.html",
+        spec_id="test:kd-r", spec_version="0.1", klickdummy_class="mock",
+        title="Recherche", adr_local=None, sister_of=[],
+    )
+    kd_a = registry.KlickdummyMeta(
+        name="angebot", path="klickdummy/angebot/screens-spec.yaml",
+        shell_path="klickdummy/angebot/shell.html",
+        spec_id="test:kd-a", spec_version="0.1", klickdummy_class="mock",
+        title="Angebot", adr_local=None, sister_of=[],
+    )
+    story = {
+        "id": "test:story-j", "title": "Test-J", "description": "", "persona": "",
+        "steps": [
+            {"kd_name": "recherche", "label": "1. Recherche", "kd_index": 0},
+            {"kd_name": "angebot", "label": "2. Angebot", "kd_index": 1},
+        ],
+    }
+    out = registry.write_stories_manifest(tmp_path, [kd_r, kd_a], [story])
+    assert out is not None and out.exists()
+    m = _json.loads(out.read_text())
+    assert "kd_to_stories" in m
+    # recherche ist Schritt 0: kein prev, next=angebot
+    r_entry = m["kd_to_stories"]["recherche"][0]
+    assert r_entry["prev_shell"] is None
+    assert r_entry["next_shell"] == "klickdummy/angebot/shell.html"
+    # angebot ist Schritt 1: prev=recherche, kein next
+    a_entry = m["kd_to_stories"]["angebot"][0]
+    assert a_entry["prev_shell"] == "klickdummy/recherche/shell.html"
+    assert a_entry["next_shell"] is None
+
+
+def test_v117_render_contains_story_banner(tmp_path):
+    """generate_render_fallback injiziert Story-Banner + STORY_BANNER_JS."""
+    import yaml
+    from iil_klickdummy import lineage
+    spec = {
+        "spec_id": "test-kd", "spec_version": "0.1", "spec_schema_version": "1.1",
+        "title": "Test", "class": "mock",
+        "off_ramp": {"unit": "per-screen", "rule": "test"},
+        "screens": [{"id": "s1", "title": "S1", "route": "/s1/"}],
+    }
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(yaml.dump(spec))
+    record = {"spec_id": "test-kd", "path": spec_path, "data": spec,
+              "repo": "test-repo", "kd": "test-kd"}
+    out_path = lineage.generate_render_fallback(record, tmp_path)
+    content = out_path.read_text()
+    assert "story-banner" in content
+    assert "stories-manifest.json" in content
+    assert 'data-kd="test-kd"' in content

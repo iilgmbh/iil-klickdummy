@@ -224,6 +224,49 @@ def discover_stories(
     return out
 
 
+def write_stories_manifest(
+    output_dir: pathlib.Path,
+    klickdummies: list[KlickdummyMeta],
+    stories: list[dict],
+) -> pathlib.Path | None:
+    """Schreibt stories-manifest.json neben die Browser-HTML.
+
+    Enthält eine `kd_to_stories`-Map: kd_name → Liste von Story-Kontexten mit
+    step_index, step_total, prev/next KD-Namen + shell-Pfaden (repo-root-relativ).
+    Renders laden diesen Manifest via fetch('../../stories-manifest.json')
+    und bauen den Story-Banner. Gibt None zurück wenn keine Stories vorhanden.
+    """
+    if not stories:
+        return None
+    kd_shell: dict[str, str | None] = {k.name: k.shell_path for k in klickdummies}
+    kd_to_stories: dict[str, list] = {}
+    for story in stories:
+        steps = story["steps"]
+        total = len(steps)
+        for idx, step in enumerate(steps):
+            kd_name = step["kd_name"]
+            prev_step = steps[idx - 1] if idx > 0 else None
+            next_step = steps[idx + 1] if idx < total - 1 else None
+            entry = {
+                "story_id": story["id"],
+                "story_title": story["title"],
+                "step_index": idx,       # 0-basiert
+                "step_total": total,
+                "step_label": step["label"],
+                "prev_kd": prev_step["kd_name"] if prev_step else None,
+                "prev_label": prev_step["label"] if prev_step else None,
+                "prev_shell": kd_shell.get(prev_step["kd_name"]) if prev_step else None,
+                "next_kd": next_step["kd_name"] if next_step else None,
+                "next_label": next_step["label"] if next_step else None,
+                "next_shell": kd_shell.get(next_step["kd_name"]) if next_step else None,
+            }
+            kd_to_stories.setdefault(kd_name, []).append(entry)
+    manifest = {"stories": stories, "kd_to_stories": kd_to_stories}
+    out = output_dir / "stories-manifest.json"
+    out.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    return out
+
+
 def render_browser_html(
     klickdummies: list[KlickdummyMeta],
     output: pathlib.Path,
@@ -252,6 +295,7 @@ def render_browser_html(
     html = html.replace("__REPO_LABEL__", repo_label)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")
+    write_stories_manifest(output.parent, klickdummies, stories or [])
 
 
 def render_cross_repo_browser_html(
