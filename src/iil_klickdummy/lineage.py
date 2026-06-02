@@ -949,7 +949,6 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   <a id="sb-next" href="#" style="color:#fff;text-decoration:none;padding:3px 10px;border:1px solid rgba(255,255,255,.4);border-radius:4px;font-size:12px"><span id="sb-next-label"></span> →</a>
   <span id="sb-story-switch" style="margin-left:auto;font-size:11px;opacity:.8"></span>
 </div>
-__STORY_BANNER_JS_PLACEHOLDER__
 
 <header class="topbar">
   <h1>{title}<span id="screen-title-dynamic" style="font-weight:400;font-size:13px;opacity:.7;margin-left:10px"></span></h1>

@@ -593,3 +593,11 @@ def test_v117_render_contains_story_banner(tmp_path):
     assert "story-banner" in content
     assert "stories-manifest.json" in content
     assert 'data-kd="test-kd"' in content
+    # Regression (Bug 2026-06-02): STORY_BANNER_JS darf NICHT roh im Body landen.
+    # Platzhalter muss vollständig ersetzt sein, das JS genau EINMAL vorkommen und
+    # ausschließlich innerhalb eines <script>-Tags stehen (sonst rendert es als Text).
+    assert "__STORY_BANNER_JS_PLACEHOLDER__" not in content
+    assert content.count("var MANIFEST_PATH") == 1
+    _before = content[: content.index("var MANIFEST_PATH")]
+    assert _before.rfind("<script") > _before.rfind("</script>"), \
+        "Story-Banner-JS steht roh im Body statt in einem <script>-Tag"
