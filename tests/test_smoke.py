@@ -641,6 +641,31 @@ def test_v120_flow_no_dir_is_empty(tmp_path):
     assert check_flow.validate_flow(tmp_path) == []
 
 
+def test_v121_stories_manifest_vendored_shells(tmp_path):
+    """KONZ-004/Genesor-Lücke: Manifest mit Vendored-Layout-Shells (<kd>/index.html)."""
+    import yaml
+    from iil_klickdummy import gen_stories_manifest
+    _mk_kds(tmp_path, ("a", "b"))
+    sdir = tmp_path / "klickdummy" / "stories"; sdir.mkdir()
+    (sdir / "j.yaml").write_text(yaml.dump({
+        "id": "t:story-j", "title": "J",
+        "steps": [{"kd": "a", "label": "1. A"}, {"kd": "b", "label": "2. B"}],
+    }))
+    m = gen_stories_manifest.build_manifest(tmp_path)
+    assert m is not None
+    assert set(m["kd_to_stories"]) == {"a", "b"}
+    a0 = m["kd_to_stories"]["a"][0]
+    assert a0["step_total"] == 2 and a0["step_index"] == 0
+    assert a0["next_shell"] == "b/index.html"   # Vendored-Layout, nicht shell_path
+    assert m["kd_to_stories"]["b"][0]["prev_shell"] == "a/index.html"
+
+
+def test_v121_stories_manifest_no_stories_is_none(tmp_path):
+    from iil_klickdummy import gen_stories_manifest
+    _mk_kds(tmp_path, ("a",))
+    assert gen_stories_manifest.build_manifest(tmp_path) is None
+
+
 def test_v119_story_schema_resource_present():
     """story.schema.json ist als Paket-Resource verfügbar."""
     import json

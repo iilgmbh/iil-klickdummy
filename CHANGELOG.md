@@ -3,6 +3,22 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.21.0] — 2026-06-02
+
+### Added — Stories-Manifest für den Genesor/Vendored-Layout (`klickdummy-stories-manifest`)
+
+- **Lücke geschlossen:** der Genesor-Renderer erzeugt das Story-Banner-JS (fetcht
+  `../../stories-manifest.json`), schrieb das Manifest aber **nie** —
+  `write_stories_manifest` lag nur im `klickdummy-browser`-Render (registry.py,
+  Browser-Layout). Folge: Story-Walk/Banner erschien auf iil.pet (Genesor-Deploy)
+  **nicht**, egal wie oft regen lief.
+- **`gen_stories_manifest.py` + Console-Script `klickdummy-stories-manifest`**:
+  `<repo_root> <out_dir>` → schreibt `stories-manifest.json` mit `kd_to_stories`
+  für den **Vendored-Layout** (`kd/<repo>/klickdummy/<kd>/index.html` → `../../` =
+  `kd/<repo>/klickdummy/`); prev/next_shell = `<kd>/index.html` (statt `shell_path`).
+  Wird vom iil-pet-portal-Regen je Story-Repo aufgerufen.
+- 2 Tests. Dogfood ausschreibungs-hub: Bieter-Journey, 5 KDs, 11 Steps.
+
 ## [1.20.0] — 2026-06-02
 
 ### Added — Flow-Kohärenz-Lint `klickdummy-flow` (UC-Story-Line, KONZ-004 Move 2)
