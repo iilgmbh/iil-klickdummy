@@ -952,7 +952,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 __STORY_BANNER_JS_PLACEHOLDER__
 
 <header class="topbar">
-  <h1>{title}</h1>
+  <h1>{title}<span id="screen-title-dynamic" style="font-weight:400;font-size:13px;opacity:.7;margin-left:10px"></span></h1>
   <div>
     <div class="badges">
       <span>class: {klass}</span>
@@ -1037,6 +1037,16 @@ __STORY_BANNER_JS_PLACEHOLDER__
     tabs.forEach(t => t.classList.toggle('active', t.dataset.screen === id));
     const ctx = document.getElementById('fb-current-screen');
     if (ctx) ctx.textContent = id;
+    // Topbar-Untertitel: aktiven Screen-Namen anzeigen (Bug-Fix #40)
+    const activeTab = document.querySelector(
+      '#tabs button[data-screen="' + id + '"], #sidebar button[data-screen="' + id + '"]'
+    );
+    const titleEl = document.getElementById('screen-title-dynamic');
+    if (titleEl && activeTab) {{
+      const clone = activeTab.cloneNode(true);
+      clone.querySelectorAll('small').forEach(function(el) {{ el.remove(); }});
+      titleEl.textContent = clone.textContent.trim();
+    }}
   }}
 
   tabs.forEach(t => {{

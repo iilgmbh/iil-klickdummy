@@ -3,6 +3,16 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.17.1] — 2026-06-02
+
+### Fixed — Screen-Titel im Topbar dynamisch (Bug #40)
+
+- `showScreen()` setzt jetzt `#screen-title-dynamic`-Span in der H1 auf den
+  Namen des aktiven Screens (aus dem Tab-Button). Vorher war die H1 statisch
+  (immer KD-Titel) → User sah keinen Hinweis welcher Screen aktiv ist.
+  Kleines `font-weight:400`-Inline-Label neben dem KD-Titel; verschwindet
+  beim ersten Screen ohne Namens-Match (silent, kein Fehler).
+
 ## [1.17.0] — 2026-06-02
 
 ### Added — Story-Banner im Render: KD kennt seine Story-Zugehörigkeit (approach b)
