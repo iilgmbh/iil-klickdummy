@@ -811,3 +811,30 @@ def test_uxfix_persona_tracker_element_present(tmp_path):
     content = lineage.generate_render_fallback(record, tmp_path).read_text()
     assert 'id="fb-current-persona"' in content, \
         "fb-current-persona-Element fehlt → applyPersonaFilter crasht (TypeError)"
+
+
+def test_v122_local_entity_examples_override_synth():
+    """v1.22: local_entities.<e>.examples liefern domänen-echte Zeilen statt
+    der Synth-Heuristik — fürs „am Beispiel schärfen" (ADR-211 Co-Creation)."""
+    from iil_klickdummy import lineage
+    ent = {
+        "fields": ["produkt_id", "handelsname", "cas_nummer"],
+        "examples": [
+            ["GS-0001", "Aceton", "67-64-1"],
+            ["GS-0002", "Natronlauge 32%", "1310-73-2"],
+        ],
+    }
+    html = lineage._synth_entity_table("gefahrstoff", ent, n_rows=3)
+    assert "Aceton" in html and "67-64-1" in html, "Autoren-Beispielwerte fehlen"
+    assert "1310-73-2" in html, "zweite Beispielzeile fehlt"
+    assert "Wert-" not in html, "Synth-Heuristik darf bei examples nicht greifen"
+    assert html.count("<tr><td>") == 2, "Body-Zeilenzahl = Anzahl examples (nicht n_rows)"
+
+
+def test_v122_examples_short_row_padded_by_synth():
+    """Zu kurze Beispielzeile wird per Synth aufgefüllt (kein IndexError)."""
+    from iil_klickdummy import lineage
+    ent = {"fields": ["a", "b", "c"], "examples": [["x"]]}
+    html = lineage._synth_entity_table("e", ent, n_rows=3)
+    assert ">x<" in html, "vorhandener Wert übernommen"
+    assert html.count("<td>") == 3, "fehlende Spalten per Synth aufgefüllt"

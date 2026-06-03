@@ -3,6 +3,21 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.22.0] — 2026-06-03
+
+### Added — Autoren-Beispielzeilen für Entity-Tabellen (`local_entities.<e>.examples`)
+
+- Sub-Tab-Tabellen (`konsumiert_entities` → `local_entities`) konnten bisher nur
+  **synthetische, domänen-blinde** Werte zeigen (`_synth_value`-Heuristik per
+  Feldname → z.B. CAS/WGK/Lagerklasse wurden zu „Wert-A"). Für „am Beispiel
+  schärfen" (ADR-211 Co-Creation) fehlten domänen-echte Werte.
+- Neu: `local_entities.<entity>.examples: [[v1, v2, …], …]` — Liste von Zeilen,
+  an `fields`-Reihenfolge ausgerichtet. Hat **Vorrang** vor der Synth-Heuristik;
+  zu kurze Zeilen werden per Synth aufgefüllt, zu lange auf 6 Spalten gekappt.
+  Ohne `examples` bleibt das bisherige Synth-Verhalten unverändert (abwärtskompatibel).
+- Schema: bereits valide über `additionalProperties: true` am Top-Level — keine
+  Schema-Änderung nötig. Erstnutzung: `risk-hub:gefahrstoff-kataster` (UC-004).
+
 ## [1.21.2] — 2026-06-03
 
 ### Changed — Story-Switcher zeigt Schritt-Label statt Story-Titel
