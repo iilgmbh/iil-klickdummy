@@ -3,6 +3,14 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.21.2] — 2026-06-03
+
+### Changed — Story-Switcher zeigt Schritt-Label statt Story-Titel
+
+- Bei KDs, die mehrere Story-Schritte teilen, zeigte der Switcher (`#sb-story-switch`)
+  den Story-Titel **mehrfach** (redundant). Jetzt `en.step_label` (z.B.
+  „5. Template/Gliederung erstellen") → die Schritte sind unterscheidbar.
+
 ## [1.21.1] — 2026-06-02
 
 ### Fixed — stories-manifest: korrekte relative Tiefe + Shell-Präfix

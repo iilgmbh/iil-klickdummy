@@ -121,8 +121,8 @@ STORY_BANNER_JS = r"""
       var sw = document.getElementById('sb-story-switch');
       sw.innerHTML = entries.map(function(en, i) {
         return i === idx
-          ? '<strong>' + en.story_title + '</strong>'
-          : '<a href="#" data-si="' + i + '" style="color:#9bb3d4">' + en.story_title + '</a>';
+          ? '<strong>' + en.step_label + '</strong>'
+          : '<a href="#" data-si="' + i + '" style="color:#9bb3d4">' + en.step_label + '</a>';
       }).join(' · ');
       sw.querySelectorAll('a[data-si]').forEach(function(a) {
         a.addEventListener('click', function(ev) {
