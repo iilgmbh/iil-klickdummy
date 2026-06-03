@@ -477,6 +477,24 @@ def _synth_entity_table(entity_name: str, entity_def: Any, n_rows: int = 3,
     known_kds = known_kds or {}
     known_kd_repos = known_kd_repos or {}
     head = "".join(f"<th>{html.escape(f)}</th>" for f in fields)
+
+    # Autoren-Beispielzeilen (local_entities.<e>.examples) haben Vorrang vor der
+    # Synth-Heuristik: domänen-echte Werte fürs „am Beispiel schärfen" (ADR-211
+    # Co-Creation). Jede Zeile = Liste, an `fields`-Reihenfolge ausgerichtet;
+    # zu kurze Zeilen werden per Synth aufgefüllt, zu lange auf 6 Spalten gekappt.
+    examples = entity_def.get("examples") if isinstance(entity_def, dict) else None
+    if isinstance(examples, list) and examples:
+        ex_rows = []
+        for i, ex in enumerate(examples):
+            vals = list(ex) if isinstance(ex, (list, tuple)) else [ex]
+            cells = []
+            for j, f in enumerate(fields):
+                v = vals[j] if j < len(vals) and vals[j] is not None else _synth_value(f, i, viewer_idx=viewer_idx)
+                cells.append(f'<td>{html.escape(str(v))}</td>')
+            ex_rows.append(f"<tr>{''.join(cells)}</tr>")
+        return (f'<table class="entity"><thead><tr>{head}</tr></thead>'
+                f'<tbody>{"".join(ex_rows)}</tbody></table>')
+
     rows_html = []
     for i in range(n_rows):
         azs_val = ""
