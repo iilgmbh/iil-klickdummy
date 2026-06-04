@@ -113,6 +113,37 @@ def test_generated_suite_is_valid_python(tmp_path):
     compile(out.read_text(encoding="utf-8"), str(out), "exec")
 
 
+def test_generated_suite_skips_without_playwright(tmp_path):
+    """Suite muss `pytest.importorskip` VOR dem harten playwright-Import emittieren —
+    Adopter ohne playwright überspringen, statt beim Sammeln zu brechen (T-01;
+    risk-hub #146 entging dem nur per testpaths-Zufall)."""
+    from iil_klickdummy import gen_e2e
+    out = tmp_path / "test_parity_login.py"
+    gen_e2e.main([str(FIXTURE), str(out)])
+    text = out.read_text(encoding="utf-8")
+    assert 'pytest.importorskip("playwright")' in text
+    assert text.index('pytest.importorskip("playwright")') < text.index(
+        "from playwright.sync_api import"
+    )
+
+
+def test_generated_suite_passes_ruff_check_e402(tmp_path):
+    """Der späte playwright-Import (nach importorskip) braucht `# noqa: E402`,
+    sonst bricht jeder Adopter mit `ruff check` (Linter, nicht nur Formatter)."""
+    import shutil
+    import subprocess
+    ruff = shutil.which("ruff")
+    if not ruff:
+        import pytest
+        pytest.skip("ruff nicht verfügbar")
+    from iil_klickdummy import gen_e2e
+    out = tmp_path / "test_parity.py"
+    gen_e2e.main([str(FIXTURE), str(out)])
+    r = subprocess.run([ruff, "check", "--select", "E402", str(out)],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, f"E402 im generierten Output:\n{r.stdout}\n{r.stderr}"
+
+
 def test_generated_suite_is_ruff_format_clean(tmp_path):
     """Generierter Output muss `ruff format --check` bestehen — sonst bricht jeder
     Adopter mit Format-CI (real aufgetreten: risk-hub PR #146)."""

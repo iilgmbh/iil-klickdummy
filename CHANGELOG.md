@@ -3,6 +3,21 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.22.1] — 2026-06-04
+
+### Fixed — `gen_e2e` emittiert `pytest.importorskip("playwright")` (T-01)
+
+- Die generierte Parity-Suite importierte `playwright` hart auf Modulebene. Bei
+  Adoptern **ohne** `testpaths`-Isolation sammelt pytest die Suite mit und bricht
+  beim Import, wenn `playwright` nicht installiert ist (Collection-Error statt Skip).
+  Der erste Adopter (`risk-hub` #146) entging dem nur per `testpaths=["src"]`-Zufall.
+- Fix: Der Generator setzt nun `pytest.importorskip("playwright")` **vor** den
+  `from playwright.sync_api import …` (mit `# noqa: E402`, damit `ruff check` der
+  Adopter grün bleibt). Suiten ohne installiertes playwright werden sauber
+  übersprungen statt zu brechen. Output bleibt `ruff format`- und `ruff check`-clean.
+- Regressionstests: Präsenz + Reihenfolge der `importorskip`-Zeile,
+  `ruff check --select E402` auf dem generierten Output.
+
 ## [1.22.0] — 2026-06-03
 
 ### Added — Autoren-Beispielzeilen für Entity-Tabellen (`local_entities.<e>.examples`)
