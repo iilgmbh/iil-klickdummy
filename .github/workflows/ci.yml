@@ -19,5 +19,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install pytest pyyaml jsonschema
+      # ruff: damit die generierten-Output-ruff-Tests (test_generated_suite_is_ruff_format_clean,
+      # _passes_ruff_check_e402) in CI LAUFEN statt zu skippen (Adopter-Schutz, Retro-F3).
+      # Repo-weiter Source-ruff-Gate (ruff check/format src/ tests/) ist separater Follow-up.
+      - run: pip install pytest pyyaml jsonschema ruff
       - run: PYTHONPATH=src python -m pytest tests/ -v
