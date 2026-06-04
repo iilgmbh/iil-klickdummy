@@ -3,6 +3,21 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.22.2] — 2026-06-04
+
+### Changed — Ehrlicher Header: Drift-Check ≠ Parität
+
+- Der generierte Suite-Header stellt jetzt explizit klar, dass `make klickdummy-parity-drift`
+  **nur Spec↔Datei-Drift** prüft (re-gen + diff) und die Assertions **nicht ausführt** — also
+  **keine Parität belegt**. Echte Parität entsteht erst beim Lauf mit pytest + playwright gegen
+  einen laufenden `SPEC_RENDERER_BASE_URL`; „gegen Renderer #2" setzt eine echte, erreichbare
+  App-Route voraus.
+- Hintergrund (empirisch, 2026-06-04): plattformweit lief noch nie eine Suite gegen einen
+  Renderer #2 — alle Specs sind `mock`/`spec-demo`, kein Repo in Off-Ramp-Transition. Der
+  irreführende Name `parity-drift` signalisierte „Parität geprüft", wo nur Drift geprüft wurde.
+- Generierter Output bleibt deterministisch; Adopter sehen beim nächsten `parity-drift`-Lauf
+  einmalig Drift → re-generieren.
+
 ## [1.22.1] — 2026-06-04
 
 ### Fixed — `gen_e2e` emittiert `pytest.importorskip("playwright")` (T-01)
