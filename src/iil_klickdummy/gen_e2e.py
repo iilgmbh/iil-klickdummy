@@ -129,6 +129,12 @@ HEADER = '''# AUTO-GENERATED — NICHT von Hand editieren (re-generieren: klickd
 #   SPEC_RENDERER_BASE_URL=http://localhost:8000 pytest {this}   # Renderer #1 (Klickdummy)
 #   SPEC_RENDERER_BASE_URL=https://app.example   pytest {this}   # Renderer #2 (echte App)
 # Parity-grün gegen #2 ⇒ Screen darf aus statischer Quelle (off_ramp_status: parity-green).
+#
+# WICHTIG — Drift-Check ≠ Parität: `make klickdummy-parity-drift` prüft NUR, ob diese
+# Datei zur Spec passt (re-gen + diff). Es FÜHRT diese Assertions NICHT aus und belegt
+# KEINE Parität. Parität entsteht erst, wenn diese Suite mit pytest + playwright gegen
+# einen laufenden SPEC_RENDERER_BASE_URL läuft; „gegen Renderer #2" setzt eine echte,
+# erreichbare App-Route voraus — fehlt sie, ist „Dual-Renderer" nur Renderer #1.
 import os
 
 import pytest
