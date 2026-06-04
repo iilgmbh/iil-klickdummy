@@ -1,0 +1,36 @@
+# Audience-Navigator-Konfig (ADR-158 / `/session-docu`, Review-Fixes K-01, M-04, H-02).
+# K-01: Outline ist read-only Quelle (Deep-Link, kein Content-Copy).
+# M-04: AGENT_HANDOVER.md darf NICHT in 'operator'.
+# H-02: Outline-Sources nutzen collections[] statt query.
+# Hinweis: iil-klickdummy ist ein PyPI-Infra-Paket (kein Deploy/Runbook) — daher
+# kein 'operator'-Audience; stattdessen 'adopter' (konsumierende Repos).
+schema_version: 1
+
+audiences:
+  developer:
+    title: Entwickler*in (Contributor zu iil-klickdummy)
+    description: Code, Schemas, ADR/Konzepte, Tests dieses Pakets
+    sources:
+      - { type: file, path: README.md }
+      - { type: file, path: CORE_CONTEXT.md }
+      - { type: file, path: CHANGELOG.md }
+      - { type: dir,  path: docs/reference }
+      - { type: dir,  path: docs/konzepte }
+      - { type: dir,  path: docs/adr, glob: "ADR-*.md" }
+
+  adopter:
+    title: Adopter-Repo (konsumiert das Paket)
+    description: Repos, die `iil-klickdummy` installieren, Specs schreiben und `klickdummy-*`-Checks fahren
+    sources:
+      - { type: file, path: README.md }
+      - { type: dir,  path: docs/reference }
+      - { type: file, path: docs/api/discovery.md }
+      # Schemas als Vertrag: src/iil_klickdummy/schemas/*.json
+
+  platform:
+    title: Platform / Governance
+    description: ADR-211-Konformität, Parity-Bridge-Status, Discovery
+    sources:
+      - { type: file, path: CORE_CONTEXT.md }
+      - { type: dir,  path: docs/adr, glob: "ADR-*.md" }
+      - { type: dir,  path: docs/konzepte }
