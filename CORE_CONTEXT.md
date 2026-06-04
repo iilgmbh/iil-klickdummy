@@ -25,7 +25,7 @@ Anforderungs-Spec** (`screens-spec.yaml`), nicht die Quelle und kein Produktions
 | **Stories & Flow** | `klickdummy-stories` (story.yaml-Validierung), `klickdummy-flow` (Screen-Flow-DAG-Lint), `klickdummy-stories-manifest` |
 | **Generierung** | `klickdummy-gen-e2e` (Spec→Parity-Suite), `klickdummy-extract-requirements` (Spec→UC/FR/NFR-Skelett), `klickdummy-install-snippets` |
 | **Rendering** | `klickdummy-genesor` (lineage-Renderer), `klickdummy-from-django`, `klickdummy-manage` |
-| **Discovery** | `klickdummy-browser` (Registry), `klickdummy-sync` (Orchestrator-pgvector), `klickdummy-discovery` (Stage-1.5-Push, ADR-215) |
+| **Discovery** | `klickdummy-browser` (Registry), `klickdummy-sync` (Orchestrator-pgvector), `klickdummy-inventory` (Legacy-Class-Inventur). Stage-1.5-Push = Modul `discovery_push` (ADR-215, `python -m`, kein Console-Script) |
 
 Vollständige Referenz: [`docs/reference/cli.md`](docs/reference/cli.md).
 
@@ -49,7 +49,7 @@ Aktiv/in Nutzung bleiben: I1, I2-Pattern-Deklaration, I4, Co-Creation, Requireme
 ## Cross-Referenzen
 
 - **platform:ADR-211** — Klickdummy-Rahmen (Mutter-ADR, vier Invarianten, Parity-Bridge, Rev 20 Dormancy)
-- **platform:ADR-215** — pgvector-Discovery (Stage 1.5, von `klickdummy-discovery` bedient)
+- **platform:ADR-215** — pgvector-Discovery (Stage 1.5, vom Modul `discovery_push` bedient)
 - **platform:ADR-216** — Klickdummy-Hosting auf iil.pet
 - Konzepte: `docs/konzepte/KONZ-iil-klickdummy-00{1..4}.md`
 

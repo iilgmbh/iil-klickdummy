@@ -43,7 +43,11 @@ für volle Argumente; unten Zweck + Modul je Befehl. Quelle der Beschreibungen: 
 |--------|-------|-------|
 | `klickdummy-browser` | Registry — Discovery von Klickdummies + Versionen | `registry` |
 | `klickdummy-sync` | Push Klickdummy-Metadaten in den Orchestrator-pgvector-Memory | `sync_to_orchestrator` |
-| `klickdummy-discovery` | Discovery-Push Stage 1.5 (platform:ADR-215) | `discovery_push` |
+| `klickdummy-inventory` | S11 Cross-Repo Legacy-Class-Inventur (platform:ADR-211 Rev 12 §Migration) | `inventory` |
+
+> **Hinweis:** Der Stage-1.5-Discovery-Push (`discovery_push`, platform:ADR-215) ist aktuell
+> ein **Modul**, kein Console-Script — Aufruf via `python -m iil_klickdummy.discovery_push`.
+> (Kein `klickdummy-discovery`-Entry-Point in `pyproject.toml`.)
 
 ## Schemas (`src/iil_klickdummy/schemas/`)
 
