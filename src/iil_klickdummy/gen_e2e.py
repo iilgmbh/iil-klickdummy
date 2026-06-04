@@ -132,7 +132,13 @@ HEADER = '''# AUTO-GENERATED — NICHT von Hand editieren (re-generieren: klickd
 import os
 
 import pytest
-from playwright.sync_api import Page, expect
+
+# Adopter ohne installiertes playwright überspringen die Suite, statt beim
+# Sammeln zu brechen (T-01). Schützt CI ohne `testpaths`-Isolation (risk-hub
+# #146 entging dem nur per Zufall) — platform:ADR-211 §Executable-Parity-Bridge.
+pytest.importorskip("playwright")
+
+from playwright.sync_api import Page, expect  # noqa: E402
 
 BASE = os.environ.get("SPEC_RENDERER_BASE_URL", "http://localhost:8000").rstrip("/")
 '''
