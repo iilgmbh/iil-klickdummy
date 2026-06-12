@@ -500,9 +500,11 @@ ${snap}${att}
     if (mode === 'download') {
       const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      const blobUrl = URL.createObjectURL(blob);
+      a.href = blobUrl;
       a.download = `klickdummy-feedback-${p.screen || 'unknown'}-${Date.now()}.md`;
       document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       toast('Markdown heruntergeladen');
     } else if (mode === 'clipboard') {
       try { await navigator.clipboard.writeText(md); toast('In Clipboard'); }

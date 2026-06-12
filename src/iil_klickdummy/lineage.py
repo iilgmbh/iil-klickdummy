@@ -795,7 +795,7 @@ def build_trace_strip(
 RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>Klickdummy: {kd_name} — {title}</title>
 <style>
@@ -1128,10 +1128,16 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   }}
   function openInfoModal(screenId) {{ _openModal('info', screenId); }}
   function openHelpModal(screenId) {{ _openModal('help', screenId); }}
+  // HTML-Escape für Werte, die per String-Konkatenation in innerHTML landen
+  // (Spec-Daten sind nicht per se vertrauenswürdig, v. a. cross-repo).
+  function _esc(s) {{
+    return String(s).replace(/[&<>"']/g, c =>
+      ({{'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}})[c]);
+  }}
   function openAkteModal(screenId, azs, aname, targetKd, targetUrl, targetRepo) {{
     const tpl = document.getElementById('akte-' + screenId);
-    let title = '📁 Akte · ' + (azs || '?');
-    if (aname) title += ' · ' + aname;
+    let title = '📁 Akte · ' + _esc(azs || '?');
+    if (aname) title += ' · ' + _esc(aname);
     // Per-Row-CTA: existiert ein KD für diesen Aktentyp → Sprung-Link.
     // Cross-Repo-Sprünge bekommen einen sichtbaren Repo-Hinweis.
     let cta = '';
@@ -1139,14 +1145,14 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       let repoHint = '';
       if (targetRepo && targetRepo !== KD_META.repo) {{
         repoHint = ' <span style="font-weight:normal;font-size:12px;opacity:.85;">(cross-repo: '
-                 + targetRepo + ')</span>';
+                 + _esc(targetRepo) + ')</span>';
       }}
-      cta = '<p style="margin:0 0 10px;"><a href="' + targetUrl
-          + '" class="akte-next-cta">→ Klickdummy „' + targetKd + '" öffnen</a>'
+      cta = '<p style="margin:0 0 10px;"><a href="' + _esc(targetUrl)
+          + '" class="akte-next-cta">→ Klickdummy „' + _esc(targetKd) + '" öffnen</a>'
           + repoHint + '</p>';
     }} else if (targetKd) {{
       cta = '<p style="color:#9ca3af;font-size:13px;margin:0 0 10px;">'
-          + '→ Klickdummy für „' + targetKd + '" noch nicht vorhanden.</p>';
+          + '→ Klickdummy für „' + _esc(targetKd) + '" noch nicht vorhanden.</p>';
     }}
     let extras = '';
     if (tpl) {{
@@ -2103,7 +2109,7 @@ def emit_mermaid(specs: list[tuple[str, Path, dict]], contracts: dict[str, Path]
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Klickdummy-Lineage — meiki-hub (auto-generated)</title>
 <style>
   body {{ font-family: -apple-system, system-ui, sans-serif; margin: 0; color: #222; background: #fafafa; }}
@@ -3479,7 +3485,7 @@ def build_genesor_html(records: list[dict],
     return f"""<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>IIL-Genesor — Klickdummy-Übersicht (Cross-Repo)</title>
 <style>
@@ -4545,7 +4551,7 @@ def build_screen_lineage_html(repo: str, kd_name: str, spec_data: dict,
     accent = style["accent"]
     accent_bg = style["accent_bg"]
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Screen-Lineage · {html.escape(kd_name)} · {html.escape(repo)}</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 0; background: #f5f7fa; color: #1f2937; }}
@@ -4843,7 +4849,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
     n_realized = sum(1 for u in ucs_sorted if real_count.get(f"{u['repo']}:{u['uc_id']}", 0) > 0)
 
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UC-Index · {html.escape(repo)} · Genesor</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; color: #1f2937; }}
@@ -4998,7 +5004,7 @@ def build_coverage_html(ucs: list[dict], kds: list[dict], coverage: dict) -> str
 
     from datetime import date
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UC ↔ KD Coverage · Genesor</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; color: #1f2937; }}
@@ -5542,7 +5548,7 @@ def build_impl_brief_html(brief_md: str, repo: str, kd_name: str, screen_id: str
     accent_bg = style["accent_bg"]
     font_h = style["font_h"]
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Impl-Brief · {html.escape(kd_name)}#{html.escape(screen_id)}</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 0; background: #f5f7fa; color: #1f2937; line-height: 1.55; }}
