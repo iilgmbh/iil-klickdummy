@@ -795,7 +795,7 @@ def build_trace_strip(
 RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>Klickdummy: {kd_name} — {title}</title>
 <style>
@@ -936,6 +936,19 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   .spec-toggle.on {{ background: #1f2937; color: #fff; border-color: #1f2937; }}
   .spec-toggle .dot {{ width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }}
   .spec-toggle.on .dot {{ background: #34d399; }}
+  /* Keyboard-Fokus sichtbar machen (Tabs, Sidebar, Sub-Tabs) */
+  nav.tabs button:focus-visible, aside.sidebar button:focus-visible,
+  .sub-tabs button:focus-visible {{ outline: 2px solid var(--accent); outline-offset: -2px; }}
+  /* Responsive: Sidebar-Grid + Abstände unter 768px (Mobil/Tablet hochkant) */
+  @media (max-width: 768px) {{
+    body.has-sidebar main {{ grid-template-columns: 1fr; min-height: 0; }}
+    aside.sidebar {{ border-right: 0; border-bottom: 1px solid #e3e8ee; padding: 8px 0; }}
+    body.has-sidebar section.screen {{ padding: 16px; }}
+    main {{ padding: 16px; }}
+    header.topbar {{ padding: 10px 16px; gap: 10px; }}
+    header.topbar h1 {{ min-width: 0; font-size: 16px; }}
+    .fb {{ width: calc(100vw - 32px); }}
+  }}
   /* Custom-CSS-Hook — wenn spec.app_skin.custom_css gesetzt, lädt nach dem inline-Style ein zusätzliches CSS */
   /* Damit kann Bestand-System-Skin (OK.Wobis, eigene CI etc.) injiziert werden, ohne Render zu ändern */
 </style>
@@ -988,13 +1001,13 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
     </select>
   </div>
   {skin_switcher_html}
-  <button class="spec-toggle" id="spec-toggle" title="Spec-Sicht (X-Ray) ein/aus — Taste S. Zeigt UC, Daten, Status & Coverage pro Screen, direkt aus der Spec.">
+  <button class="spec-toggle" id="spec-toggle" aria-pressed="false" title="Spec-Sicht (X-Ray) ein/aus — Taste S. Zeigt UC, Daten, Status & Coverage pro Screen, direkt aus der Spec.">
     <span class="dot"></span> Spec-Sicht
   </button>
 </header>
 <script>window.INITIAL_SKIN = "{initial_skin}";</script>
 
-<nav class="tabs" id="tabs">
+<nav class="tabs" id="tabs" role="tablist" aria-label="Screens">
   {tab_buttons}
 </nav>
 
@@ -1021,10 +1034,10 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 
 <!-- Globales Info-Modal (Funktionen / Verhalten vom Bildschirm getrennt) -->
 <div class="info-modal-bg" id="info-modal-bg" onclick="if(event.target===this)closeInfoModal()">
-  <div class="info-modal">
+  <div class="info-modal" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
     <div class="info-modal-head">
       <h3 id="info-modal-title">Funktionen / Verhalten</h3>
-      <button class="close-btn" onclick="closeInfoModal()">×</button>
+      <button class="close-btn" onclick="closeInfoModal()" aria-label="Dialog schließen">×</button>
     </div>
     <div class="info-modal-body" id="info-modal-body">—</div>
   </div>
@@ -1057,7 +1070,20 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 
   function showScreen(id) {{
     screens.forEach(s => s.classList.toggle('active', s.id === 'screen-' + id));
-    tabs.forEach(t => t.classList.toggle('active', t.dataset.screen === id));
+    tabs.forEach(t => {{
+      const on = t.dataset.screen === id;
+      t.classList.toggle('active', on);
+      if (t.getAttribute('role') === 'tab') {{
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      }} else if (on) {{
+        t.setAttribute('aria-current', 'true');
+      }} else {{
+        t.removeAttribute('aria-current');
+      }}
+    }});
+    // Scroll-Reset: langer Screen A → kurzer Screen B ließ den Nutzer sonst
+    // mitten im Leeren stehen
+    window.scrollTo({{ top: 0 }});
     const ctx = document.getElementById('fb-current-screen');
     if (ctx) ctx.textContent = id;
     // Topbar-Untertitel: aktiven Screen-Namen anzeigen (Bug-Fix #40)
@@ -1074,6 +1100,26 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 
   tabs.forEach(t => {{
     t.addEventListener('click', () => showScreen(t.dataset.screen));
+  }});
+
+  // Pfeiltasten-Navigation: ←/→ in der Tab-Leiste, ↑/↓ in der Sidebar
+  // (versteckte = persona-gefilterte Buttons werden übersprungen)
+  tabs.forEach(t => {{
+    t.addEventListener('keydown', e => {{
+      const fwd = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+      const back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+      if (!fwd && !back) return;
+      const root = t.closest('#tabs') || t.closest('#sidebar');
+      if (!root) return;
+      const list = [...root.querySelectorAll('button[data-screen]')]
+        .filter(b => !b.classList.contains('hidden'));
+      const i = list.indexOf(t);
+      if (i < 0) return;
+      e.preventDefault();
+      const next = list[(i + (fwd ? 1 : -1) + list.length) % list.length];
+      next.focus();
+      showScreen(next.dataset.screen);
+    }});
   }});
 
   function applyPersonaFilter() {{
@@ -1116,6 +1162,26 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 
   __SKIN_SWITCHER_JS_PLACEHOLDER__
 
+  // Modal-Focus-Management: Fokus auf Schließen-Button, Rückgabe beim Schließen,
+  // Tab bleibt im Dialog (leichter Focus-Trap)
+  let _modalReturnFocus = null;
+  function _modalShow() {{
+    _modalReturnFocus = document.activeElement;
+    document.getElementById('info-modal-bg').classList.add('show');
+    const btn = document.querySelector('#info-modal-bg .close-btn');
+    if (btn) btn.focus();
+  }}
+  document.getElementById('info-modal-bg').addEventListener('keydown', e => {{
+    if (e.key !== 'Tab') return;
+    const f = [...document.querySelectorAll(
+      '#info-modal-bg .info-modal button, #info-modal-bg .info-modal a[href]'
+    )].filter(el => el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) {{ e.preventDefault(); last.focus(); }}
+    else if (!e.shiftKey && document.activeElement === last) {{ e.preventDefault(); first.focus(); }}
+  }});
+
   // Zwei Modal-Funktionen — ℹ Info (Spec) + ❓ Hilfe (End-User)
   function _openModal(prefix, screenId) {{
     const tpl = document.getElementById(prefix + '-' + screenId);
@@ -1124,14 +1190,20 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
     const content = tpl.querySelector('.info-content')?.innerHTML || '';
     document.getElementById('info-modal-title').innerHTML = title;
     document.getElementById('info-modal-body').innerHTML = content;
-    document.getElementById('info-modal-bg').classList.add('show');
+    _modalShow();
   }}
   function openInfoModal(screenId) {{ _openModal('info', screenId); }}
   function openHelpModal(screenId) {{ _openModal('help', screenId); }}
+  // HTML-Escape für Werte, die per String-Konkatenation in innerHTML landen
+  // (Spec-Daten sind nicht per se vertrauenswürdig, v. a. cross-repo).
+  function _esc(s) {{
+    return String(s).replace(/[&<>"']/g, c =>
+      ({{'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}})[c]);
+  }}
   function openAkteModal(screenId, azs, aname, targetKd, targetUrl, targetRepo) {{
     const tpl = document.getElementById('akte-' + screenId);
-    let title = '📁 Akte · ' + (azs || '?');
-    if (aname) title += ' · ' + aname;
+    let title = '📁 Akte · ' + _esc(azs || '?');
+    if (aname) title += ' · ' + _esc(aname);
     // Per-Row-CTA: existiert ein KD für diesen Aktentyp → Sprung-Link.
     // Cross-Repo-Sprünge bekommen einen sichtbaren Repo-Hinweis.
     let cta = '';
@@ -1139,14 +1211,14 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       let repoHint = '';
       if (targetRepo && targetRepo !== KD_META.repo) {{
         repoHint = ' <span style="font-weight:normal;font-size:12px;opacity:.85;">(cross-repo: '
-                 + targetRepo + ')</span>';
+                 + _esc(targetRepo) + ')</span>';
       }}
-      cta = '<p style="margin:0 0 10px;"><a href="' + targetUrl
-          + '" class="akte-next-cta">→ Klickdummy „' + targetKd + '" öffnen</a>'
+      cta = '<p style="margin:0 0 10px;"><a href="' + _esc(targetUrl)
+          + '" class="akte-next-cta">→ Klickdummy „' + _esc(targetKd) + '" öffnen</a>'
           + repoHint + '</p>';
     }} else if (targetKd) {{
       cta = '<p style="color:#9ca3af;font-size:13px;margin:0 0 10px;">'
-          + '→ Klickdummy für „' + targetKd + '" noch nicht vorhanden.</p>';
+          + '→ Klickdummy für „' + _esc(targetKd) + '" noch nicht vorhanden.</p>';
     }}
     let extras = '';
     if (tpl) {{
@@ -1156,7 +1228,7 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
     }}
     document.getElementById('info-modal-title').innerHTML = title;
     document.getElementById('info-modal-body').innerHTML = cta + extras;
-    document.getElementById('info-modal-bg').classList.add('show');
+    _modalShow();
   }}
   document.querySelectorAll('a.akten-link').forEach(a => {{
     a.addEventListener('click', e => {{
@@ -1173,6 +1245,8 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   }});
   function closeInfoModal() {{
     document.getElementById('info-modal-bg').classList.remove('show');
+    if (_modalReturnFocus && _modalReturnFocus.focus) _modalReturnFocus.focus();
+    _modalReturnFocus = null;
   }}
   document.addEventListener('keydown', e => {{
     if (e.key === 'Escape') closeInfoModal();
@@ -1182,7 +1256,10 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
   const specToggle = document.getElementById('spec-toggle');
   function setSpecView(on) {{
     document.body.classList.toggle('spec-view', on);
-    if (specToggle) specToggle.classList.toggle('on', on);
+    if (specToggle) {{
+      specToggle.classList.toggle('on', on);
+      specToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }}
     // Bug-Fix (UX-Test 2026-06-02): Panel sitzt am Screen-Ende, oft unter dem
     // Fold → ohne Scroll sieht der Nutzer nach dem Toggle scheinbar nichts.
     if (on) requestAnimationFrame(() => {{
@@ -1209,9 +1286,13 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       const subId = btn.dataset.sub;
       const container = btn.closest('.app-content');
       if (!container) return;
-      container.querySelectorAll('.sub-tabs button').forEach(b => b.classList.remove('active'));
+      container.querySelectorAll('.sub-tabs button').forEach(b => {{
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      }});
       container.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       const panel = container.querySelector('#sub-' + subId);
       if (panel) panel.classList.add('active');
       // fb-current-subtab: Feedback-Widget + UC-anlegen können aktiven Sub-Tab lesen
@@ -1431,13 +1512,17 @@ def generate_render_fallback(record: dict, out_dir: Path,
         # Tab + Sidebar
         per_data = ",".join(html.escape(p) for p in sper)
         tab_buttons.append(
-            f'<button data-screen="{html.escape(sid)}" data-personas="{per_data}">'
+            f'<button role="tab" aria-selected="false" '
+            f'aria-controls="screen-{html.escape(sid)}" '
+            f'data-screen="{html.escape(sid)}" data-personas="{per_data}">'
             f'{html.escape(str(stitle) or sid)}</button>'
         )
-        # Sidebar-Button (gruppiert nach halbschicht falls vorhanden)
+        # Sidebar-Button (gruppiert nach halbschicht falls vorhanden);
+        # kein role=tab (aside ist keine tablist) — aktiver Zustand via aria-current
         halbschicht = s.get("halbschicht") or ""
         sidebar_btn = (
-            f'<button data-screen="{html.escape(sid)}" data-personas="{per_data}">'
+            f'<button aria-controls="screen-{html.escape(sid)}" '
+            f'data-screen="{html.escape(sid)}" data-personas="{per_data}">'
             f'{html.escape(str(stitle) or sid)}'
             f'<small>{html.escape(", ".join(sper[:2]))}</small>'
             f'</button>'
@@ -1485,12 +1570,17 @@ def generate_render_fallback(record: dict, out_dir: Path,
         # Sub-Tabs (Punkt 3) — bei ≥2 Entities, sonst Single-Panel
         content_blocks = []
         if len(entity_panels) >= 2:
-            sub_tab_html = '<div class="sub-tabs">'
+            sub_tab_html = '<div class="sub-tabs" role="tablist" aria-label="Entitäten">'
             sub_panels_html = ''
             for i, (ename, _has, panel) in enumerate(entity_panels):
                 active = ' active' if i == 0 else ''
-                sub_tab_html += f'<button class="sub-tab{active}" data-sub="{html.escape(sid)}-{i}">📊 {html.escape(ename)}</button>'
-                sub_panels_html += f'<div class="sub-panel{active}" id="sub-{html.escape(sid)}-{i}">{panel}</div>'
+                aria_sel = 'true' if i == 0 else 'false'
+                sub_tab_html += (
+                    f'<button class="sub-tab{active}" role="tab" aria-selected="{aria_sel}" '
+                    f'aria-controls="sub-{html.escape(sid)}-{i}" '
+                    f'data-sub="{html.escape(sid)}-{i}">📊 {html.escape(ename)}</button>'
+                )
+                sub_panels_html += f'<div class="sub-panel{active}" role="tabpanel" id="sub-{html.escape(sid)}-{i}">{panel}</div>'
             sub_tab_html += '</div>'
             content_blocks.append(sub_tab_html + sub_panels_html)
         elif len(entity_panels) == 1:
@@ -2103,7 +2193,7 @@ def emit_mermaid(specs: list[tuple[str, Path, dict]], contracts: dict[str, Path]
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Klickdummy-Lineage — meiki-hub (auto-generated)</title>
 <style>
   body {{ font-family: -apple-system, system-ui, sans-serif; margin: 0; color: #222; background: #fafafa; }}
@@ -3479,7 +3569,7 @@ def build_genesor_html(records: list[dict],
     return f"""<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>🌱</text></svg>">
 <title>IIL-Genesor — Klickdummy-Übersicht (Cross-Repo)</title>
 <style>
@@ -4545,7 +4635,7 @@ def build_screen_lineage_html(repo: str, kd_name: str, spec_data: dict,
     accent = style["accent"]
     accent_bg = style["accent_bg"]
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Screen-Lineage · {html.escape(kd_name)} · {html.escape(repo)}</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 0; background: #f5f7fa; color: #1f2937; }}
@@ -4843,7 +4933,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
     n_realized = sum(1 for u in ucs_sorted if real_count.get(f"{u['repo']}:{u['uc_id']}", 0) > 0)
 
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UC-Index · {html.escape(repo)} · Genesor</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; color: #1f2937; }}
@@ -4998,7 +5088,7 @@ def build_coverage_html(ucs: list[dict], kds: list[dict], coverage: dict) -> str
 
     from datetime import date
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UC ↔ KD Coverage · Genesor</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; color: #1f2937; }}
@@ -5542,7 +5632,7 @@ def build_impl_brief_html(brief_md: str, repo: str, kd_name: str, screen_id: str
     accent_bg = style["accent_bg"]
     font_h = style["font_h"]
     return f"""<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Impl-Brief · {html.escape(kd_name)}#{html.escape(screen_id)}</title>
 <style>
   body {{ font-family: -apple-system, "Segoe UI", system-ui, sans-serif; margin: 0; padding: 0; background: #f5f7fa; color: #1f2937; line-height: 1.55; }}

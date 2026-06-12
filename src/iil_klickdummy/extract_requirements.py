@@ -44,7 +44,10 @@ def load_spec(path: pathlib.Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def write(out_root: pathlib.Path, rel: str, content: str) -> None:
+def write(out_root: pathlib.Path, rel: str, content: str, dry_run: bool = False) -> None:
+    if dry_run:
+        print(f"  ○ {rel} (dry-run, nicht geschrieben)")
+        return
     p = out_root / rel
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
@@ -53,19 +56,31 @@ def write(out_root: pathlib.Path, rel: str, content: str) -> None:
 
 # -- Generators ---------------------------------------------------------------
 
-def gen_uc(spec: dict, out: pathlib.Path) -> None:
+def gen_uc(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     """1 UseCase pro Screen — als RUP/UML-Skelett.
 
     Räumt veraltete UC-Dateien (`UC-*.md` im Zielordner) vor dem Schreiben weg,
     damit Re-Extract bei Screen-Reihenfolge- oder Namensänderung nicht zwei
-    parallele UC-Sets stehenlässt.
+    parallele UC-Sets stehenlässt. Gelöscht wird nur, was nicht mehr zum
+    aktuellen Screen-Set gehört — mit Warnliste statt stillem unlink
+    (handeditierte UCs verschwanden sonst kommentarlos).
     """
     uc_dir = out / "requirements" / "use-cases"
-    if uc_dir.exists():
-        for stale in uc_dir.glob("UC-*.md"):
-            stale.unlink()
     screens = spec.get("screens", []) or []
     spec_id = spec.get("spec_id", "spec")
+    expected = {
+        f"UC-{i:02d}-{slug(sc.get('id', f'screen-{i}'))}.md"
+        for i, sc in enumerate(screens, start=1)
+    }
+    if uc_dir.exists():
+        stale_files = sorted(p for p in uc_dir.glob("UC-*.md") if p.name not in expected)
+        if stale_files:
+            verb = "würde gelöscht (dry-run)" if dry_run else "gelöscht"
+            print(f"  ⚠ {len(stale_files)} UC-Datei(en) nicht mehr im Screen-Set — {verb}:")
+            for p in stale_files:
+                print(f"      - {p.relative_to(out)}")
+                if not dry_run:
+                    p.unlink()
     for i, sc in enumerate(screens, start=1):
         sid = sc.get("id", f"screen-{i}")
         title = sc.get("title", sid)
@@ -116,10 +131,10 @@ status: draft   # draft | reviewed | approved
 ## Abgeleitete FRs
 {chr(10).join(f"- FR-{slug(sid)}-{j+1:02d}: {p.get('check','')}" for j, p in enumerate(pa)) or "- _(keine)_"}
 """
-        write(out, f"requirements/use-cases/UC-{i:02d}-{slug(sid)}.md", body)
+        write(out, f"requirements/use-cases/UC-{i:02d}-{slug(sid)}.md", body, dry_run)
 
 
-def gen_fr(spec: dict, out: pathlib.Path) -> None:
+def gen_fr(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     rows = []
     for sc in spec.get("screens", []) or []:
         sid = sc.get("id", "?")
@@ -144,10 +159,10 @@ status: draft
 |---|---|---|---|
 {chr(10).join(rows) or "| — | — | — | _(keine parity_acceptance im Spec)_ |"}
 """
-    write(out, "requirements/fr.md", body)
+    write(out, "requirements/fr.md", body, dry_run)
 
 
-def gen_nfr(spec: dict, out: pathlib.Path) -> None:
+def gen_nfr(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     cls = spec.get("class", "?")
     ev = spec.get("class_evidence", {}) or {}
     off = spec.get("off_ramp", {}) or {}
@@ -212,10 +227,10 @@ status: draft
 - **Barrierefreiheit:** WCAG-Level, Tastatur-Navigation
 - **Internationalisierung:** Sprachen, Datumsformate, Kalender
 """
-    write(out, "requirements/nfr.md", body)
+    write(out, "requirements/nfr.md", body, dry_run)
 
 
-def gen_schnittstellen(spec: dict, out: pathlib.Path) -> None:
+def gen_schnittstellen(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     ev = spec.get("class_evidence", {}) or {}
     systemgrenzen = ev.get("systemgrenzen", []) or []
     # Sammle alle target_mocks aus Screens
@@ -250,10 +265,10 @@ Pro Adapter:
 - Fehlerfallverhalten (Timeout, Retry, Fallback)
 - Daten-Mapping zu internem Modell
 """
-    write(out, "requirements/schnittstellen.md", body)
+    write(out, "requirements/schnittstellen.md", body, dry_run)
 
 
-def gen_lastenheft(spec: dict, out: pathlib.Path) -> None:
+def gen_lastenheft(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     title = spec.get("title", spec.get("spec_id", "Klickdummy"))
     personas = set()
     for sc in spec.get("screens", []) or []:
@@ -312,10 +327,10 @@ _(Manuell)_
 - Klickdummy-Pfad: _(Repo-Pfad der Klickdummy-Implementierung)_
 - ADR-Verankerung: {spec.get('adr',{}).get('local','?')} (`conforms_to: {spec.get('adr',{}).get('conforms_to','?')}`)
 """
-    write(out, "requirements/lastenheft-skeleton.md", body)
+    write(out, "requirements/lastenheft-skeleton.md", body, dry_run)
 
 
-def gen_pflichtenheft(spec: dict, out: pathlib.Path) -> None:
+def gen_pflichtenheft(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     title = spec.get("title", spec.get("spec_id", "Klickdummy"))
     body = f"""---
 type: pflichtenheft
@@ -374,31 +389,40 @@ Siehe [`nfr.md`](nfr.md). Mapping je NFR-ID → technische Maßnahme.
 - ADR (Rahmen): {spec.get('adr',{}).get('conforms_to','?')}
 - Schwester-Implementierungen: {', '.join(spec.get('adr',{}).get('sister_of',[]) or []) or '(keine)'}
 """
-    write(out, "requirements/pflichtenheft-skeleton.md", body)
+    write(out, "requirements/pflichtenheft-skeleton.md", body, dry_run)
 
 
 # -- Main ---------------------------------------------------------------------
 
 def main(argv: list[str]) -> int:
-    if not argv:
-        print("Usage: extract_requirements.py <spec.yaml> [<out-dir>]")
+    flags = [a for a in argv if a.startswith("--")]
+    args = [a for a in argv if not a.startswith("--")]
+    dry_run = "--dry-run" in flags
+    unknown = [f for f in flags if f != "--dry-run"]
+    if not args or unknown:
+        if unknown:
+            print(f"FAIL: unbekannte Flags: {', '.join(unknown)}")
+        print("Usage: extract_requirements.py <spec.yaml> [<out-dir>] [--dry-run]")
         return 2
-    spec_path = pathlib.Path(argv[0])
-    out_root = pathlib.Path(argv[1]) if len(argv) > 1 else spec_path.parent
+    spec_path = pathlib.Path(args[0])
+    out_root = pathlib.Path(args[1]) if len(args) > 1 else spec_path.parent
     spec = load_spec(spec_path)
-    print(f"== Extract Requirements ==")
+    print(f"== Extract Requirements =={' (DRY-RUN)' if dry_run else ''}")
     print(f"  Spec : {spec_path}")
     print(f"  Out  : {out_root}/requirements/")
     print()
-    gen_uc(spec, out_root)
-    gen_fr(spec, out_root)
-    gen_nfr(spec, out_root)
-    gen_schnittstellen(spec, out_root)
-    gen_lastenheft(spec, out_root)
-    gen_pflichtenheft(spec, out_root)
+    gen_uc(spec, out_root, dry_run)
+    gen_fr(spec, out_root, dry_run)
+    gen_nfr(spec, out_root, dry_run)
+    gen_schnittstellen(spec, out_root, dry_run)
+    gen_lastenheft(spec, out_root, dry_run)
+    gen_pflichtenheft(spec, out_root, dry_run)
     print()
-    print(f"  Hinweis: alle generierten Dateien tragen `status: draft|skeleton` —")
-    print(f"  manuell editieren, dann committen. Drift gegen Spec via Re-Extract + git diff.")
+    if dry_run:
+        print("  Dry-Run: nichts geschrieben, nichts gelöscht.")
+    else:
+        print("  Hinweis: alle generierten Dateien tragen `status: draft|skeleton` —")
+        print("  manuell editieren, dann committen. Drift gegen Spec via Re-Extract + git diff.")
     return 0
 
 

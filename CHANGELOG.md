@@ -3,6 +3,49 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.23.0] — 2026-06-12
+
+### Fixed — Gate-Integrität I3/I4 + UX-Sicherheit (Codebase-Analyse Items 1–2)
+
+- **I3 False-Pass:** `check_i3` defaultete fehlendes `off_ramp_status` still auf
+  `static` — ein Screen ohne das Schema-Pflichtfeld passierte das Gate. Jetzt FAIL
+  je Screen.
+- **I4 CWD-Abhängigkeit:** Die lokale ADR-Whitelist (`docs/adr/`) war CWD-relativ;
+  Aufruf außerhalb des Repo-Roots ergab False-Fail/False-Pass. Jetzt via
+  `find_adr_dir()` vom Scan-Root abgeleitet (`<root>/docs/adr`, `<root>/adr`,
+  Eltern-Verzeichnisse).
+- 15 neue Tests nageln die Pass/Fail-Semantik von I1/I3/I4 fest (vorher nur
+  Import-Smoke).
+- `<meta name="viewport">` in allen 8 generierten HTML-Heads (Output war mobil
+  unbenutzbar); HTML-Escaping (`_esc`) für Spec-Werte im Akte-Modal-`innerHTML`;
+  `URL.revokeObjectURL` nach Widget-Download.
+
+### Added — extract-requirements `--dry-run` + Browser-Versions-Switcher (Items 3–4)
+
+- `klickdummy-extract-requirements --dry-run`: zeigt alle Schreib-/Löschaktionen
+  ohne auszuführen. Stale UC-Dateien werden nur noch mit sichtbarer ⚠-Warnliste
+  gelöscht (vorher stilles `unlink` — handeditierte UCs verschwanden kommentarlos)
+  und nur, wenn sie nicht mehr zum Screen-Set gehören.
+- **Versions-Switcher funktionsfähig:** `#ver-select` im Browser war eine
+  UI-Attrappe ohne Handler; `discover_versions()` wurde nie aufgerufen. Jetzt:
+  `render_browser_html(repo_root=...)` bettet die Git-Historie je KD ein,
+  `collect_versions_with_snapshots()` extrahiert frühere `shell.html`-Stände per
+  `git show` nach `klickdummy-versions/<kd>/<version>/`; historische Versionen
+  laden read-only (ohne `?feedback=on`), Detail-Card zeigt Version/Datum/SHA.
+
+### Changed — A11y + Responsive im Render-Fallback (Item 5)
+
+- Tabs/Sub-Tabs mit `role=tablist/tab/tabpanel` + `aria-selected`-Sync; Sidebar
+  mit `aria-current`; Modal als `role=dialog` mit Fokus-Management (Fokus auf
+  Schließen-Button, Rückgabe beim Schließen, leichter Tab-Trap); Spec-Toggle mit
+  `aria-pressed`.
+- Pfeiltasten-Navigation (←/→ Tabs, ↑/↓ Sidebar; persona-gefilterte Buttons
+  übersprungen) + `:focus-visible`-Outline; Scroll-Reset bei Screen-Wechsel.
+- `@media (max-width: 768px)`: Sidebar-Grid stapelt, kompaktere Paddings,
+  Feedback-Widget passt sich der Viewport-Breite an.
+- Live verifiziert per Playwright (ARIA-Sync, Pfeiltasten, Modal-Focus/Escape,
+  Versions-Switcher-Roundtrip); 120 Tests grün.
+
 ## [1.22.2] — 2026-06-04
 
 ### Changed — Ehrlicher Header: Drift-Check ≠ Parität

@@ -20,14 +20,29 @@ import pathlib, re, sys
 # Erfasst sowohl 'ADR-021' als auch 'foo:ADR-021'
 ADR_PATTERN = re.compile(r"(?P<prefix>[A-Za-z][A-Za-z0-9_-]*:)?(?P<adr>ADR-\d{3})")
 SCAN_EXT = {".md", ".html", ".yaml", ".yml", ".json"}
-ADR_DIR = pathlib.Path("docs/adr")
 
 
-def local_adr_set() -> set[str]:
-    """Sammelt lokal vorhandene meiki-ADR-Nummern aus docs/adr/ADR-NNN-*.md."""
+def find_adr_dir(root: pathlib.Path) -> pathlib.Path | None:
+    """ADR-Verzeichnis relativ zum Scan-Root finden, nicht zum CWD.
+
+    Reihenfolge: <root>/docs/adr, <root>/adr (root=docs/), dann docs/adr
+    in den Eltern-Verzeichnissen (Aufruf aus Sub-Pfad / fremdem CWD).
+    """
+    root = root.resolve()
+    candidates = [root / "docs" / "adr", root / "adr"]
+    candidates += [anc / "docs" / "adr" for anc in root.parents]
+    for c in candidates:
+        if c.is_dir():
+            return c
+    return None
+
+
+def local_adr_set(root: pathlib.Path) -> set[str]:
+    """Sammelt lokal vorhandene ADR-Nummern aus <repo>/docs/adr/ADR-NNN-*.md."""
     out: set[str] = set()
-    if ADR_DIR.exists():
-        for p in ADR_DIR.glob("ADR-*.md"):
+    adr_dir = find_adr_dir(root)
+    if adr_dir is not None:
+        for p in adr_dir.glob("ADR-*.md"):
             m = re.match(r"(ADR-\d{3})", p.name)
             if m:
                 out.add(m.group(1))
@@ -61,7 +76,7 @@ def main(argv: list[str]) -> int:
     if not root.exists():
         print(f"FAIL: Root fehlt: {root}")
         return 2
-    local = local_adr_set()
+    local = local_adr_set(root)
     print(f"== I4 Namensraum == (root={root}, lokale ADRs: {len(local)})")
     errs = 0
     for path in sorted(root.rglob("*")):
