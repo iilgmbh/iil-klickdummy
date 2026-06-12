@@ -127,7 +127,7 @@ def iteration_entries_from_feedback_log(
             m = re.match(r"^\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*`?([^|`]+?)`?\s*\|", line)
             if not m:
                 continue
-            iter_n, when, screen = m.group(1), m.group(2).strip(), m.group(3).strip()
+            iter_n, screen = m.group(1), m.group(3).strip()
             if not iter_n.isdigit():
                 continue
             entry_key = f"klickdummy-iter:{org}:{repo}:{klickdummy_name}:{iter_n}"
@@ -206,7 +206,7 @@ def main(argv: list[str]) -> int:
     else:
         repo_roots = [pathlib.Path(args.repo).expanduser().resolve()]
 
-    print(f"== Klickdummy-Sync → Orchestrator (v1.2) ==", file=sys.stderr)
+    print("== Klickdummy-Sync → Orchestrator (v1.2) ==", file=sys.stderr)
     all_entries: list[dict] = []
     for rr in repo_roots:
         print(f"  · {rr}", file=sys.stderr)

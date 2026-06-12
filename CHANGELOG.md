@@ -3,6 +3,25 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [Unreleased]
+
+### Fixed — UC-Issue-Form-Prefill war verloren gegangen
+
+- `_gh_issue_url` (kind=use-case) berechnete `anker`/`daten`, hängte sie aber
+  nie an die Form-URL — die Felder `anker`/`daten`/`persona` des
+  `uc-klickdummy.yml`-Forms (Label: „aus Spec vorbefüllt") blieben leer.
+  Jetzt als Query-Params prefillt. Gefunden über ruff F841 (unused variable);
+  der bestehende Smoke-Test prüfte nur Marker-Präsenz (Memory
+  `smoke-test-marker-presence-gap`) — jetzt Param-Name + Wert.
+
+### Changed — Lint-Null-Linie
+
+- ruff 29 → 0: F541/F401/E401 auto-fixt; 3 echte tote Variablen entfernt
+  (`title` in render_lineage, `threshold` in manage, `when` in
+  sync_to_orchestrator — je verifiziert, dass kein Verhalten dranhängt).
+  Golden-HTML-Diff doppelt (Default + `--base-url /kdtest/`): 20/87 Dateien
+  geändert, alle Änderungen vollständig durch die neuen Prefill-Params erklärt.
+
 ## [1.26.0] — 2026-06-12
 
 ### Added — Org-Mapping + App-Namen aus platform-Registry-SSoT (PR #63)

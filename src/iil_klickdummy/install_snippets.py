@@ -9,7 +9,6 @@ live-updates during pip-upgrade.
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import sys
 from importlib.resources import files
@@ -29,7 +28,7 @@ def main(argv: list[str]) -> int:
     src_root = files("iil_klickdummy") / "snippets"
     tgt = Path(args.target).resolve()
 
-    print(f"== Install klickdummy snippets ==")
+    print("== Install klickdummy snippets ==")
     print(f"  Source : {src_root}")
     print(f"  Target : {tgt}")
     print(f"  Mode   : {'symlink' if args.symlink else 'copy'}")

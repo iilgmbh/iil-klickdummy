@@ -301,6 +301,28 @@ def test_v17_trace_strip_uc_create_button():
     # kind=use-case → GitHub Issue Form (uc-klickdummy.yml), required-Felder, uc-draft-Label
     assert "template=uc-klickdummy.yml" in out
     assert "uc-draft" in out
+    # Spec-Prefill der Form-Felder (Marker-Präsenz reicht nicht — Param-Name + Wert prüfen;
+    # & ist im href-Attribut HTML-escaped)
+    assert "&amp;anker=kd%3Dbuergerportal%20%C2%B7%20screen%3Dcockpit" in out
+    assert "&amp;daten=" in out
+    assert "&amp;persona=" in out
+
+
+def test_should_prefill_anker_daten_persona_in_uc_issue_url():
+    """anker/daten/persona aus der Spec landen als Form-Prefill in der Issue-URL."""
+    from urllib.parse import parse_qs, urlparse
+    from iil_klickdummy.genesor.render_common import _gh_issue_url
+
+    s = {
+        "id": "cockpit", "title": "Cockpit", "route": "/cockpit", "spec_id": "S-01",
+        "personas": ["Sachbearbeiter"],
+        "datafields": [{"name": "az", "type": "string"}, {"name": "frist", "type": "date"}],
+    }
+    url = _gh_issue_url("meiki-hub", "cockpit", "buergerportal", s, "use-case")
+    qs = parse_qs(urlparse(url.replace("&amp;", "&")).query)
+    assert qs["anker"] == ["kd=buergerportal · screen=cockpit · route=/cockpit · spec_id=S-01"]
+    assert qs["daten"] == ["az:string; frist:date"]
+    assert qs["persona"] == ["Sachbearbeiter"]
 
 
 def test_uc_button_inflight_markers():

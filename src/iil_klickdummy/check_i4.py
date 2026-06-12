@@ -15,7 +15,9 @@ Aufruf:  python3 scripts/klickdummy/check_i4.py <root_dir>
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler
 """
 from __future__ import annotations
-import pathlib, re, sys
+import pathlib
+import re
+import sys
 
 # Erfasst sowohl 'ADR-021' als auch 'foo:ADR-021'
 ADR_PATTERN = re.compile(r"(?P<prefix>[A-Za-z][A-Za-z0-9_-]*:)?(?P<adr>ADR-\d{3})")
@@ -64,7 +66,7 @@ def check_file(path: pathlib.Path, local: set[str]) -> list[tuple[int, str, str]
                 continue  # repo:ADR-NNN — ok
             if adr in local:
                 continue  # lokale meiki-ADR — ok
-            findings.append((lineno, adr, f"unqualifiziert (nicht in local-set, nicht repo:ADR-NNN)"))
+            findings.append((lineno, adr, "unqualifiziert (nicht in local-set, nicht repo:ADR-NNN)"))
     return findings
 
 

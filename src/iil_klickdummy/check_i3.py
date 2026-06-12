@@ -13,7 +13,9 @@ Aufruf:  python3 scripts/klickdummy/check_i3.py <spec>:<schema> [...]
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler
 """
 from __future__ import annotations
-import json, pathlib, sys
+import json
+import pathlib
+import sys
 
 try:
     import yaml
