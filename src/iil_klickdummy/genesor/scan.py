@@ -149,8 +149,63 @@ def read_doc_profile(repo_dir: Path) -> str:
     return str(data.get("profile") or "default")
 
 
+# Org-Registry-Cache, keyed nach canonical.yaml-Pfad (repos_root kann sich via
+# set_cfg ändern — Tests!). None-Werte werden mitgecacht (kein platform-Checkout).
+_ORG_REGISTRY_CACHE: dict[str, dict | None] = {}
+
+
+def get_org_registry() -> dict | None:
+    """Org-Mapping aus der platform-Registry-SSoT (ADR-234: canonical.yaml).
+
+    Liest ``<repos_root>/platform/registry/canonical.yaml`` →
+    ``{repo_owner, owner_prefix_rules, default_owner, app_display_names}``.
+    ``None`` wenn kein platform-Checkout existiert ODER ``owner_prefix_rules``
+    fehlen (ältere platform-Version: ``repo_owner`` allein ist ein unvollständiges
+    Mapping — meiki-/ttz-/…-Repos fielen sonst auf den Default durch). Aufrufer
+    nutzen dann ihre Code-Heuristik als Fallback.
+    """
+    path = get_cfg().repos_root / "platform" / "registry" / "canonical.yaml"
+    key = str(path)
+    if key in _ORG_REGISTRY_CACHE:
+        return _ORG_REGISTRY_CACHE[key]
+    reg: dict | None = None
+    try:
+        meta = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("meta") or {}
+        rules = meta.get("owner_prefix_rules") or []
+        owners = meta.get("repo_owner") or {}
+        if rules:
+            reg = {
+                "repo_owner": owners,
+                "owner_prefix_rules": rules,
+                "default_owner": (meta.get("server") or {}).get("github_org") or "achimdehnert",
+                "app_display_names": meta.get("app_display_names") or {},
+            }
+    except (OSError, yaml.YAMLError):
+        reg = None
+    _ORG_REGISTRY_CACHE[key] = reg
+    return reg
+
+
 def detect_org(repo_name: str) -> str:
-    """Erste Heuristik bis platform/registry/orgs.yaml existiert."""
+    """Org für ein Repo — aus platform/registry/canonical.yaml (SSoT, ADR-234).
+
+    Ohne platform-Checkout greift die historische Code-Heuristik
+    (:func:`_detect_org_fallback`); die Registry-Werte reproduzieren sie 1:1.
+    """
+    reg = get_org_registry()
+    if reg is None:
+        return _detect_org_fallback(repo_name)
+    owner = reg["repo_owner"].get(repo_name)
+    if owner:
+        return str(owner)
+    for rule in reg["owner_prefix_rules"]:
+        if repo_name.startswith(str(rule.get("prefix") or "")):
+            return str(rule.get("owner"))
+    return str(reg["default_owner"])
+
+
+def _detect_org_fallback(repo_name: str) -> str:
+    """Code-Heuristik für Installationen ohne platform-Checkout (Stand 2026-06)."""
     if repo_name.startswith("meiki-"):
         return "meiki-lra"
     if repo_name.startswith("ttz-"):
