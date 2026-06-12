@@ -5,7 +5,7 @@ Extrahiert aus lineage.py (KONZ-003 Empf-1, PR3) — reine Code-Motion.
 from __future__ import annotations
 
 import re
-from .config import _cfg
+from .config import get_cfg
 
 
 # Per platform:ADR-213 (Cross-Repo-Ref-Format)
@@ -234,7 +234,7 @@ def _compute_drift_status(record: dict) -> dict:
 
     # Tatsächlich vorhandene Briefs prüfen
     actual_briefs: list[tuple[str, str, int]] = []  # (screen_id, brief_md_path, age_days)
-    brief_dir = _cfg.genesor_out / "impl-brief"
+    brief_dir = get_cfg().genesor_out / "impl-brief"
     today = datetime.now()
     for sid in expected_briefs:
         # Konvention: impl-brief/<repo>-<kd>-<screen>.md

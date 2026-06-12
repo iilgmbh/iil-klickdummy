@@ -5,7 +5,7 @@ Extrahiert aus lineage.py (KONZ-003 Empf-1, PR3) — reine Code-Motion.
 from __future__ import annotations
 
 from pathlib import Path
-from .config import _cfg
+from .config import get_cfg
 from .scan import _repo_meta_cached
 
 
@@ -34,7 +34,7 @@ def _github_delete_url(repo: str, rel_path: str) -> str | None:
 def _repo_of_path(p: Path) -> str | None:
     """Repo-Name aus absolutem Pfad: ``~/github/<repo>/...`` → ``<repo>``."""
     try:
-        rel = p.relative_to(_cfg.repos_root)
+        rel = p.relative_to(get_cfg().repos_root)
         return rel.parts[0] if rel.parts else None
     except ValueError:
         return None
@@ -53,7 +53,7 @@ def _git_publish_changes(repo: str, paths: list[Path], commit_msg: str,
     Returns: ``{committed, pushed, branch, sha, n_files, skip_reason}``.
     """
     import subprocess
-    repo_path = _cfg.repos_root / repo
+    repo_path = get_cfg().repos_root / repo
     try:
         branch = subprocess.check_output(
             ["git", "-C", str(repo_path), "rev-parse", "--abbrev-ref", "HEAD"],

@@ -7,7 +7,7 @@ from __future__ import annotations
 import re
 import yaml
 from pathlib import Path
-from .config import _cfg
+from .config import get_cfg
 from .scan import detect_org
 from .synth import _entity_def_from_spec, _persona_def_from_spec
 
@@ -22,10 +22,10 @@ def _prefix_to_repo(prefix: str) -> str:
     if not prefix:
         return ""
     p = prefix.strip()
-    if (_cfg.repos_root / p).is_dir():
+    if (get_cfg().repos_root / p).is_dir():
         return p
     cand = f"{p}-hub"
-    if (_cfg.repos_root / cand).is_dir():
+    if (get_cfg().repos_root / cand).is_dir():
         return cand
     return p
 
@@ -67,9 +67,9 @@ def find_all_repos_ucs() -> list[dict]:
     Markdown-only UCs ohne Frontmatter werden übersprungen (Iter-1-Scope).
     """
     out: list[dict] = []
-    if not _cfg.repos_root.is_dir():
+    if not get_cfg().repos_root.is_dir():
         return out
-    for repo_dir in sorted(_cfg.repos_root.iterdir()):
+    for repo_dir in sorted(get_cfg().repos_root.iterdir()):
         if not repo_dir.is_dir() or repo_dir.name.startswith("."):
             continue
         repo_name = repo_dir.name
@@ -346,7 +346,7 @@ def validate_ucs(ucs: list[dict], kds: list[dict]) -> dict[str, list[dict]]:
             })
         else:
             try:
-                seen_gids[gid] = str(uc["source_file"].relative_to(_cfg.repos_root))
+                seen_gids[gid] = str(uc["source_file"].relative_to(get_cfg().repos_root))
             except (ValueError, KeyError):
                 seen_gids[gid] = str(uc.get("source_file", "?"))
 
@@ -569,7 +569,7 @@ def generate_uc_skeletons(records: list[dict], existing_ucs: list[dict],
         kd_name = kd["kd"]
         d = kd["data"] or {}
         kd_adr_local = (d.get("adr", {}) or {}).get("local")
-        out_dir = _cfg.repos_root / repo / "docs" / "use-cases" / "_auto"
+        out_dir = get_cfg().repos_root / repo / "docs" / "use-cases" / "_auto"
         if not dry_run:
             out_dir.mkdir(parents=True, exist_ok=True)
 

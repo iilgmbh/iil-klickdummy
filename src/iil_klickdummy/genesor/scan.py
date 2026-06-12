@@ -8,10 +8,12 @@ import re
 import sys
 import yaml
 from pathlib import Path
-from .config import MOCKUP_PRIO_NAMES, _FRONTMATTER_RE, _base_prefix, _cfg
+from .config import MOCKUP_PRIO_NAMES, _FRONTMATTER_RE, _base_prefix, get_cfg
 
 
-ROOT = Path(__file__).resolve().parent.parent
+# Paket-Elternverzeichnis (src/ im Repo bzw. site-packages/ installiert) — diese
+# Datei liegt eine Ebene tiefer als lineage.py, daher drei .parent statt zwei.
+ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 MOCKUPS_DIR = ROOT / "docs" / "01-architektur" / "mockups"
@@ -48,10 +50,10 @@ def url_for_path(p: Path) -> str | None:
     Menge (Default) → byte-identisch zu früher.
     """
     try:
-        rel = str(p.relative_to(_cfg.repos_root))
+        rel = str(p.relative_to(get_cfg().repos_root))
     except ValueError:
         return None
-    if _cfg.vendored_repos and rel.split("/", 1)[0] in _cfg.vendored_repos:
+    if get_cfg().vendored_repos and rel.split("/", 1)[0] in get_cfg().vendored_repos:
         return _base_prefix() + "/kd/" + rel
     return _base_prefix() + "/" + rel
 
@@ -231,9 +233,9 @@ def _normalize_spec_aliases(data: dict) -> dict:
 def find_all_repos_specs() -> list[dict]:
     """Walks ~/github/*/ für screens-spec.yaml UND render-only-KDs ohne Spec (F11)."""
     out: list[dict] = []
-    if not _cfg.repos_root.is_dir():
+    if not get_cfg().repos_root.is_dir():
         return out
-    for repo_dir in sorted(_cfg.repos_root.iterdir()):
+    for repo_dir in sorted(get_cfg().repos_root.iterdir()):
         if not repo_dir.is_dir() or repo_dir.name.startswith("."):
             continue
         repo_name = repo_dir.name
@@ -313,8 +315,8 @@ def _load_iil_apps_index() -> dict[str, dict]:
     """
     import json
     candidates = [
-        _cfg.repos_root / "iil-relaunch" / "apps.json",
-        _cfg.repos_root / "platform" / "static-sites" / "iil.pet" / "apps.json",
+        get_cfg().repos_root / "iil-relaunch" / "apps.json",
+        get_cfg().repos_root / "platform" / "static-sites" / "iil.pet" / "apps.json",
     ]
     for p in candidates:
         if not p.is_file():
@@ -373,7 +375,7 @@ def _git_repo_meta(repo: str) -> dict:
     sichtbar". Echter Remote-Check wäre per-PR-aware aber zu teuer.
     """
     import subprocess
-    repo_path = _cfg.repos_root / repo
+    repo_path = get_cfg().repos_root / repo
     if not (repo_path / ".git").exists():
         return {}
     try:
