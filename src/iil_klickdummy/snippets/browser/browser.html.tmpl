@@ -115,19 +115,65 @@ function populateFree() {
   sel.addEventListener('change', function() { onSelectFree(sel.value); });
 }
 
-function onSelectFree(idx) {
-  if (idx === '' || idx === null) return;
-  var k = KLICKDUMMIES[parseInt(idx, 10)];
-  if (!k) return;
+var currentKD = null;
+
+function renderDetail(k, versionInfo) {
   var det = document.getElementById('kd-detail');
   det.innerHTML =
     '<dt>Spec</dt><dd><code>' + k.spec_id + '</code> v' + k.spec_version + '</dd>' +
+    (versionInfo
+      ? '<dt>Angezeigte Version</dt><dd><code>v' + versionInfo.spec_version + '</code> · ' +
+        versionInfo.commit_date + ' · <code>' + versionInfo.commit_sha + '</code> <em>(historisch, read-only)</em></dd>'
+      : '') +
     '<dt>Klasse</dt><dd><span class="badge ' + k.class + '">' + k.class + '</span></dd>' +
     '<dt>ADR</dt><dd>' + (k.adr_local ? '<code>' + k.adr_local + '</code>' : '<em>kein ADR-Ref</em>') + '</dd>' +
     (k.sister_of && k.sister_of.length
       ? '<dt>Schwester-Klickdummies</dt><dd>' + k.sister_of.map(function(s) { return '<code>' + s + '</code>'; }).join(', ') + '</dd>'
       : '') +
     '<dt>Spec-Pfad</dt><dd><code>' + k.path + '</code></dd>';
+}
+
+function populateVersions(k) {
+  var vsel = document.getElementById('ver-select');
+  var versions = k.versions || [];
+  var opts = '<option value="current">aktuell (HEAD, v' + k.spec_version + ')</option>';
+  versions.forEach(function(v, i) {
+    opts += '<option value="' + i + '">v' + v.spec_version + ' · ' + v.commit_date +
+      (v.shell_path ? '' : ' (kein Shell-Snapshot)') + '</option>';
+  });
+  vsel.innerHTML = opts;
+  vsel.value = 'current';
+  vsel.disabled = versions.length === 0;
+}
+
+function onSelectVersion(value) {
+  var k = currentKD;
+  if (!k) return;
+  if (value === 'current') { renderDetail(k); loadKD(k); return; }
+  var v = (k.versions || [])[parseInt(value, 10)];
+  if (!v) return;
+  renderDetail(k, v);
+  var frame = document.getElementById('kd-frame');
+  var empty = document.getElementById('empty');
+  if (v.shell_path) {
+    // historischer Snapshot — bewusst ohne ?feedback=on (read-only)
+    frame.src = v.shell_path;
+    frame.style.display = '';
+    empty.style.display = 'none';
+  } else {
+    empty.textContent = 'Kein shell.html-Snapshot für v' + v.spec_version + ' (nur Spec versioniert).';
+    frame.style.display = 'none';
+    empty.style.display = '';
+  }
+}
+
+function onSelectFree(idx) {
+  if (idx === '' || idx === null) return;
+  var k = KLICKDUMMIES[parseInt(idx, 10)];
+  if (!k) return;
+  currentKD = k;
+  renderDetail(k);
+  populateVersions(k);
   loadKD(k);
 }
 
@@ -218,6 +264,9 @@ function setMode(mode) {
 
 document.addEventListener('DOMContentLoaded', function() {
   populateFree();
+  var vsel = document.getElementById('ver-select');
+  vsel.disabled = true; // aktiv erst, wenn ein KD mit Historie gewählt ist
+  vsel.addEventListener('change', function() { onSelectVersion(vsel.value); });
   if (STORIES.length > 0) {
     document.getElementById('mode-toggle').style.display = '';
     populateStories();

@@ -146,6 +146,52 @@ def discover_versions(spec_path: pathlib.Path, repo_root: pathlib.Path) -> list[
     return versions
 
 
+def collect_versions_with_snapshots(
+    klickdummies: list[KlickdummyMeta],
+    repo_root: pathlib.Path,
+    output_dir: pathlib.Path,
+) -> dict[str, list[dict]]:
+    """Historische Spec-Versionen je KD + shell.html-Snapshots aus Git.
+
+    Schreibt für jede frühere spec_version (HEAD ausgenommen) den damaligen
+    shell.html-Stand nach <output_dir>/klickdummy-versions/<kd>/<version>/
+    und liefert {kd_name: [{spec_version, commit_sha, commit_date,
+    shell_path|None}]} — shell_path relativ zu output_dir (= iframe-Basis).
+    """
+    out: dict[str, list[dict]] = {}
+    for k in klickdummies:
+        versions = discover_versions(repo_root / k.path, repo_root)
+        entries: list[dict] = []
+        for v in versions:
+            if v.spec_version == k.spec_version:
+                continue  # HEAD-Stand — iframe lädt das Live-shell.html
+            shell_rel: str | None = None
+            if k.shell_path:
+                try:
+                    blob = subprocess.run(
+                        ["git", "-C", str(repo_root), "show",
+                         f"{v.commit_sha}:{pathlib.PurePosixPath(k.shell_path)}"],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                except (OSError, subprocess.SubprocessError):
+                    blob = None
+                if blob is not None and blob.returncode == 0 and blob.stdout:
+                    snap = (output_dir / "klickdummy-versions" / k.name
+                            / v.spec_version / "shell.html")
+                    snap.parent.mkdir(parents=True, exist_ok=True)
+                    snap.write_text(blob.stdout, encoding="utf-8")
+                    shell_rel = snap.relative_to(output_dir).as_posix()
+            entries.append({
+                "spec_version": v.spec_version,
+                "commit_sha": v.commit_sha[:10],
+                "commit_date": v.commit_date[:10],
+                "shell_path": shell_rel,
+            })
+        if entries:
+            out[k.name] = entries
+    return out
+
+
 def discover_cross_repo(
     base: pathlib.Path,
     repos: list[str],
@@ -272,8 +318,19 @@ def render_browser_html(
     output: pathlib.Path,
     repo_label: str = "(current repo)",
     stories: list[dict] | None = None,
+    repo_root: pathlib.Path | None = None,
 ) -> None:
-    """Schreibt statische Browser-HTML mit Listbox + iframe (Single-Repo)."""
+    """Schreibt statische Browser-HTML mit Listbox + iframe (Single-Repo).
+
+    Mit repo_root wird die Git-Versionshistorie je KD eingebettet
+    (Versions-Switcher) inkl. shell.html-Snapshots früherer Versionen.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    versions_map: dict[str, list[dict]] = {}
+    if repo_root is not None:
+        versions_map = collect_versions_with_snapshots(
+            klickdummies, repo_root, output.parent
+        )
     template = files("iil_klickdummy.snippets") / "browser" / "browser.html.tmpl"
     tmpl_text = template.read_text(encoding="utf-8")
     data = [
@@ -287,6 +344,7 @@ def render_browser_html(
             "title": k.title,
             "adr_local": k.adr_local,
             "sister_of": k.sister_of,
+            "versions": versions_map.get(k.name, []),
         }
         for k in klickdummies
     ]
@@ -449,7 +507,8 @@ def main(argv: list[str]) -> int:
     if stories:
         print(f"  Stories: {len(stories)} gefunden ({', '.join(s['id'] for s in stories)})", file=sys.stderr)
     out_path = pathlib.Path(args.output).expanduser().resolve()
-    render_browser_html(klickdummies, out_path, repo_label=repo_root.name, stories=stories)
+    render_browser_html(klickdummies, out_path, repo_label=repo_root.name,
+                        stories=stories, repo_root=repo_root)
     print(f"  → Browser geschrieben: {out_path}", file=sys.stderr)
     if args.serve is not None:
         return _serve(out_path, args.serve)
