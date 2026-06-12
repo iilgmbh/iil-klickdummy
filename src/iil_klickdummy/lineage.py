@@ -1297,27 +1297,27 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
       if (panel) panel.classList.add('active');
       // fb-current-subtab: Feedback-Widget + UC-anlegen können aktiven Sub-Tab lesen
       const subtabEl = document.getElementById('fb-current-subtab');
-      if (subtabEl) subtabEl.textContent = btn.textContent.replace(/^📊\s*/, '').trim();
+      if (subtabEl) subtabEl.textContent = btn.textContent.replace(/^📊\\s*/, '').trim();
       // Spec-Sicht-Heading: aktiven Sub-Tab spiegeln (Feedback 2026-06-02)
       const _sec = btn.closest('section.screen');
       const _trSub = _sec && _sec.querySelector('.trace-strip .tr-screen-subtab');
       if (_trSub) _trSub.textContent =
         (_sec.querySelectorAll('.sub-tabs button').length >= 2)
-          ? (' › ' + btn.textContent.replace(/^📊\s*/, '').trim()) : '';
+          ? (' › ' + btn.textContent.replace(/^📊\\s*/, '').trim()) : '';
     }});
   }});
   // Initial: ersten aktiven Sub-Tab setzen (falls Sub-Tabs vorhanden)
   (function() {{
     const first = document.querySelector('.sub-tabs .sub-tab.active');
     const subtabEl = document.getElementById('fb-current-subtab');
-    if (first && subtabEl) subtabEl.textContent = first.textContent.replace(/^📊\s*/, '').trim();
+    if (first && subtabEl) subtabEl.textContent = first.textContent.replace(/^📊\\s*/, '').trim();
   }})();
   // Initial: Spec-Sicht-Heading je Screen mit aktivem Sub-Tab füllen (≥2 Sub-Tabs)
   document.querySelectorAll('section.screen').forEach(sec => {{
     if (sec.querySelectorAll('.sub-tabs button').length < 2) return;
     const act = sec.querySelector('.sub-tabs button.active') || sec.querySelector('.sub-tabs button');
     const trSub = sec.querySelector('.trace-strip .tr-screen-subtab');
-    if (act && trSub) trSub.textContent = ' › ' + act.textContent.replace(/^📊\s*/, '').trim();
+    if (act && trSub) trSub.textContent = ' › ' + act.textContent.replace(/^📊\\s*/, '').trim();
   }});
 
   // Feedback-Widget — Payload kennt aktuellen Screen + Persona
