@@ -3,6 +3,32 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.25.0] — 2026-06-12
+
+### Changed — KONZ-003 Empf-1 komplett: lineage.py-Monolith zerlegt (PR #59/#60/#61)
+
+Reiner Struktur-Refactor, **keine funktionale Änderung** — Output via
+golden-HTML-Diff byte-identisch verifiziert (je doppelt: Default-Argumente
+und `--repos-root`+`--base-url`-Nicht-Default).
+
+- **PR #59 (Empf-1b/1):** 54 Funktionen + 9 Konstanten aus `lineage.py` in
+  6 Module: `genesor/{scan,synth,mermaid,validate,publish,ucs}.py`.
+  Inkl. Hotfix: `ROOT`-Pfadtiefe + `_cfg`-Importbindung (`set_cfg` rebindet
+  → Module nutzen `get_cfg()`).
+- **PR #60 (Empf-1b/2):** 19 Render-Definitionen in 5 Module:
+  `genesor/render_{common,fallback,lineage,genesor,uc}.py` —
+  `lineage.py` ist jetzt dünne CLI (6432 → 590 Zeilen).
+- **PR #61 (Empf-1c):** `build_genesor_html` (1356 Z.) → 203-Z.-Orchestrator
+  + 6 Sub-Renderer (`_render_kd_detail`, `_render_table_body`,
+  `_render_acceptance_matrix`, `_render_skin_options`, `_org_chip`,
+  `_role_chip`); literale Template-Teile als Konstanten
+  `_GENESOR_HEAD`/`_GENESOR_TAIL`.
+- Back-compat: alle bisherigen `from iil_klickdummy.lineage import X`
+  funktionieren weiter (Re-Export-Block).
+
+> Hinweis: v1.24.0 wurde nie getaggt/publiziert — die dortigen Fixes sind
+> in diesem Release enthalten (erstes PyPI-Release nach 1.23.0).
+
 ## [1.24.0] — 2026-06-12
 
 ### Fixed — Analyse-Reste (Follow-up zur Codebase-Analyse, PR #57)
