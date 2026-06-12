@@ -57,17 +57,28 @@ def main(argv: list[str]) -> int:
             if screens:
                 counts: dict[str, int] = {s: 0 for s in STATUS}
                 bad = []
+                missing = []
                 for sc in screens:
-                    st = sc.get("off_ramp_status", "static")
+                    st = sc.get("off_ramp_status")
+                    if st is None:
+                        # Schema-Pflichtfeld — Fehlen ist FAIL, kein stiller
+                        # 'static'-Default (False-Pass).
+                        missing.append(sc.get("id", "?"))
+                        continue
                     if st not in STATUS:
                         bad.append((sc.get("id", "?"), st))
+                        continue
                     counts[st] = counts.get(st, 0) + 1
+                for sid in missing:
+                    print(f"      ✗ screen {sid!r}: off_ramp_status fehlt (Pflichtfeld)")
+                errs += len(missing)
                 if bad:
                     for sid, st in bad:
                         print(f"      ✗ screen {sid!r}: off_ramp_status={st!r} unzulässig")
                     errs += len(bad)
                 summary = ", ".join(f"{k}={v}" for k, v in counts.items() if v)
-                print(f"      ✓ {len(screens)} Screen(s) — {summary}")
+                mark = "✓" if not (missing or bad) else "·"
+                print(f"      {mark} {len(screens)} Screen(s) — {summary or 'kein gültiger Status'}")
             else:
                 print(f"      ✓ off_ramp-Policy: {off.get('policy', '(unbenannt)')}")
         except FileNotFoundError as e:
