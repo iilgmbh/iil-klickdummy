@@ -47,11 +47,15 @@ def main(argv: list[str]) -> int:
         print(f"  · {spec_path}")
         try:
             spec = load(spec_path) or {}
-            cls = None
-            for k in CLASS_KEYS:
-                if k in spec:
-                    cls = spec[k]
-                    break
+            declared = {k: spec[k] for k in CLASS_KEYS if k in spec}
+            if len(set(declared.values())) > 1:
+                # "genau EIN Pattern" — widersprüchliche Doppel-Deklaration ist
+                # kein stiller First-Key-Wins, sondern FAIL
+                pretty = ", ".join(f"{k}={v!r}" for k, v in declared.items())
+                print(f"      ✗ widersprüchliche Klassen-Deklaration: {pretty}")
+                errs += 1
+                continue
+            cls = next(iter(declared.values()), None)
             if cls is None:
                 print(
                     f"      ✗ keine Klasse deklariert "

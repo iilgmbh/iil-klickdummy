@@ -68,9 +68,9 @@ def main(argv: list[str]) -> int:
             print(f"=== {repo}: {len(hits)} echte Drift-Treffer ===")
             for rel, ln, content in hits[:10]:
                 print(f"  {rel}:{ln}  {content[:120]}")
+            if len(hits) > 10:
+                print(f"  … und {len(hits) - 10} weitere (Anzeige auf 10 gekappt)")
             total += len(hits)
-            if args.strict:
-                return 1
         else:
             print(f"=== {repo}: ✓ clean ===")
 
@@ -78,8 +78,10 @@ def main(argv: list[str]) -> int:
     if total == 0:
         print("S11 → 0 echte Drift-Treffer cross-repo.")
         return 0
+    # Alle Repos werden immer vollständig gescannt (kein Früh-Abbruch);
+    # --strict entscheidet nur über den Exit-Code (Gate vs. Report).
     print(f"S11 → {total} Treffer.")
-    return 1
+    return 1 if args.strict else 0
 
 
 def main_cli() -> int:

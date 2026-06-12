@@ -203,8 +203,26 @@ def _visibility_scope(spec: dict) -> str:
 
 
 def _off_ramp_status(spec: dict) -> str:
-    """Off-Ramp-Status für Lifecycle/Filter (REC-5/REC-16)."""
-    return (spec.get("off_ramp") or {}).get("status_overall") or "static"
+    """Off-Ramp-Status für Lifecycle/Filter (REC-5/REC-16).
+
+    Explizites `off_ramp.status_overall` gewinnt. Sonst Aggregation über die
+    per-Screen-Status: alle gleich → dieser Wert; gemischt → 'transition'.
+    Vorher pauschal 'static' — ein KD mit removed-/parity-Screens erschien
+    im Discovery-Index als unangetastet.
+    """
+    explicit = (spec.get("off_ramp") or {}).get("status_overall")
+    if explicit:
+        return explicit
+    statuses = {
+        s.get("off_ramp_status")
+        for s in (spec.get("screens") or [])
+        if isinstance(s, dict) and s.get("off_ramp_status")
+    }
+    if not statuses:
+        return "static"
+    if len(statuses) == 1:
+        return next(iter(statuses))
+    return "transition"
 
 
 def _pipeline_status(spec: dict) -> str:

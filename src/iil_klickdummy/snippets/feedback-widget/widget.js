@@ -57,6 +57,7 @@
 #fb-panel h3{margin:0 0 8px;font-size:14px;color:#1a3a6c}
 #fb-panel .meta{font-size:11px;color:#6a7888;margin-bottom:10px}
 #fb-panel textarea{width:100%;min-height:120px;border:1px solid #d8e0e8;border-radius:6px;padding:8px;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical}
+#fb-panel textarea.fb-invalid{border-color:#dc2626;outline:1px solid #dc2626}
 #fb-panel select{font-family:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #d8e0e8;width:100%;margin-bottom:8px}
 #fb-panel .fb-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 #fb-panel .fb-actions button{flex:1;font-size:12px;padding:7px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;border:1px solid #d8e0e8;background:#fff;color:#3a4a5a}
@@ -112,8 +113,8 @@
     if (document.getElementById('fb-fab')) return;
     const wrap = document.createElement('div');
     wrap.innerHTML = `
-<button id="fb-fab" title="Feedback geben (Co-Development-Loop)">💬</button>
-<div id="fb-panel">
+<button id="fb-fab" title="Feedback geben (Co-Development-Loop)" aria-expanded="false" aria-controls="fb-panel">💬</button>
+<div id="fb-panel" role="dialog" aria-label="Feedback zum Klick-Dummy">
   <h3>💬 Feedback zum Klick-Dummy</h3>
   <div class="meta">Screen <code id="fb-screen">—</code> · Persona <code id="fb-persona">—</code> · Spec <code>${SPEC.id} v${SPEC.version}</code></div>
   <div style="display:flex;gap:8px">
@@ -223,7 +224,9 @@
         input.removeEventListener('keydown', onKey);
         resolve(val);
       };
-      const valid = (t) => /^(ghp_|github_pat_|gho_|ghu_|ghs_|ghr_)/.test(t);
+      // Präfix + Mindestlänge des Token-Bodys (klassische PATs: 36+ Zeichen
+      // nach 'ghp_'; fine-grained noch länger) — fängt abgeschnittene Tokens
+      const valid = (t) => /^(ghp_|github_pat_|gho_|ghu_|ghs_|ghr_)[A-Za-z0-9_]{16,}$/.test(t);
       const onOk = () => {
         const t = (input.value || '').trim();
         if (!t) { err.classList.add('show'); err.textContent = 'Bitte Token eingeben.'; return; }
@@ -403,7 +406,10 @@
   function toggle() {
     const p = document.getElementById('fb-panel');
     p.classList.toggle('open');
-    if (p.classList.contains('open')) {
+    const open = p.classList.contains('open');
+    const fab = document.getElementById('fb-fab');
+    if (fab) fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
       document.getElementById('fb-screen').textContent = currentScreen() || '—';
       document.getElementById('fb-persona').textContent = currentPersona() || '—';
       populateRelated();
@@ -494,7 +500,20 @@ ${snap}${att}
   // ---- Submit -------------------------------------------------------------
   async function submit(mode) {
     const p = payload();
-    if (!p.text) { toast('Bitte Text eingeben'); return; }
+    const ta = document.getElementById('fb-text');
+    if (!p.text) {
+      toast('Bitte Text eingeben');
+      if (ta) {
+        ta.classList.add('fb-invalid');
+        ta.setAttribute('aria-invalid', 'true');
+        ta.focus();
+        ta.addEventListener('input', () => {
+          ta.classList.remove('fb-invalid');
+          ta.removeAttribute('aria-invalid');
+        }, { once: true });
+      }
+      return;
+    }
     const attachments = await readFiles();
     const md = asMarkdown(p, attachments);
     if (mode === 'download') {
@@ -544,8 +563,13 @@ ${snap}${att}
       reset();
       toggle();
     } catch (e) {
-      toast('GitHub-Submit fehlgeschlagen — ' + e.message + '. Fallback: Download.');
-      submit('download');
+      // Kein stiller Auto-Download mehr — Nutzer entscheidet über den Fallback
+      if (window.confirm('GitHub-Submit fehlgeschlagen (' + e.message + ').\n'
+          + 'Feedback stattdessen als Markdown-Datei herunterladen?')) {
+        submit('download');
+      } else {
+        toast('Nicht gesendet — Text bleibt im Formular erhalten.');
+      }
     }
   }
 
