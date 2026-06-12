@@ -3,6 +3,38 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.24.0] — 2026-06-12
+
+### Fixed — Analyse-Reste (Follow-up zur Codebase-Analyse, PR #57)
+
+- **I2:** widersprüchliche Doppel-Deklaration (`class` ≠ `klickdummy_class`) ist
+  jetzt FAIL statt stillem First-Key-Wins („genau EIN Pattern", ADR-211 I2).
+- **inventory:** `--strict` bricht nicht mehr nach dem ersten Repo ab (Voll-Scan,
+  Exit-Code am Ende); >10 Treffer zeigen „… und N weitere"; ohne `--strict` jetzt
+  Report mit Exit 0 (Gate-Verhalten nur mit Flag — vorher war es für den
+  Exit-Code wirkungslos).
+- **discovery_push:** `off_ramp_status` aggregiert per-Screen-Status, wenn
+  `status_overall` fehlt (uniform → Wert, gemischt → `transition`); vorher
+  pauschal `static` — KDs mit removed-Screens erschienen im pgvector-Index als
+  unangetastet.
+- **lineage.py:** un-escapte `\s`-Sequenzen im Template-JS gedoppelt —
+  SyntaxWarning beim Import beseitigt; emittiertes JS byte-identisch.
+
+### Added — Widget-UX-Paket + Cross-Repo-Stories
+
+- **widget.js:** GitHub-Submit-Fehler fragt per `confirm()` nach, statt still
+  Download auszulösen; leere Textarea bekommt sichtbares Invalid-Feedback
+  (`fb-invalid` + `aria-invalid` + Fokus, Reset bei Eingabe); FAB mit
+  `aria-expanded`/`aria-controls`, Panel als `role=dialog`; Token-Validierung
+  prüft Mindestlänge statt nur Präfix. Playwright-live verifiziert.
+- **Browser:** Cross-Repo-Modus übergibt jetzt Stories
+  (`discover_cross_repo_stories()` mit globalem `kd_index`-Remap) — vorher kam
+  der Story-Walk dort nie an.
+- 11 neue Tests (`tests/test_analyse_reste.py`); Suite 131 grün.
+
+**Bewusst offen:** lineage-Modul-Split (KONZ-003, eigener Strang) und
+orgs.yaml-Externalisierung von `detect_org`/`app_name_map` (platform-Entscheid).
+
 ## [1.23.0] — 2026-06-12
 
 ### Fixed — Gate-Integrität I3/I4 + UX-Sicherheit (Codebase-Analyse Items 1–2)
