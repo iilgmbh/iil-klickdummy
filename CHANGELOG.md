@@ -3,6 +3,21 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## [1.26.0] — 2026-06-12
+
+### Added — Org-Mapping + App-Namen aus platform-Registry-SSoT (PR #63)
+
+- `detect_org` und `app_name_map` lesen jetzt `platform/registry/canonical.yaml`
+  (`meta.repo_owner` / `owner_prefix_rules` / `app_display_names`, platform#554)
+  statt hartkodierter Heuristik. Die Code-Heuristik bleibt als Fallback für
+  Installationen ohne platform-Checkout (PyPI).
+- Vollständigkeits-Gate: Registry gilt nur mit `owner_prefix_rules` als
+  nutzbar — platform-Stände mit bloßem `repo_owner` (vor platform#554) fallen
+  sauber auf die Heuristik zurück statt meiki-/ttz-Repos falsch zu mappen.
+- Netz: golden-HTML-Diff doppelt × beide Pfade (Fallback ohne Felder /
+  Registry nach platform#554-Merge) — byte-identisch bis `generated_at`.
+  8 neue Tests in `test_org_registry.py` (139 gesamt).
+
 ## [1.25.0] — 2026-06-12
 
 ### Changed — KONZ-003 Empf-1 komplett: lineage.py-Monolith zerlegt (PR #59/#60/#61)
