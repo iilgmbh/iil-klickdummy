@@ -8,7 +8,7 @@ from __future__ import annotations
 import html
 from pathlib import Path
 from .config import _DOMAIN_STYLES, get_cfg
-from .scan import detect_org, read_doc_profile, url_for_path
+from .scan import detect_org, get_org_registry, read_doc_profile, url_for_path
 from .synth import _entities_lookup, _synth_entity_table
 from .validate import compute_acceptance_status, merge_acceptance
 from .render_common import FEEDBACK_WIDGET_JS, SKIN_SWITCHER_JS, STORY_BANNER_JS, build_skin_switcher_html, build_trace_strip, skin_library
@@ -692,8 +692,10 @@ def generate_render_fallback(record: dict, out_dir: Path,
         for pn, _ in ppairs
     )
 
-    # App-Name aus Repo (heuristisch, mit Wappen-Icon je Domain)
-    app_name_map = {
+    # App-Name: platform-Registry-SSoT (meta.app_display_names, ADR-234) —
+    # ohne platform-Checkout greift die Code-Map (gleiche Werte, Stand 2026-06).
+    reg = get_org_registry()
+    app_name_map = (reg or {}).get("app_display_names") or {
         "meiki-hub": "MEiKI · LRA-Plattform",
         "ausschreibungs-hub": "Bieterpilot",
         "writing-hub": "Writing-Hub",
