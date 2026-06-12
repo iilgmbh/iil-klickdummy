@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
-import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -424,14 +423,17 @@ DEFAULT_CROSS_REPOS = ["meiki-hub", "writing-hub", "risk-hub", "ttz-hub", "pptx-
 
 def _serve(html_path: pathlib.Path, port: int) -> int:
     """v1.3: lokaler HTTP-Server, öffnet Browser-HTML in nem Verzeichnis."""
-    import http.server, socketserver, os, sys
+    import http.server
+    import socketserver
+    import os
+    import sys
     os.chdir(html_path.parent)
     handler = http.server.SimpleHTTPRequestHandler
     with socketserver.TCPServer(("", port), handler) as httpd:
         url = f"http://localhost:{port}/{html_path.name}"
-        print(f"== Klickdummy-Browser (serve) ==", file=sys.stderr)
+        print("== Klickdummy-Browser (serve) ==", file=sys.stderr)
         print(f"  URL: {url}", file=sys.stderr)
-        print(f"  Ctrl-C zum Beenden", file=sys.stderr)
+        print("  Ctrl-C zum Beenden", file=sys.stderr)
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
@@ -460,7 +462,7 @@ def main(argv: list[str]) -> int:
         base = pathlib.Path(args.base).expanduser().resolve()
         repos = [r.strip() for r in args.repos.split(",") if r.strip()]
         triples = discover_cross_repo(base, repos)
-        print(f"== Klickdummy-Registry Cross-Repo (v1.3) ==", file=sys.stderr)
+        print("== Klickdummy-Registry Cross-Repo (v1.3) ==", file=sys.stderr)
         print(f"  Base : {base}", file=sys.stderr)
         print(f"  Repos: {len(repos)} configured · {len({r for _,r,_ in triples})} found Klickdummies", file=sys.stderr)
         # Gruppierung nach Repo für Output
@@ -486,7 +488,7 @@ def main(argv: list[str]) -> int:
             return 0
 
         if not triples:
-            print(f"  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
+            print("  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
             return 0
 
         out_path = pathlib.Path(args.output).expanduser().resolve()
@@ -506,7 +508,7 @@ def main(argv: list[str]) -> int:
         print(f"FAIL: Repo-Root nicht gefunden: {repo_root}", file=sys.stderr)
         return 2
 
-    print(f"== Klickdummy-Registry (v1.3) ==", file=sys.stderr)
+    print("== Klickdummy-Registry (v1.3) ==", file=sys.stderr)
     print(f"  Repo : {repo_root}", file=sys.stderr)
     klickdummies = discover_klickdummies(repo_root)
     print(f"  Gefunden: {len(klickdummies)} Klickdummy(ies)", file=sys.stderr)
@@ -526,7 +528,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     if not klickdummies:
-        print(f"  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
+        print("  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
         return 0
 
     stories = discover_stories(repo_root, klickdummies)

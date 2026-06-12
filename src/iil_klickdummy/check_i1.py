@@ -6,7 +6,9 @@ Policy:  ~/.claude/policies/klickdummy.md · platform:ADR-211
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler (fehlende Deps)
 """
 from __future__ import annotations
-import json, pathlib, sys
+import json
+import pathlib
+import sys
 
 try:
     import yaml  # PyYAML

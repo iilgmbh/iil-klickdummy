@@ -33,12 +33,12 @@ import json
 import os
 import pathlib
 import sys
-from datetime import date, datetime, timezone
+from datetime import date
 
 import yaml
 
 from .registry import (
-    discover_klickdummies, discover_cross_repo, discover_versions,
+    discover_cross_repo, discover_versions,
     KlickdummyMeta,
 )
 
@@ -108,7 +108,7 @@ def cmd_list(args) -> int:
     if not triples:
         print("0 Klickdummies gefunden.", file=sys.stderr)
         return 0
-    print(f"== klickdummy-manage list ==", file=sys.stderr)
+    print("== klickdummy-manage list ==", file=sys.stderr)
     rows: list[tuple] = []
     for org, repo, km in triples:
         topic = _spec_topic(base / repo / km.path) or "—"
@@ -143,9 +143,8 @@ def cmd_status(args) -> int:
     repos = [r.strip() for r in args.repos.split(",") if r.strip()]
     triples = discover_cross_repo(base, repos)
     today = date.today()
-    threshold = today.toordinal() + (args.sunset_due_in or 9999)
 
-    print(f"== klickdummy-manage status ==", file=sys.stderr)
+    print("== klickdummy-manage status ==", file=sys.stderr)
     healthy = 0
     warnings: list[str] = []
     for org, repo, km in triples:
@@ -192,7 +191,7 @@ def cmd_topics(args) -> int:
     for org, repo, km in triples:
         topic = _spec_topic(base / repo / km.path) or "(kein topic)"
         by_topic.setdefault(topic, []).append((org, repo, km))
-    print(f"== klickdummy-manage topics ==", file=sys.stderr)
+    print("== klickdummy-manage topics ==", file=sys.stderr)
     print(f"  Topics: {len(by_topic)}", file=sys.stderr)
     if args.json:
         out = {t: [{"org": o, "repo": r, "name": k.name, "spec_version": k.spec_version,

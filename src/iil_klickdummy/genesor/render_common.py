@@ -230,6 +230,9 @@ def _gh_issue_url(repo: str, sid: str, kd_name: str, s: dict, kind: str) -> str:
             f"?template=uc-klickdummy.yml"
             f"&title={quote(f'UC: {kd_name}/{sid} — ')}"
             f"&labels={quote('uc-draft,needs-domain-review')}"
+            f"&anker={quote(anker)}"
+            f"&daten={quote(daten)}"
+            f"&persona={quote(persona)}"
         )
 
     # off-ramp + parity: Markdown-body-Prefill bis eigene Forms existieren
@@ -265,7 +268,7 @@ def build_trace_strip(
             f'<span class="tr-screen-id">{html.escape(_sid_display)}</span>'
             + (f' — {html.escape(str(_title))}' if _title and _title != _sid_display else "")
             + '<span class="tr-screen-subtab"></span>'
-            + f'</span>'
+            + '</span>'
         )
         rows.append(f'<div class="tr-row tr-row-title">{_title_html}</div>')
 

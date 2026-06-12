@@ -28,7 +28,7 @@ def compute_acceptance_status(acceptance: dict | None) -> dict:
     - ``missing``: keine Einträge
     Rückgabe: ``{axis: {status, latest_date, latest_by, latest_ref, age_days}}``.
     """
-    from datetime import date, timedelta
+    from datetime import date
     today = date.today()
     out: dict[str, dict] = {}
     accept = acceptance if isinstance(acceptance, dict) else {}

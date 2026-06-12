@@ -341,7 +341,6 @@ def build_screen_lineage_html(repo: str, kd_name: str, spec_data: dict,
     mermaid_body = emit_screen_lineage(spec_data)
     screens = spec_data.get("screens") or []
     n_screens = len([s for s in screens if isinstance(s, dict) and s.get("id")])
-    title = (spec_data.get("title") or kd_name).split("—")[0].strip()
     klass = spec_data.get("class") or "?"
 
     # KEIN %%{init:}%% — Mermaid 10.9.6 strikt; mermaid.initialize() in JS reicht.
