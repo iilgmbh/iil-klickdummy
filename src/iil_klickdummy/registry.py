@@ -226,6 +226,28 @@ def discover_cross_repo(
     return out
 
 
+def discover_cross_repo_stories(
+    base: pathlib.Path,
+    triples: list[tuple[str, str, KlickdummyMeta]],
+) -> list[dict]:
+    """Stories aller Repos einsammeln; step.kd_index auf die kombinierte
+    Cross-Repo-KD-Liste (triples-Reihenfolge) remappen.
+
+    Vorher wurden Stories im Cross-Repo-Modus gar nicht übergeben.
+    """
+    global_idx: dict[str, list[int]] = {}
+    for i, (_org, repo, _km) in enumerate(triples):
+        global_idx.setdefault(repo, []).append(i)
+    out: list[dict] = []
+    for repo in global_idx:
+        repo_kds = [km for _o, r, km in triples if r == repo]
+        for story in discover_stories(base / repo, repo_kds):
+            for step in story["steps"]:
+                step["kd_index"] = global_idx[repo][step["kd_index"]]
+            out.append(story)
+    return out
+
+
 def discover_stories(
     repo_root: pathlib.Path,
     klickdummies: list[KlickdummyMeta],
@@ -468,7 +490,11 @@ def main(argv: list[str]) -> int:
             return 0
 
         out_path = pathlib.Path(args.output).expanduser().resolve()
-        render_cross_repo_browser_html(triples, out_path, base_label=base.name)
+        cr_stories = discover_cross_repo_stories(base, triples)
+        if cr_stories:
+            print(f"  Stories: {len(cr_stories)} gefunden cross-repo", file=sys.stderr)
+        render_cross_repo_browser_html(triples, out_path, base_label=base.name,
+                                       stories=cr_stories)
         print(f"  → Cross-Repo-Browser: {out_path}", file=sys.stderr)
         if args.serve is not None:
             return _serve(out_path, args.serve)
