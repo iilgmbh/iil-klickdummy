@@ -5,6 +5,8 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.27.0] — 2026-06-13
+
 ### Fixed — gen_e2e: Auth-Brücke + Strict-Mode (erstmals gegen echten Renderer #2 gefahren)
 
 Beim ersten echten Renderer-#2-Lauf der Parity-Suite (risk-hub `sds-verwalten`
