@@ -20,15 +20,18 @@ def test_gen_e2e_module_present():
 
 def test_render_assertion_vocabulary():
     from iil_klickdummy import gen_e2e as g
-    # Double-Quotes (ruff-format-konform), nicht repr/Single-Quotes
+    # Double-Quotes (ruff-format-konform), nicht repr/Single-Quotes.
+    # Einzelelement-State-Asserts nutzen `.first` (Strict-Mode-robust gegen
+    # legitim mehrfach matchende Kontrakt-Selektoren, z.B. data-testid pro Zeile).
     assert g.render_assertion({"action": "text", "selector": "h1", "expect": "Anmelden"}) \
-        == 'expect(page.locator("h1")).to_contain_text("Anmelden")'
+        == 'expect(page.locator("h1").first).to_contain_text("Anmelden")'
     assert g.render_assertion({"action": "clickable", "selector": "button"}) \
-        == 'expect(page.locator("button")).to_be_enabled()'
+        == 'expect(page.locator("button").first).to_be_enabled()'
     assert g.render_assertion({"action": "visible", "selector": "#x"}) \
-        == 'expect(page.locator("#x")).to_be_visible()'
+        == 'expect(page.locator("#x").first).to_be_visible()'
     assert g.render_assertion({"action": "url", "expect": "/dashboard"}) \
         == 'assert "/dashboard" in page.url, page.url'
+    # `count` prüft Kardinalität explizit — KEIN `.first`
     assert g.render_assertion({"action": "count", "selector": "li", "expect": 3}) \
         == 'expect(page.locator("li")).to_have_count(3)'
     # nur-Prosa / unbekannt ⇒ None (nicht ausführbar)
@@ -63,8 +66,8 @@ def test_gen_e2e_generates_runnable_suite(tmp_path):
     # ausführbare Checks → echte Assertions, an die Screen-route gebunden
     assert "def test_login__login_has_heading(page: Page):" in text
     assert 'page.goto(BASE + "/auth/login")' in text
-    assert 'expect(page.locator("h1")).to_contain_text("Anmelden")' in text
-    assert 'expect(page.locator("button[type=submit]")).to_be_enabled()' in text
+    assert 'expect(page.locator("h1").first).to_contain_text("Anmelden")' in text
+    assert 'expect(page.locator("button[type=submit]").first).to_be_enabled()' in text
 
     # nur-Prosa → sichtbarer skip, kein stilles Weglassen
     assert "@pytest.mark.skip" in text
@@ -272,3 +275,43 @@ def test_gen_e2e_login_required_skip(tmp_path):
     code = out.read_text(encoding="utf-8")
     assert "pytest.mark.skip" in code
     assert "login_required" in code
+
+
+def test_gen_e2e_auth_storage_state_uses_real_playwright_api(tmp_path):
+    """auth.storage_state → `browser_context_args`-Override (einzige API, die
+    pytest-playwright kennt). Regression: zuvor wurde ein autouse-Fixture mit
+    `page.context.set_storage_state(path=...)` emittiert — eine NICHT existierende
+    API; die Suite brach gegen jeden echten login_required-Renderer-#2 sofort mit
+    TypeError. Der Bug überlebte nur, weil die Suite nie gegen Renderer #2 lief."""
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec = {
+        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock", "grounding": "test", "off_ramp": {},
+        "personas": {"user": {}},
+        "auth": {"storage_state": "/tmp/auth/storage.json"},
+        "screens": [
+            {"id": "dash", "title": "Dashboard", "login_required": True,
+             "route": "/dashboard/", "route_example": "/dashboard/",
+             "parity_acceptance": [
+                 {"id": "d.vis", "check": "visible",
+                  "assert": {"action": "visible", "selector": "[data-testid=dash]"}}
+             ]},
+        ],
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    out = tmp_path / "test_parity.py"
+    gen_e2e.main([str(spec_file), str(out)])
+    code = out.read_text(encoding="utf-8")
+    # Korrekte API: browser_context_args-Override mit storage_state
+    assert "def browser_context_args(browser_context_args):" in code
+    assert '"storage_state": "/tmp/auth/storage.json"' in code
+    # Der kaputte API-Aufruf darf NIE wieder emittiert werden
+    assert "set_storage_state" not in code
+    # login_required wird durch den auth-Block aufgelöst → KEIN skip mehr
+    assert "login_required_no_auth" not in code
+    assert 'expect(page.locator("[data-testid=dash]").first).to_be_visible()' in code
+    # Generierte Datei muss kompilieren
+    compile(code, str(out), "exec")

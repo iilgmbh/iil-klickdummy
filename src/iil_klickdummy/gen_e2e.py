@@ -98,13 +98,17 @@ def render_assertion(a: dict) -> str | None:
     action = str(a.get("action", "")).strip()
     sel = a.get("selector", "")
     exp = a.get("expect", "")
+    # Einzelelement-State-Asserts nutzen `.first`: ein Parity-Kontrakt-Selektor
+    # (z.B. data-testid pro Tabellenzeile) matcht legitim mehrfach; ohne `.first`
+    # bricht Playwrights Strict-Mode ("resolved to N elements"). Existenz-/State-
+    # Prüfung ≠ Eindeutigkeit — Kardinalität deckt `count` separat ab.
     if action == "visible":
-        return f"expect(page.locator({_q(sel)})).to_be_visible()"
+        return f"expect(page.locator({_q(sel)}).first).to_be_visible()"
     if action == "text":
-        return f"expect(page.locator({_q(sel)})).to_contain_text({_q(exp)})"
+        return f"expect(page.locator({_q(sel)}).first).to_contain_text({_q(exp)})"
     if action == "clickable":
         # I2-Geist: kein toter Link — Element sichtbar UND bedienbar.
-        return f"expect(page.locator({_q(sel)})).to_be_enabled()"
+        return f"expect(page.locator({_q(sel)}).first).to_be_enabled()"
     if action == "url":
         return f"assert {_q(exp)} in page.url, page.url"
     if action == "count":
@@ -192,7 +196,12 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
     # genau zwei Leerzeilen verbunden ⇒ `ruff format`-konform (Adopter-CI grün).
     blocks: list[str] = []
 
-    # Auth-Fixture (optional): erzeugt autouse-Fixture wenn Spec einen `auth`-Block hat.
+    # Auth-Fixture (optional): erzeugt Fixture wenn Spec einen `auth`-Block hat.
+    # Playwright lädt einen storage_state NUR bei Context-Erzeugung — es gibt KEINE
+    # `context.set_storage_state(path=...)`-API (das war ein nie ausgeführter Bug:
+    # gegen einen echten login_required-Renderer-#2 lief die Suite zuvor nie).
+    # Korrekt: das pytest-playwright-Fixture `browser_context_args` überschreiben,
+    # damit der `page`-Context vor-authentifiziert startet.
     spec_auth = spec.get("auth") or {}
     auth_blocks: list[str] = []
     if spec_auth:
@@ -200,11 +209,11 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
         login_fixture = spec_auth.get("login_fixture")
         if storage:
             auth_blocks.append(
-                f"@pytest.fixture(autouse=True)\n"
-                f"def _auth(page: Page):\n"
-                f'    """Auth via storage_state aus Spec-Block."""\n'
-                f"    page.context.add_cookies([])\n"
-                f"    page.context.set_storage_state(path={_q(storage)})"
+                f"@pytest.fixture(scope=\"session\")\n"
+                f"def browser_context_args(browser_context_args):\n"
+                f'    """Auth via storage_state aus Spec-Block — pytest-playwright lädt\n'
+                f'    den State bei Context-Erzeugung (einzige funktionierende API)."""\n'
+                f"    return {{**browser_context_args, \"storage_state\": {_q(storage)}}}"
             )
         elif login_fixture:
             auth_blocks.append(

@@ -5,6 +5,27 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+### Fixed — gen_e2e: Auth-Brücke + Strict-Mode (erstmals gegen echten Renderer #2 gefahren)
+
+Beim ersten echten Renderer-#2-Lauf der Parity-Suite (risk-hub `sds-verwalten`
+gegen die live `/sds/review/`-App, platform:ADR-211 S13) traten zwei Bugs zutage,
+die zuvor nur überlebten, weil die Suite **nie** gegen eine echte, login-gated
+App lief (Unit-Tests prüften bloß Text-Marker — Memory `smoke-test-marker-presence-gap`):
+
+- **`auth.storage_state` emittierte eine nicht-existierende Playwright-API.**
+  Der generierte autouse-`_auth`-Fixture rief `page.context.set_storage_state(path=…)`
+  auf → `TypeError` gegen jeden `login_required`-Renderer-#2. Jetzt korrekt: das
+  pytest-playwright-Fixture `browser_context_args` überschreiben, sodass der
+  `page`-Context vor-authentifiziert startet (einzige API, die State lädt).
+- **`visible`/`text`/`clickable` brachen an Playwrights Strict-Mode**, sobald ein
+  Kontrakt-Selektor legitim mehrfach matchte (z.B. `data-testid` pro Tabellenzeile:
+  „resolved to N elements"). Einzelelement-State-Asserts nutzen jetzt `.first`
+  (Existenz-/State-Prüfung ≠ Eindeutigkeit); `count` bleibt kardinalitäts-exakt.
+
+Beweis: dieselbe generierte Suite läuft grün gegen die echte App und wird rot,
+sobald ein App-`data-testid` vom Spec-Kontrakt abweicht — die Wertthese des
+Dual-Renderer-Parity-Gates ist damit erstmals empirisch eingelöst.
+
 ### Fixed — UC-Issue-Form-Prefill war verloren gegangen
 
 - `_gh_issue_url` (kind=use-case) berechnete `anker`/`daten`, hängte sie aber
