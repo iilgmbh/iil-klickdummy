@@ -5,6 +5,8 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.28.0] — 2026-06-14
+
 ### Refactored — Read-Model-Schema zentralisiert (KONZ-003 Empf-3 S1, #70)
 
 Neues Modul `read_model.py` definiert die Feldverträge der zwei Read-Model-Flächen
