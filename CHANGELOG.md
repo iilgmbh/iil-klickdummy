@@ -18,6 +18,13 @@ als TypedDicts und zentralisiert die Schema-Versionskonstanten:
 Kein Verhaltensunterschied — ausschließlich Schema-Stabilisierung (S2/S3 trigger-gegatet
 per KONZ-003 §13).
 
+### Added — klickdummy_sync.py: kanonische Quelle in snippets/genesor-sync/ (Issue #66)
+
+`src/iil_klickdummy/snippets/genesor-sync/klickdummy_sync.py` ist jetzt die kanonische
+Quelle des Sync-Scripts (Counter-A, ADR-211 Rev 13 §Distribution). Bisher existierte es
+nur als Kopie in Konsumenten-Repos ohne Single-Source-of-Truth. Kopien in Konsumenten-Repos
+nicht direkt editieren — Änderungen hier vornehmen, dann verteilen.
+
 ## [1.27.0] — 2026-06-13
 
 ### Fixed — gen_e2e: Auth-Brücke + Strict-Mode (erstmals gegen echten Renderer #2 gefahren)

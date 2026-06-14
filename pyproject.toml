@@ -50,4 +50,5 @@ iil_klickdummy = [
     "snippets/spec-templates/*",
     "snippets/shell-bootstrap/*",
     "snippets/browser/*",
+    "snippets/genesor-sync/*",
 ]

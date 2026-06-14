@@ -55,6 +55,16 @@ def test_snippets_resource():
     assert "screens-spec-template.yaml" in names
 
 
+def test_genesor_sync_canonical_source():
+    """klickdummy_sync.py ist als kanonische Quelle in genesor-sync ausgeliefert (Issue #66)."""
+    import ast
+    src = (files("iil_klickdummy") / "snippets" / "genesor-sync" / "klickdummy_sync.py").read_text()
+    ast.parse(src)
+    assert "KANONISCHE QUELLE" in src
+    assert "upsert_issue" in src
+    assert "find_specs" in src
+
+
 def test_widget_js_v05_features():
     """Widget v0.5 must have all v0.2-v0.4 features + GitHub-Direct-API."""
     js = (files("iil_klickdummy") / "snippets" / "feedback-widget" / "widget.js").read_text()
