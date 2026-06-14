@@ -4,17 +4,19 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-06-14)
+## ⚡ Aktueller Stand (2026-06-14, Session 2 abgeschlossen)
 
-- **v1.28.0 auf PyPI** (Session 2026-06-14, PRs #71/#72/#73, PyPI-Workflow grün):
-  - **#66 / PR #71**: `klickdummy_sync.py` hat kanonische Quelle in
-    `snippets/genesor-sync/` (ADR-211 Rev 13 §Distribution). Konsumenten-Repos via
-    ausschreibungs-hub PR #124 synced. Neue `pyproject.toml`-Package-Data-Zeile
-    liefert die Datei via PyPI aus.
+- **Session-Retro A2+A3 gemergt** (PR #75, `cfbf590`): Smoke-Test kanonische Quelle
+  stärker (importlib, sentinel-Format, `find_specs` beide Konventionen); neues
+  `tests/test_read_model.py` mit Roundtrip-Test `build_uc_export_json → JSON →
+  TypedDict-Keys`. 82 Tests grün, ruff clean.
+- **klickdummy_sync kanonische Quelle VOLLSTÄNDIG** (alle 3 Consumer-Repos):
+  ausschreibungs-hub#124 + meiki-hub#64 + iil-klickdummy#71 — alle auf Stand v1.28.0.
+  Memory `klickdummy-sync-kopien-nur-formatierung` = ✅ vollständig.
+- **v1.28.0 auf PyPI** (PRs #71/#72/#73, PyPI-Workflow grün):
+  - **#66 / PR #71**: `klickdummy_sync.py` kanonische Quelle in `snippets/genesor-sync/`.
   - **#70 / PR #72**: `read_model.py` zentralisiert alle Schema-Versionskonstanten
-    (`UC_EXPORT_SCHEMA_VERSION`, `REGISTRY_SCHEMA_VERSION`, `API_VERSION`,
-    `EMBEDDING_INPUT_SCHEMA`) + TypedDicts für beide Read-Model-Flächen
-    (KONZ-003 Empf-3 S1). S2/S3 trigger-gegatet per KONZ-003 §13.
+    + TypedDicts (KONZ-003 Empf-3 S1). S2/S3 trigger-gegatet per KONZ-003 §13.
 - **Prio 1 (S13-Operationalisierung) abgeschlossen** — Drift-Gate `make
   klickdummy-parity-drift` als CI-Job in risk-hub `ci.yml` verdrahtet
   (**risk-hub PR #184**, admin-gemergt). Der Job macht `klickdummy-install`
