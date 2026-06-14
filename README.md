@@ -7,16 +7,16 @@
 
 ## Install
 
-**Default (v1.1+):** public PyPI
+**Default (v1.28+):** public PyPI
 
 ```bash
-pip install "iil-klickdummy>=1.1,<2.0"
+pip install "iil-klickdummy>=1.28,<2.0"
 ```
 
-**Fallback / Pre-PyPI / Dev:** via Git-URL
+**Fallback / Dev:** via Git-URL
 
 ```bash
-pip install "iil-klickdummy @ git+https://github.com/achimdehnert/platform.git@v1.1.0#subdirectory=packages/iil-klickdummy"
+pip install "iil-klickdummy @ git+https://github.com/achimdehnert/iil-klickdummy.git@v1.28.0"
 ```
 
 **Workspace-Pattern (Development):**
