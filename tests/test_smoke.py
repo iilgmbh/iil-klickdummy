@@ -55,14 +55,49 @@ def test_snippets_resource():
     assert "screens-spec-template.yaml" in names
 
 
-def test_genesor_sync_canonical_source():
-    """klickdummy_sync.py ist als kanonische Quelle in genesor-sync ausgeliefert (Issue #66)."""
-    import ast
-    src = (files("iil_klickdummy") / "snippets" / "genesor-sync" / "klickdummy_sync.py").read_text()
-    ast.parse(src)
-    assert "KANONISCHE QUELLE" in src
-    assert "upsert_issue" in src
-    assert "find_specs" in src
+def test_should_genesor_sync_canonical_source_be_importable_with_correct_interface(tmp_path):
+    """kanonische klickdummy_sync.py: importierbar, Sentinel-Format korrekt, find_specs erkennt Specs (Issue #66)."""
+    import importlib.util
+
+    src_path = files("iil_klickdummy") / "snippets" / "genesor-sync" / "klickdummy_sync.py"
+    # Schreibe in tmp_path, damit import auch aus ZIP-Package heraus funktioniert
+    module_file = tmp_path / "klickdummy_sync.py"
+    module_file.write_text(src_path.read_text())
+
+    spec = importlib.util.spec_from_file_location("klickdummy_sync_canonical", module_file)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    # Marker + Import-Nachweis
+    assert "KANONISCHE QUELLE" in src_path.read_text()
+    assert callable(mod.upsert_issue)
+    assert callable(mod.find_specs)
+    assert callable(mod.sentinel)
+
+    # Sentinel-Format: muss <!-- klickdummy-sync:<name> --> liefern
+    assert mod.sentinel("my-kd") == "<!-- klickdummy-sync:my-kd -->"
+
+    # find_specs: Standard-Konvention klickdummy/<name>/screens-spec.yaml
+    (tmp_path / "klickdummy" / "demo-kd").mkdir(parents=True)
+    (tmp_path / "klickdummy" / "demo-kd" / "screens-spec.yaml").write_text("title: Demo")
+    mod.ROOT = tmp_path
+    specs = mod.find_specs()
+    assert len(specs) == 1
+    assert specs[0][0] == "demo-kd"
+
+    # find_specs: meiki-Konvention docs/01-architektur/mockups/<name>-klickdummy/screens-spec.yaml
+    (tmp_path / "docs" / "01-architektur" / "mockups" / "buerger-kd" / "screens-spec.yaml").mkdir(
+        parents=True
+    )
+    (tmp_path / "docs" / "01-architektur" / "mockups" / "buerger-kd" / "screens-spec.yaml").rmdir()
+    (tmp_path / "docs" / "01-architektur" / "mockups" / "buerger-klickdummy").mkdir(parents=True)
+    (
+        tmp_path / "docs" / "01-architektur" / "mockups" / "buerger-klickdummy" / "screens-spec.yaml"
+    ).write_text("title: Bürger")
+    specs2 = mod.find_specs()
+    names = {n for n, _ in specs2}
+    assert "demo-kd" in names
+    assert "buerger" in names
 
 
 def test_widget_js_v05_features():
