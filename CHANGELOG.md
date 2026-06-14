@@ -5,6 +5,19 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+### Refactored — Read-Model-Schema zentralisiert (KONZ-003 Empf-3 S1, #70)
+
+Neues Modul `read_model.py` definiert die Feldverträge der zwei Read-Model-Flächen
+(`uc-export.json` via `genesor/export.py`, Discovery-NDJSON via `discovery_push.py`)
+als TypedDicts und zentralisiert die Schema-Versionskonstanten:
+
+- `UC_EXPORT_SCHEMA_VERSION` (bisher Literal `"1.0"` in `export.py`)
+- `REGISTRY_SCHEMA_VERSION`, `API_VERSION`, `EMBEDDING_INPUT_SCHEMA` (bisher
+  inline-Kommentar-Konstanten in `discovery_push.py`)
+
+Kein Verhaltensunterschied — ausschließlich Schema-Stabilisierung (S2/S3 trigger-gegatet
+per KONZ-003 §13).
+
 ## [1.27.0] — 2026-06-13
 
 ### Fixed — gen_e2e: Auth-Brücke + Strict-Mode (erstmals gegen echten Renderer #2 gefahren)

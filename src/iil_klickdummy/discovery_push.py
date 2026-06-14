@@ -37,6 +37,7 @@ DSGVO-Vermerk (User-Klärung 2026-05-21):
     Synthetische Operativ-Daten bleiben in den Klickdummies (class: mock).
     DSFA-Ergebnis: nicht kritisch.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,18 +50,18 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
+from .read_model import (  # Schema-Versionskonstanten zentral (KONZ-003 Empf-3 S1)
+    API_VERSION,
+    EMBEDDING_INPUT_SCHEMA,
+    REGISTRY_SCHEMA_VERSION,
+)
 from .registry import discover_klickdummies
-
 
 DEFAULT_ENDPOINT = (
     os.environ.get("KLICKDUMMY_DISCOVERY_ENDPOINT")
     or "https://orchestrator.iil.pet/api/discovery/klickdummy/upsert"
 )
 
-# platform:ADR-215 §Amendment 1 (Producer-Seite)
-REGISTRY_SCHEMA_VERSION = "v1.6"   # v1.6 = + Provenance/registry_key/visibility/Lifecycle-Felder
-API_VERSION = "v1"                 # Push-Envelope-Vertrag (REC-4/REC-10)
-EMBEDDING_INPUT_SCHEMA = "v1"      # welche Spec-Felder embedding_text bilden (REC-17)
 # Push-berechtigte I2-Klassen (REC-7 Ingestion-Guard) — kein vacuous push.
 ALLOWED_CLASSES = {"mock", "stub-demo", "story", "spec-demo"}
 
@@ -143,16 +144,21 @@ def _git_provenance(repo_root: pathlib.Path) -> tuple[str | None, str | None]:
     try:
         content = head.read_text(encoding="utf-8", errors="ignore").strip()
         if content.startswith("ref:"):
-            ref = content[4:].strip()                      # z. B. refs/heads/main
-            short = ref.split("/", 2)[-1]                  # main
+            ref = content[4:].strip()  # z. B. refs/heads/main
+            short = ref.split("/", 2)[-1]  # main
             ref_file = git / ref
             sha = None
             if ref_file.exists():
-                sha = ref_file.read_text(encoding="utf-8", errors="ignore").strip() or None
+                sha = (
+                    ref_file.read_text(encoding="utf-8", errors="ignore").strip()
+                    or None
+                )
             else:
                 packed = git / "packed-refs"
                 if packed.exists():
-                    for line in packed.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    for line in packed.read_text(
+                        encoding="utf-8", errors="ignore"
+                    ).splitlines():
                         if line.endswith(" " + ref):
                             sha = line.split(" ", 1)[0].strip() or None
                             break
@@ -230,7 +236,9 @@ def _pipeline_status(spec: dict) -> str:
     return spec.get("pipeline_status") or "klickdummy"
 
 
-def build_discovery_entry(repo_root: pathlib.Path, spec_path: pathlib.Path, spec: dict) -> dict:
+def build_discovery_entry(
+    repo_root: pathlib.Path, spec_path: pathlib.Path, spec: dict
+) -> dict:
     """Baut einen Discovery-Eintrag im v1.6-Schema (platform:ADR-215 §Amendment 1).
 
     Gegenüber v1.5 additiv: Provenance (`source_ref`/`commit_sha`/`spec_sha256`/
@@ -321,7 +329,10 @@ def collect_entries(base: pathlib.Path, repos: list[str] | None = None) -> list[
                 # Governance-Gate (REC-14): discovery.discoverable steuert Sichtbarkeit.
                 discoverable, soft_default = _is_discoverable(spec)
                 if not discoverable:
-                    print(f"· {meta.spec_id}: discovery.discoverable=false — übersprungen.", file=sys.stderr)
+                    print(
+                        f"· {meta.spec_id}: discovery.discoverable=false — übersprungen.",
+                        file=sys.stderr,
+                    )
                     continue
                 if soft_default:
                     print(
@@ -365,7 +376,10 @@ def push_to_endpoint(
                 "body": resp.read().decode("utf-8", errors="replace")[:2000],
             }
     except urllib.error.HTTPError as e:
-        return {"status_code": e.code, "body": e.read().decode("utf-8", errors="replace")[:2000]}
+        return {
+            "status_code": e.code,
+            "body": e.read().decode("utf-8", errors="replace")[:2000],
+        }
     except urllib.error.URLError as e:
         return {"status_code": 0, "body": f"URLError: {e.reason}"}
 
@@ -376,7 +390,9 @@ def build_snapshot(entries: list[dict]) -> dict:
     Der Picker kann diesen Snapshot bei Orchestrator-Ausfall statt einer manuell
     gepflegten Konstante laden; `sha256` deckt Manipulation/Teil-Schreiben auf.
     """
-    canonical = json.dumps(entries, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     digest = "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     return {
         "api_version": API_VERSION,
@@ -389,12 +405,16 @@ def build_snapshot(entries: list[dict]) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Klickdummy Discovery v1.5 (platform:ADR-215)")
+    ap = argparse.ArgumentParser(
+        description="Klickdummy Discovery v1.5 (platform:ADR-215)"
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     ap_list = sub.add_parser("list", help="Klickdummies als Tabelle auflisten")
     ap_list.add_argument("--repo", default=".", help="Repo-Root (default: .)")
-    ap_list.add_argument("--cross-repo", action="store_true", help="cross-repo via --repos")
+    ap_list.add_argument(
+        "--cross-repo", action="store_true", help="cross-repo via --repos"
+    )
     ap_list.add_argument("--repos", help="Komma-getrennt repo-Namen (für --cross-repo)")
     ap_list.add_argument("--base", default=str(pathlib.Path.home() / "github"))
 
@@ -403,17 +423,32 @@ def main(argv: list[str] | None = None) -> int:
     ap_push.add_argument("--cross-repo", action="store_true")
     ap_push.add_argument("--repos", help="Komma-getrennt repo-Namen")
     ap_push.add_argument("--base", default=str(pathlib.Path.home() / "github"))
-    ap_push.add_argument("--to-orchestrator", action="store_true", help="Direct-Push zu Discovery-API")
-    ap_push.add_argument("--endpoint", default=DEFAULT_ENDPOINT, help="Override Discovery-Endpoint")
-    ap_push.add_argument("--timeout", type=int, default=10, help="HTTP-Timeout in s (default 10)")
-    ap_push.add_argument("--dry-run", action="store_true", help="Zeigt Payload, kein Push")
+    ap_push.add_argument(
+        "--to-orchestrator", action="store_true", help="Direct-Push zu Discovery-API"
+    )
+    ap_push.add_argument(
+        "--endpoint", default=DEFAULT_ENDPOINT, help="Override Discovery-Endpoint"
+    )
+    ap_push.add_argument(
+        "--timeout", type=int, default=10, help="HTTP-Timeout in s (default 10)"
+    )
+    ap_push.add_argument(
+        "--dry-run", action="store_true", help="Zeigt Payload, kein Push"
+    )
     ap_push.add_argument("--output", "-o", help="NDJSON in Datei statt stdout")
-    ap_push.add_argument("--snapshot", help="Signierten Fallback-Snapshot (JSON) in Datei schreiben (REC-3)")
+    ap_push.add_argument(
+        "--snapshot",
+        help="Signierten Fallback-Snapshot (JSON) in Datei schreiben (REC-3)",
+    )
 
     args = ap.parse_args(argv)
 
     base = pathlib.Path(args.base).expanduser()
-    repos = [r.strip() for r in (args.repos or "").split(",") if r.strip()] if args.cross_repo else None
+    repos = (
+        [r.strip() for r in (args.repos or "").split(",") if r.strip()]
+        if args.cross_repo
+        else None
+    )
     repo_root = pathlib.Path(args.repo).resolve() if not args.cross_repo else base
 
     entries = collect_entries(repo_root if not args.cross_repo else base, repos)
@@ -422,7 +457,9 @@ def main(argv: list[str] | None = None) -> int:
         print("== klickdummy-discovery list ==")
         print(f"Total: {len(entries)} Klickdummies")
         print()
-        print(f"{'ORG':<14} {'NAME':<32} {'VER':<5} {'GENRE':<12} {'CLASS':<10} {'ADR'}")
+        print(
+            f"{'ORG':<14} {'NAME':<32} {'VER':<5} {'GENRE':<12} {'CLASS':<10} {'ADR'}"
+        )
         print("-" * 100)
         for e in entries:
             org_name = e["repo"].split("/", 1)
@@ -441,10 +478,16 @@ def main(argv: list[str] | None = None) -> int:
             pathlib.Path(args.snapshot).write_text(
                 json.dumps(snap, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
             )
-            print(f"✓ Snapshot ({snap['count']} entries, {snap['sha256'][:19]}…) → {args.snapshot}", file=sys.stderr)
+            print(
+                f"✓ Snapshot ({snap['count']} entries, {snap['sha256'][:19]}…) → {args.snapshot}",
+                file=sys.stderr,
+            )
 
         if args.dry_run:
-            print(f"== DRY-RUN: {len(entries)} entries würden gepusht werden ==", file=sys.stderr)
+            print(
+                f"== DRY-RUN: {len(entries)} entries würden gepusht werden ==",
+                file=sys.stderr,
+            )
             for e in entries:
                 print(json.dumps(e, ensure_ascii=False))
             return 0
@@ -455,7 +498,9 @@ def main(argv: list[str] | None = None) -> int:
                 f"→ POST {args.endpoint} ({len(entries)} entries, auth={'yes' if token else 'no'})",
                 file=sys.stderr,
             )
-            result = push_to_endpoint(entries, args.endpoint, token, timeout=args.timeout)
+            result = push_to_endpoint(
+                entries, args.endpoint, token, timeout=args.timeout
+            )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if 200 <= result["status_code"] < 300 else 1
 
