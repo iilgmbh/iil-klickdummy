@@ -5,6 +5,17 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.28.1] — 2026-06-17
+
+### Fixed — toter `lineage-<repo>.html`-Nav-Link bei 1-KD-Repos
+
+`build_repo_uc_index_html` (`render_uc.py`) verlinkte unbedingt auf
+`lineage-<repo>.html`. Diese Datei wird in `generate_per_repo_lineages` aber
+**nur bei ≥2 Spec-KDs** generiert (F12). Repos mit genau einem Klickdummy
+(z. B. `apo-hub`/apocenna-portale) bekamen so einen 404-Nav-Link auf ihrer
+`uc-<repo>.html`-Seite. Der „🌳 Lineage"-Link wird jetzt nur emittiert, wenn das
+Repo ≥2 Spec-KDs hat (gleiche Bedingung wie der Generator).
+
 ## [1.28.0] — 2026-06-14
 
 ### Refactored — Read-Model-Schema zentralisiert (KONZ-003 Empf-3 S1, #70)
