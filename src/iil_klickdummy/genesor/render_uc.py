@@ -9,7 +9,32 @@ import html
 from .config import get_cfg
 from .introspect_django import _detect_auth_user_model, _detect_tenant_pattern, _inspect_dev_run, _inspect_django_models, _inspect_infra_context
 from .publish import _github_delete_url, _github_edit_url
-from .ucs import _uc_kd_targets
+from .scan import find_mockup_html, url_for_path
+from .ucs import _resolve_screen_ref, _uc_kd_targets
+
+
+def _render_screen_ref(ref: str, adr_to_kd: dict, kd_mockup_url: dict) -> str:
+    """related_screens-Ref → klickbare [KD]+[Mockup]-Links (platform:ADR-251 — vom UC
+    in Screen-Lineage/Spec und per Deep-Link in den gerenderten Klickdummy springen).
+
+    [KD]  = Screen-Lineage (immer vorhanden). [Mockup] = echter Klickdummy-Einstieg
+    (``find_mockup_html``→``url_for_path``, identisch zur genesor-Index-Verlinkung)
+    + ``#screen-<sid>`` (render_fallback/Klickdummy-JS aktiviert den Screen); nur
+    emittiert, wenn ein Mockup existiert (Fallback-KDs ohne eigenen Render → kein toter Link).
+    """
+    resolved = _resolve_screen_ref(ref, adr_to_kd)
+    if not resolved:
+        return (f'<code>{html.escape(ref)}</code>'
+                f'<span title="Screen nicht auflösbar" style="color:#b91c1c">&nbsp;⚠</span>')
+    rp, kd, sid = resolved
+    kd_url = f"./screen-lineage-{html.escape(rp)}-{html.escape(kd)}.html"
+    out = (f'<span class="rs"><code>{html.escape(sid)}</code> '
+           f'<a href="{kd_url}" title="Screen-Lineage / Spec">🕸 KD</a>')
+    mock = kd_mockup_url.get((rp, kd))
+    if mock:
+        out += (f' <a href="{html.escape(mock)}#screen-{html.escape(sid)}" target="_blank" '
+                f'title="Klickdummy-Screen (Mockup, Deep-Link)">🖼 Mockup</a>')
+    return out + '</span>'
 
 
 def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict,
@@ -37,6 +62,20 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
             adr_local = adr_local.split(":", 1)[1]
         if adr_local:
             adr_to_kd[(k["repo"], adr_local)] = k["kd"]
+
+    # (repo, kd) → Mockup-Einstiegs-URL (für related_screens-[Mockup]-Deep-Links).
+    # Identisch zur genesor-Index-Verlinkung; None, wenn der KD keinen eigenen Render hat.
+    kd_mockup_url: dict[tuple[str, str], str] = {}
+    for k in (kds or []):
+        if k.get("kind", "spec") != "spec" or not k.get("path"):
+            continue
+        try:
+            mh = find_mockup_html(k["path"].parent, k["kd"])
+            mu = url_for_path(mh) if mh else None
+        except (OSError, ValueError, KeyError):
+            mu = None
+        if mu:
+            kd_mockup_url[(k["repo"], k["kd"])] = mu
 
     # Lineage-Link nur, wenn lineage-<repo>.html auch generiert wird: das passiert
     # in generate_per_repo_lineages NUR bei >=2 Spec-KDs (F12). Bei 1-KD-Repos
@@ -89,7 +128,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
             f'<dt>Sekundäre Akteure</dt><dd>{html.escape(sek_str or "—")}</dd>'
             f'<dt>realisiert von</dt><dd><code>{html.escape(uc.get("realisiert_von") or "—")}</code></dd>'
             f'<dt>related_screens</dt><dd>'
-            + (", ".join(f'<code>{html.escape(str(s))}</code>' for s in (uc.get("related_screens") or [])) or "—")
+            + (" · ".join(_render_screen_ref(str(s), adr_to_kd, kd_mockup_url) for s in (uc.get("related_screens") or [])) or "—")
             + '</dd>'
         )
         if u_refs:

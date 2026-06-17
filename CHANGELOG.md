@@ -5,6 +5,21 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.28.2] — 2026-06-17
+
+### Added — UC `related_screens` als klickbare [KD]+[Mockup]-Links (platform:ADR-251)
+
+Im Pro-Repo-UC-Index (`render_uc.py`) werden `related_screens` jetzt als Hyperlinks
+gerendert statt als reiner `<code>`-Text:
+- **[🕸 KD]** → Screen-Lineage des KDs (immer vorhanden).
+- **[🖼 Mockup]** → echter Klickdummy-Einstieg via `find_mockup_html`→`url_for_path`
+  (identisch zur genesor-Index-Verlinkung; nur wenn der KD einen Render hat — kein
+  toter Link bei Fallback-losen KDs) + `#screen-<sid>`-Deep-Link (springt, wo die
+  KD-Render-JS Hash-Navigation unterstützt; sonst lädt der Klickdummy graceful).
+
+Realisiert die ADR-251-Kette UC → KD → Mockup als durchklickbare Verbindung.
+Unauflösbare Refs werden weiter mit ⚠ markiert (I1-Coverage).
+
 ## [1.28.1] — 2026-06-17
 
 ### Fixed — toter `lineage-<repo>.html`-Nav-Link bei 1-KD-Repos
