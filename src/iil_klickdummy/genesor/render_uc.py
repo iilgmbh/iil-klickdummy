@@ -38,6 +38,17 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
         if adr_local:
             adr_to_kd[(k["repo"], adr_local)] = k["kd"]
 
+    # Lineage-Link nur, wenn lineage-<repo>.html auch generiert wird: das passiert
+    # in generate_per_repo_lineages NUR bei >=2 Spec-KDs (F12). Bei 1-KD-Repos
+    # (z. B. apo-hub) sonst toter Nav-Link (404).
+    n_repo_specs = sum(
+        1 for k in (kds or []) if k.get("kind", "spec") == "spec" and k.get("repo") == repo
+    )
+    lineage_link = (
+        f' ·\n  <a href="./lineage-{html.escape(repo)}.html">🌳 Lineage</a>'
+        if n_repo_specs >= 2 else ""
+    )
+
     validation = validation or {}
     rows = []
     for uc in ucs_sorted:
@@ -168,8 +179,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
 <h1>📋 Use Cases · {html.escape(repo)}</h1>
 <div class="sub">
   <a href="./index.html">← Genesor-Übersicht</a> ·
-  <a href="./coverage.html">📊 Cross-Repo Coverage</a> ·
-  <a href="./lineage-{html.escape(repo)}.html">🌳 Lineage</a>
+  <a href="./coverage.html">📊 Cross-Repo Coverage</a>{lineage_link}
 </div>
 <div class="badges" style="margin-bottom:14px;">
   <span>UCs in {html.escape(repo)}: {len(ucs_sorted)}</span>
