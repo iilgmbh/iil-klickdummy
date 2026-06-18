@@ -52,15 +52,17 @@ Modul-Ebene**; der reale Schmerz ist die fehlende **Komposition zu EINER Sektion
 ersatzloses Verschwinden von Blöcken (= wahrgenommene „Inkonsistenz") → Lösung ist **Komposition +
 maschinenprüfbarer Empty-State-Contract**, nicht ein neues Datenmodell.
 
-## Reframing nach Review (REC-1, REC-7 — Owner-Bestätigung nötig)
+## Reframing nach Review (REC-1, REC-7 — Owner-bestätigt 2026-06-18)
 Die ursprüngliche Owner-Rahmung war ein „3-stufiger Drill-down (H1→H2→H3)". Das externe Review
 (AD-7) und die Erdung zeigen: eine **nominelle 3-Ebenen-Symmetrie** verspricht eine Struktur, die
 die Datenlage **nicht** hergibt (H1 fehlt bei den meisten Repos). Daher umgerahmt zu **2 Ebenen +
-optionale Modul-Ebene**. Die H1/H2/H3-Begriffe bleiben als **Denkmodell** gültig, aber das
-UI verspricht keine Symmetrie. **⚠ Dies ändert die vom Owner gegebene Rahmung — vor Umsetzung
-bestätigen.** Die offene Referenz „3 Hierarchien wie bereits besprochen" wird als **UAT-Hypothese**
-behandelt; Pilot-Leitfrage ist **nicht** „Ist H1 korrekt umgesetzt?", sondern „**Brauchen Nutzer
-die Modul-Ebene überhaupt, oder reicht Repo-Lineage + Screen-Lineage mit besserer Komposition?**".
+optionale Modul-Ebene** — **vom Owner am 2026-06-18 bestätigt** („2 Ebenen + optionale Modul-Ebene
+passt"). Die H1/H2/H3-Begriffe bleiben als **Denkmodell** gültig, aber das UI verspricht keine
+Symmetrie. Die frühere Referenz „3 Hierarchien wie bereits besprochen" ist damit als
+Architektur-Prämisse **erledigt** (von der bestätigten 2+optional-Rahmung abgelöst); sie bleibt nur
+noch UAT-Leitfrage für den Pilot: **nicht** „Ist die Modul-Ebene korrekt umgesetzt?", sondern
+„**Brauchen Nutzer die Modul-Ebene überhaupt, oder reicht Repo-Lineage + Screen-Lineage mit besserer
+Komposition?**".
 
 ## Das Modell (Owner-bestätigt am Artefakt `lineage-meiki-hub.html`)
 Navigationszusammenhang grob → fein, als verlinkte Mermaids:
@@ -151,7 +153,7 @@ Quelle: `~/shared/adr-handoff-KONZ-iil-klickdummy-005-2026-06-18.md` · Verdikt 
 
 | REC | Verdikt | eingearbeitet als |
 |-----|---------|-------------------|
-| REC-1 Reframe 3-stufig→2 Ebenen+optional | valid (Owner-Bestätigung nötig) | §Reframing, Kernthese, Titel |
+| REC-1 Reframe 3-stufig→2 Ebenen+optional | valid (Owner-bestätigt 2026-06-18) | §Reframing, Kernthese, Titel |
 | REC-2 „Workflow"-Begriff definieren | valid | §Begriffsklärung |
 | REC-3 View-Model statt HTML-Kleben | valid | L9 |
 | REC-4 `inferred`-Markierung | valid | L10 |
@@ -164,7 +166,10 @@ Quelle: `~/shared/adr-handoff-KONZ-iil-klickdummy-005-2026-06-18.md` · Verdikt 
 | REC-11 maschinenprüfbarer Slot-Status (4 Werte) | valid | L7 |
 | REC-12 zusätzliches `repo-dossier.md` | **out-of-scope** | geparkt — Risiko 2. Repräsentation; nicht für T2-Pilot; ggf. später als testbare View-Model-Serialisierung erwägen |
 
-## Offene Annahme (ungeprüft)
-„**3 Hierarchien — wie bereits besprochen**" ist in KONZ-003/004 **nicht** belegbar → als
-**UAT-Hypothese** behandelt (REC-7), nicht als Architektur-Prämisse. Vor Umsetzung Owner-Abgleich,
-inkl. der Reframing-Frage (3 Ebenen vs. 2 Ebenen + optionale Modul-Ebene).
+## Offene Annahme (aufgelöst)
+Die Reframing-Frage (3 Ebenen vs. 2 Ebenen + optionale Modul-Ebene) ist **erledigt**: Owner hat am
+2026-06-18 **2 Ebenen + optionale Modul-Ebene bestätigt**. Die unbelegbare Referenz „3 Hierarchien
+wie bereits besprochen" entfällt damit als Architektur-Prämisse; sie wirkt nur noch als
+UAT-Leitfrage im Pilot (braucht es die Modul-Ebene überhaupt?). **Verbleibend offen:** L5 — ob die
+Route-Ableitung (Opt A) die KD→Modul-Kante mit ausreichender Coverage/Präzision trägt (Tier-Entscheid,
+löst der Django-Pilot auf).
