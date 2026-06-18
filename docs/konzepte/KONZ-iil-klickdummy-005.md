@@ -173,3 +173,28 @@ wie bereits besprochen" entfällt damit als Architektur-Prämisse; sie wirkt nur
 UAT-Leitfrage im Pilot (braucht es die Modul-Ebene überhaupt?). **Verbleibend offen:** L5 — ob die
 Route-Ableitung (Opt A) die KD→Modul-Kante mit ausreichender Coverage/Präzision trägt (Tier-Entscheid,
 löst der Django-Pilot auf).
+
+## Beleg-Beispiel: apocenna (apo-hub) — „1 KD verdeckt N Vorgänge"
+Owner-Dialog 2026-06-18 am Live-Artefakt `#/repo/apo-hub`. apo-hub deklariert **1 KD**
+(`apocenna-portale`, `class: mock`, **32 Screens**) und erscheint im Genesor deshalb als
+„Nur 1 KD — kein eigener Mermaid-Graph". Fachlich sind es aber **≥3 KDs / ~7 Vorgänge**
+(zwei-seitiger Marktplatz Apotheke↔Vertreter):
+
+| Latenter KD | Vorgänge (Auswahl) |
+|---|---|
+| apocenna-inhaber | Onboarding/Stammdaten · Vertretung suchen+vergeben (`inh-gesuch-anlegen`→`inh-matching`→`inh-anfrage-verhandlung`→`inh-vertraege`) · Bewertung |
+| apocenna-vertreter | Onboarding/Daten (Vertreter erfasst eigene Daten) · Bedarf finden+bewerben (`ver-gesuch-suche`→`ver-bewerbung-verhandlung`→`ver-vertraege`) · Bewertung |
+| apocenna-admin | Verifizierung, Stammdaten, Snippets, Rabattcodes, Reporting |
+
+**Was das für dieses Konzept belegt:**
+- **(i) H2 lohnt sich erst nach Split:** Inhaber- und Vertreter-Seite treffen sich am Vertrag
+  (`inh-matching`↔`ver-gesuch-suche`, `inh-vertraege`↔`ver-vertraege`) = echte
+  **`cross_klickdummy_link`s**. Solange alles in *einem* KD steckt, ist diese Repo-Lineage (H2)
+  **unsichtbar**. Ein Spec-Split (apo-hub: 1→3 KDs) macht H2 erst sinnvoll — stützt L1/L3.
+- **(ii) Flow-Bedarf (Opt B) ist real, nicht hypothetisch:** Die Abläufe existieren fachlich, aber
+  die Spec hat **kein `next`/transitions** → ein H3-Flow ist heute nur von Hand malbar (`inferred`,
+  L10). Genau der Datenpunkt, dessen Fehlen L5 offen lässt.
+- **(iii) Folge-Idee (geparkt, KEIN eigenes Konzept):** „KD-Split-/Vorschlags-Detektor" — aus
+  bestehender Struktur (Screen-Präfixe, Routen, `introspect_django`-Modelle) **Vorschläge** für
+  KD-Schnitt + Flow ableiten. Owner-Einschätzung 2026-06-18: als Vollkonzept derzeit **nicht
+  zielführend**; Dialogebene + diese Notiz genügen. Keim existiert (`introspect_django`).
