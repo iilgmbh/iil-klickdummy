@@ -5,6 +5,17 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.28.3] — 2026-06-18
+
+### Changed — genesor KD-Detail: Screens klickbar + Mockup-Link nach oben (UAT)
+
+`render_genesor.py` (KD-Detail-Karte):
+- **F17:** Screen-Liste ist jetzt **klickbar** — jeder Screen verlinkt per Deep-Link
+  `…/index.html#screen-<id>` in den Mockup (Hash-Nav im KD aktiviert den Screen).
+- **F15:** Der **„📱 Klickdummy-Mockup öffnen"-Link** steht jetzt **oben** (vor der
+  Drift-Validierung) für schnellere Erreichbarkeit; Mockup-URL einmal vorberechnet
+  (`find_mockup_html`→`url_for_path`), für Screen-Links und Button geteilt.
+
 ## [1.28.2] — 2026-06-17
 
 ### Added — UC `related_screens` als klickbare [KD]+[Mockup]-Links (platform:ADR-251)
