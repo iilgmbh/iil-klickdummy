@@ -1,125 +1,134 @@
 ---
 concept_id: KONZ-iil-klickdummy-005
-title: Per-Repo-Sektion „Workflow → KD → UC" — kanonische Schichtung über bestehende Bausteine
+title: Per-Repo-Sektion „Workflow → KD → UC" als Lineage-Drill-down (H1→H2→H3)
 pipeline_status: idea
-tier: T2                          # bedingt T3 — siehe Tier-Gate
+tier: T2                          # bedingt T3 — nur wenn H1-Kante ein org-weites Spec-Feld braucht
 owner: achim                      # Annahme (ADR-211 deciders:[achim]) — bestätigen
-spec_refs: []                     # Renderer-Komposition; berührt Spec NUR falls neues Makroprozess-Feld nötig
+spec_refs: []                     # Renderer-Komposition; berührt Spec NUR im T3-Zweig (Opt B)
 conforms_to: platform:ADR-211
-adr_threshold: kein ADR           # renderer-lokal, additiv, reversibel — Amendment NUR im T3-Zweig (neues org-weites Spec-Feld)
+adr_threshold: kein ADR           # renderer-lokal, additiv, reversibel — Amendment NUR im T3-Zweig
 review_by: 2026-09-16             # created + 90 Tage; ohne Pflege Auto-stale (I3)
 superseded_by_spec: null
-kill_criteria: "Pilot (1 Repo) zeigt: die Per-Repo-Workflow-Sektion aus bestehenden Daten (screen-lineage H3 + lineage/introspect H1) ist für >50% der Repos leer ODER der nötige H2-Makroprozess lässt sich ohne neues Spec-Feld nicht darstellen → Komposition verwerfen, bei der flachen Tabelle + Empty-States bleiben (NICHT zu T3/Spec-Feld eskalieren ohne erneute Owner-Freigabe)."
+kill_criteria: "MVC-Pilot zeigt: die komponierte Per-Repo-Sektion aus H2 (Repo-Lineage) + H3 (Screen-Lineage) bringt gegenüber der heutigen flachen Tabelle keinen sichtbaren Mehrwert (User-UAT am Pilot-Repo verneint) → Komposition verwerfen, flache Tabelle + Empty-States behalten. SEPARATES Kill für H1: liefert die Route-Ableitung (Opt A) am Django-Pilot <50% der KD→Modul-Kanten → H1 NICHT via neuem Spec-Feld erzwingen, H1 als Django-only-Beigabe belassen oder streichen."
 evidence_manifest:
   - {claim_id: C1, source_path: "src/iil_klickdummy/genesor/render_genesor.py:29 (_render_kd_detail), :1223 (build_genesor_html)", commit_or_pr: "working-tree@main", opened_in_session: true}
   - {claim_id: C2, source_path: "src/iil_klickdummy/genesor/mermaid.py:230 (emit_screen_lineage — 'Screen-Ablauf innerhalb eines KDs')", commit_or_pr: "working-tree@main", opened_in_session: true}
-  - {claim_id: C3, source_path: "src/iil_klickdummy/schemas/story.schema.json (props id/title/persona/steps[].kd) + render_common.py:26-83 (story-banner)", commit_or_pr: "working-tree@main", opened_in_session: true}
-  - {claim_id: C4, source_path: "src/iil_klickdummy/genesor/introspect_django.py:_inspect_django_models (AST apps/*/models.py)", commit_or_pr: "working-tree@main", opened_in_session: true}
-  - {claim_id: C5, source_path: "src/iil_klickdummy/schemas/module-manifest.schema.json (MEiKI Fachverfahren — repo-spezifisch)", commit_or_pr: "working-tree@main", opened_in_session: true}
-  - {claim_id: C6, source_path: "find ~/github -name '*.story.y*ml'/'module-manifest*' → leer (kein Repo hat heute eine story.yaml/Modul-Manifest)", commit_or_pr: "session-scan 2026-06-18", opened_in_session: true}
-  - {claim_id: C7, source_path: "genesor/index.html:2719-2733 (SPA-Hash-Router facets repo/org/class/role) — flache gefilterte Tabelle, keine Per-Repo-Sektion", commit_or_pr: "iil-pet-portal working-tree", opened_in_session: true}
-  - {claim_id: C8, source_path: "docs/konzepte/KONZ-iil-klickdummy-004.md (Story↔UC — Story=geordnete KD-Tour, fail-fast)", commit_or_pr: "working-tree@main", opened_in_session: true}
+  - {claim_id: C3, source_path: "src/iil_klickdummy/genesor/render_lineage.py (generate_per_repo_lineages → lineage-<repo>.html; Click-Direktiven für klickbare Mermaid-Knoten)", commit_or_pr: "working-tree@main", opened_in_session: true}
+  - {claim_id: C4, source_path: "src/iil_klickdummy/genesor/introspect_django.py:_inspect_django_models (AST apps/*/models.py → {app_label.ModelName})", commit_or_pr: "working-tree@main", opened_in_session: true}
+  - {claim_id: C5, source_path: "src/iil_klickdummy/schemas/module-manifest.schema.json (MEiKI Fachverfahren — repo-spezifisch, nicht generisch)", commit_or_pr: "working-tree@main", opened_in_session: true}
+  - {claim_id: C6, source_path: "genesor/index.html:2719-2733 (SPA-Hash-Router facets repo/org/class/role) — flache gefilterte Tabelle, keine Per-Repo-Sektion", commit_or_pr: "iil-pet-portal working-tree", opened_in_session: true}
+  - {claim_id: C7, source_path: "screens-spec.schema.json — KEIN module:-Feld (KD→Modul-Zuordnung existiert heute nicht explizit)", commit_or_pr: "working-tree@main", opened_in_session: true}
+  - {claim_id: C8, source_path: "docs/konzepte/KONZ-iil-klickdummy-004.md (Story↔UC — 'story' = geführte KD-Tour, NICHT H2)", commit_or_pr: "working-tree@main", opened_in_session: true}
 created: 2026-06-18
 ---
 
-# KONZ-iil-klickdummy-005 — Per-Repo-Sektion „Workflow → KD → UC"
+# KONZ-iil-klickdummy-005 — Per-Repo-Sektion „Workflow → KD → UC" als Lineage-Drill-down
 
-> T2-Decision-Ledger (`/konzept`). Verwandt: KONZ-003 (genesor-Strategie / Monolith-Entschärfung),
-> KONZ-004 (Story↔UC), platform:ADR-211 (Spec=SoR). Auslöser: UAT-Beobachtung (pg-hub),
-> „inkonsistente Darstellung je Repo" in der gefilterten Genesor-Sicht.
+> T2-Decision-Ledger (`/konzept`). Verwandt: KONZ-003 (genesor-Strategie), KONZ-004 (Story↔UC),
+> platform:ADR-211 (Spec=SoR). Auslöser: UAT (pg-hub) + Owner-Klärung am Artefakt
+> `lineage-meiki-hub.html`. **Diese Rev korrigiert das Hierarchie-Mapping** (H2 = Repo-Lineage,
+> nicht „story") nach Owner-Feedback 2026-06-18.
 
 ## Tier-Gate
-**T2 (bedingt T3).** Single-Repo-Renderer-Konvention, additiv/reversibel → T2. **Auto-Eskalation
-zu T3 GENAU DANN**, wenn die H2-Makroprozess-Ebene ein **neues, org-weites Spec-Feld** braucht
-(ADR-211-Schema-Amendment = SSoT-Verschiebung über alle Repos). Billigster Check zur Auflösung:
-MVC-Pilot (unten) — komponiert die Sektion aus *bestehenden* Daten genug Substanz, oder ist H2 ohne
-neues Feld leer? **Bis der Check vorliegt: nicht als T3 bauen.**
+**T2 (bedingt T3).** Per-Repo-Sektion = Renderer-Komposition bestehender Lineage-Artefakte,
+additiv/reversibel → T2. **Auto-Eskalation zu T3 GENAU DANN**, wenn die H1-Ebene ein neues
+org-weites Spec-Feld (`module:`) braucht, um die Modul→KD-Kante zu ziehen (= ADR-211-Schema-
+Amendment, SSoT über alle Repos). Billigster Check: Django-Pilot mit Route-Ableitung (Opt A) —
+deckt sie genug KD→Modul-Kanten ab? **Bis dahin: kein Spec-Feld, kein T3.**
 
 ## Kernthese (1 Satz)
-Die „Workflow"-Ansicht muss **nicht neu erfunden** werden — H3 (Screen-Flow) existiert als
-`emit_screen_lineage` (C2), H2 (Makroprozess) als **unbenutztes** `story`-Schema (C3, C6), H1
-(Module) via `introspect_django` / `module-manifest` (C4, C5) — der reale Schmerz ist (a) sie sind
-**nicht zu EINER kanonischen Per-Repo-Sektion komponiert** (heute flache, gefilterte Tabelle, C7)
-und (b) **datengetriebene Blöcke verschwinden ersatzlos** statt mit Leerzustand → daher wirkt es
-„inkonsistent"; Lösung ist **Render-Komposition + Empty-State-Contract**, kein neues Spec-Feld.
+Die gewünschte „Workflow"-Ansicht ist ein **3-stufiger Lineage-Drill-down (klickbare Mermaids)** —
+**H2 (Repo-Lineage, `lineage-<repo>.html`) und H3 (Screen-Lineage) existieren bereits**, nur H1
+(Modul-Lineage) ist neu; der reale Schmerz ist die fehlende **Komposition zu EINER Per-Repo-Sektion**
+plus ersatzloses Verschwinden von Blöcken (= wahrgenommene „Inkonsistenz") → Lösung ist
+**Komposition + Empty-State-Contract**, und H1 wird **evidenz-gegated** (Django-only, opt-in)
+statt spekulativ für jedes Repo gebaut (YAGNI).
 
-## Erdungs-Befund (Root-Cause-Tiefe — die naheliegende Lösung war „neue Ansicht bauen")
-Der Auftrag las sich als „die Workflow-Ansicht existiert nicht → bauen". Die Erdung falsifiziert,
-dass nichts existiert; sie zeigt **drei reife/halbreife Bausteine ohne Komposition**:
+## Das Modell (Owner-bestätigt am Artefakt)
+Drill-down grob → fein, durchgängig als verlinkte Mermaid-Diagramme:
 
-| Ebene (User) | Bedeutung | Existierender Baustein | Reife | Beleg |
-|---|---|---|---|---|
-| **H1 Module/Pakete** | Struktur-Hierarchie | `introspect_django` (Django-Apps) · `module-manifest` (MEiKI) | nur Django/MEiKI; **kein** generischer Pfad | C4, C5 |
-| **H2 Makro-Prozess/Workflow** | geordneter Fluss über KDs | `story` (geordnete KD-Tour, `steps[].kd`) | Schema da, **0 Repos** nutzen es | C3, C6, C8 |
-| **H3 detaillierter Workflow** | Screen-Ablauf *innerhalb* eines KD (Swimlane-nah) | `emit_screen_lineage` → `screen-lineage-*.html` | **funktioniert** | C2 |
-| Komposition | „eine Sektion je Repo" | — | **fehlt** (flache Tabelle + Hash-Filter) | C7 |
+| Ebene | Was | Artefakt | Status |
+|-------|-----|----------|--------|
+| **H1** | **Modul-Lineage / Modulschaubild** — Mermaid der Module; jeder Knoten verlinkt nach unten in die H2-Lineage | — | **neu, gegated** |
+| **H2** | **Repo-/KD-Lineage** — KDs + ihre Beziehungen (= `lineage-meiki-hub.html`, Owner-bestätigt) | `lineage-<repo>.html` (C3) | ✅ existiert |
+| **H3** | **Screen-Lineage** — Ablauf *innerhalb* eines KD | `screen-lineage-<repo>-<kd>.html` (C2) | ✅ existiert |
 
-→ Eine „neue Workflow-Ansicht" als drittes Datenmodell schüfe eine **zweite/dritte Wahrheit** neben
-Spec + story.yaml. SoR ist laut ADR-211 die **Spec**. Der Hebel ist **Komposition + Leerzustand**,
-nicht **Neuerfassung** — solange H2 aus `story` darstellbar ist.
+**Klick-Mechanik existiert schon:** `render_lineage.py` rendert klickbare Mermaid-Knoten
+(Click-Direktiven, C3) → H1→H2→H3-Verlinkung braucht **kein** neues Klick-Framework.
+
+## Erdungs-Befund (Root-Cause — die naheliegende Lösung war „neue Ansicht bauen")
+Der Auftrag las sich als „Workflow-Ansicht existiert nicht → bauen". Die Erdung zeigt: **zwei der
+drei Ebenen existieren**, nur die Komposition fehlt.
+
+| Ebene | Existierender Baustein | Reife / Lücke | Beleg |
+|---|---|---|---|
+| H1 Modul | `introspect_django` (Django-Apps `app_label`) · `module-manifest` (MEiKI) | nur Django/MEiKI; **kein** generischer Pfad; **KD→Modul-Kante fehlt** (kein `module:`-Feld) | C4, C5, C7 |
+| H2 Repo-Lineage | `lineage-<repo>.html` | **funktioniert** — ist standalone, noch nicht als Sektion eingebettet | C3 |
+| H3 Screen-Lineage | `emit_screen_lineage` | **funktioniert** | C2 |
+| Komposition | — | **fehlt** (flache Tabelle + Hash-Filter) | C6 |
+
+→ „story" (KONZ-004, geführte KD-Tour) ist **nicht** H2 und fällt aus dem Mapping. (Begriffs-
+Disambiguierung: `class: story` aus ADR-211 = Prod-Safety-Pattern/Storybook ≠ die KD-Tour.)
 
 ## Ledger
 
 | id | Aussage | Typ | Evidenz / Falsifikation | Status |
 |----|---------|-----|--------------------------|--------|
-| L1 | H3 (Screen-Flow) ist bereits gerendert (`emit_screen_lineage`) und kann den „detaillierten Workflow"-Slot füllen | Annahme | C2 — Funktion existiert; Falsifikation: prüfen ob Swimlane-Personas-Lanes verlangt sind, die der Graph nicht kann | offen |
-| L2 | H2 (Makroprozess) = `story` (geordnete KD-Tour); kein neues Feld nötig, NUR Autoren-Adoption | Annahme | C3/C6/C8 — Schema da, 0 Nutzung; Falsifikation: Pilot-Repo kann seinen Makroprozess nicht als story[] ausdrücken | **offen — entscheidet Tier** |
-| L3 | H1 (Module) hat **keinen** repo-agnostischen Datenpfad (nur Django/MEiKI) | Befund | C4/C5 — zwei repo-spezifische Quellen; Falsifikation: ein generischer Modul-Begriff (z.B. KD-Gruppen aus `spec_id`-Präfix) genügt | offen |
-| L4 | Wahrgenommene „Inkonsistenz" = ersatzloses Verschwinden datengetriebener Blöcke, nicht abweichende Reihenfolge | Befund | C7 + Session-Render-Vergleich meiki/apo/risk (Detail-Top-Level-Order war identisch) | belegt |
-| L5 | Fixe Schichtung mit **Empty-State je Slot** beseitigt L4 ohne neue Daten | Entscheidung (D) | Alternative: Slots ausblenden wenn leer (= heutiges Verhalten, erzeugt L4) → verworfen | vorgeschlagen |
-| L6 | Per-Repo-**Sektion** statt per-KD-Detail (User-Scope) → neuer Render-Pfad in `build_genesor_html` für den `#/repo/<slug>`-Zustand | Entscheidung (D) | C1/C7 — Router kennt facet `repo` bereits; Alternative: nur CSS-Gruppierung der Tabelle → zu schwach für H1/H2 | vorgeschlagen |
-| L7 | Kein neues org-weites Spec-Feld im T2-Zweig; H2 bleibt opt-in via `story.yaml` (KONZ-004-Schema/Gate nutzen) | Entscheidung (D) | C8 — KONZ-004 liefert story-Validierung; Falsifikation = L2-Auflösung → dann T3 | vorgeschlagen |
+| L1 | H2 = Repo-Lineage (`lineage-<repo>.html`) — existiert, Owner-bestätigt am `lineage-meiki-hub.html` | Entscheidung (D) | C3 + Owner-UAT 2026-06-18; früheres Mapping „H2=story" verworfen | **beschlossen** |
+| L2 | H3 = Screen-Lineage (`screen-lineage-*.html`) — existiert | Entscheidung (D) | C2 | beschlossen |
+| L3 | „Workflow"-Slot der Sektion = H2+H3 **jetzt** komponieren; reiner Reuse, kein neues Datenmodell | Entscheidung (D) | C2/C3; Alternative A1 (CSS-Gruppierung) zu schwach | vorgeschlagen |
+| L4 | „H1 für jedes Repo" ist YAGNI — H1 nur **Django-only/opt-in**, gerendert bei **≥2 Modulen**, sonst keine H1-Box | Entscheidung (D) | C4/C5/C7 — keine universelle Quelle; Symmetrie ist Pull, kein Requirement; Owner-Bauchgefühl bestätigt | **beschlossen** |
+| L5 | Modul→KD-Kante via **Route-Ableitung (Opt A)** — kein neues Spec-Feld; bleibt T2 | Annahme | C7 — kein `module:`-Feld heute; Falsifikation: Django-Pilot deckt <50% Kanten → Opt B (T3) erwägen | **offen — entscheidet Tier** |
+| L6 | Wahrgenommene „Inkonsistenz" = ersatzloses Verschwinden datengetriebener Blöcke, nicht abweichende Reihenfolge | Befund | C6 + Session-Render-Vergleich meiki/apo/risk (Detail-Top-Level-Order identisch) | belegt |
+| L7 | Empty-State je Slot behebt L6; abwesende H1-Ebene (Repo ohne Module) ist VALIDE, kein erzwungener Leerzustand | Entscheidung (D) | Alternative: Slots ausblenden = heutiges Verhalten = L6 | vorgeschlagen |
+| L8 | Per-Repo-**Sektion** im `#/repo/<slug>`-Zustand (neuer Render-Pfad in `build_genesor_html`) | Entscheidung (D) | C1/C6 — Router kennt facet `repo`; golden-HTML-Diff als Netz (KONZ-003-Lehre) | vorgeschlagen |
 
 ## MVC (kleinster pilotierbarer Schnitt)
-1. **Ein Pilot-Repo** mit echtem Mehrwert wählen: ≥2 KDs **und** vorhandenen Screen-Flows
-   (Kandidat: `risk-hub` oder `ausschreibungs-hub` — multi-KD, echte Mockups).
-2. In `render_genesor.py` eine Funktion `_render_repo_section(repo, records)` ergänzen, die im
-   `#/repo/<slug>`-Zustand **eine** Sektion mit fixer Schichtung rendert:
-   - **Workflow (oben):** H3 = bestehende `screen-lineage`-Links/Graph je KD; H2 = `story`-Stepper
-     **falls** `story.yaml` vorhanden, sonst **Empty-State** „kein Makroprozess hinterlegt
-     (→ `klickdummy/stories/<slug>.yaml`, KONZ-004)"; H1 = Modul-Liste **falls**
-     Django/`module-manifest`, sonst Empty-State.
-   - **KD (Mitte):** bestehende Mockup-/Spec-Render-Links (heutige `mockup_link`-Logik).
-   - **UC (unten):** bestehende UC-Index-Links (`uc-<repo>.html`).
-3. **Empty-State-Contract:** jeder der drei Slots rendert **immer** (Titel + Inhalt **oder**
-   expliziter Leerzustand mit Pfad-Hinweis) — nie ersatzloses Weglassen (behebt L4).
-4. Golden-HTML-Baseline VOR dem Schnitt ziehen (KONZ-003-Sicherheitsnetz), Diff nur für den
-   Pilot-Repo erwarten.
+1. **Ein Django-Pilot-Repo** mit ≥2 KDs und echten Screen-Flows (Kandidat: `risk-hub`).
+2. `_render_repo_section(repo, records)` in `render_genesor.py` für den `#/repo/<slug>`-Zustand,
+   feste Schichtung:
+   - **Workflow (oben):** **H2** = eingebettete Repo-Lineage (Link + ggf. Inline-Graph); **H3** =
+     Screen-Lineage-Links je KD. *(H2/H3 = reiner Reuse — sofort.)*
+   - **KD (Mitte):** bestehende Mockup-/Spec-Render-Links.
+   - **UC (unten):** bestehende `uc-<repo>.html`-Links.
+3. **H1 nur am Django-Pilot testen:** `introspect_django` → Modul-Knoten; KD→Modul-Kante via
+   Route-Ableitung (Opt A). Render H1 **nur bei ≥2 Modulen**, sonst weglassen.
+4. **Empty-State-Contract:** H2/H3/KD/UC rendern immer (Inhalt oder expliziter Leerzustand);
+   H1 ist optional/abwesend.
+5. Golden-HTML-Baseline VOR dem Schnitt (KONZ-003-Netz), Diff nur für den Pilot-Repo.
 
 ## Kill-Gate + Exception-Budget
-- **Kill (messbar):** siehe Frontmatter `kill_criteria` — Pilot leer für >50% Repos ODER H2 ohne
-  neues Feld nicht darstellbar → Komposition verwerfen, flache Tabelle + Empty-States behalten.
-- **Exception-Budget:** Wenn der Pilot Mehrwert zeigt, aber H1 generisch fehlt (L3) → H1-Slot
-  **bis 2026-08-15** als Dauer-Empty-State akzeptiert; danach Entscheidung „H1 streichen oder
-  generischen Modulbegriff definieren" — nicht offen lassen.
+- **Kill (messbar):** siehe Frontmatter — (a) Sektion bringt am Pilot keinen UAT-Mehrwert → verwerfen;
+  (b) Opt A deckt <50% KD→Modul-Kanten → H1 nicht per Spec-Feld erzwingen.
+- **Exception-Budget:** H1 generisch fehlend (Nicht-Django-Repos) bis **2026-08-15** als bewusst
+  abwesend akzeptiert; danach Entscheidung „H1 streichen oder generischen Modulbegriff" — nicht offen lassen.
 
 ## Befunde (inkl. Advocatus Diabolus) + Alternativen
 
 **Befunde**
-- **B1 (hoch):** „Workflow-Ansicht neu bauen" würde drei vorhandene Bausteine (C2/C3/C4) ignorieren
-  und Doppelmodelle schaffen — gegen ADR-211 SoR. → Komponieren, nicht neu erfassen.
-- **B2 (mittel):** H2 ist heute toter Code-Pfad (Schema ohne Nutzung, C6) — die Sektion macht
-  `story` erstmals sichtbar nützlich; Risiko: ohne Autoren bleibt H2 dauerhaft Empty-State.
-- **B3 (mittel):** Per-Repo-Sektion ist ein **neuer Render-Pfad** (Boundary) → T2-Pflicht; golden-
-  HTML-Diff als Netz, sonst stiller Byte-Drift in `genesor.html` (KONZ-003-Lehre).
+- **B1 (hoch):** „Workflow neu bauen" würde H2/H3 (C2/C3) ignorieren und Doppelmodelle schaffen
+  (gegen ADR-211 SoR). → Komponieren.
+- **B2 (hoch, YAGNI):** „H1 für jedes Repo" = hoher Aufwand (Spec-Feld/T3) für eine Ebene ohne
+  universelle Daten; bei Repos ohne Modulstruktur eine **leere oder 1-Knoten-Ebene** = negativer
+  Nutzen. → Django-only/opt-in, ≥2-Module-Gate.
+- **B3 (mittel):** Modul→KD-Kante ist der **eigentliche Engpass** für H1 (nicht die Modul-Liste);
+  ohne sie kein Drill-down-Edge.
 
 **Advocatus Diabolus**
-- *Wo Doppelquelle?* H2 als neues Spec-Feld → JA Doppelquelle zu `story.yaml`; deshalb L7 (kein
-  Feld, story bleibt SoR-konform opt-in).
-- *Wo „Tool→Boundary"?* Die Per-Repo-Sektion könnte zur impliziten Pflicht werden („jedes Repo
-  braucht Workflow") — Gegenmittel: Empty-State ist **valide**, kein Drift-Finding.
-- *Wo „sichtbar machen < verhindern"?* Empty-States machen Lücken sichtbar, erzwingen aber nichts —
-  bewusst (Adoption, nicht Zwang); Enforcement wäre ein KONZ-004-Lint, nicht dieses Konzept.
+- *Doppelquelle?* H1-`module:`-Feld → JA Doppelquelle zu Django-Code; deshalb L5 (Route-Ableitung).
+- *„Tool→Boundary"?* Per-Repo-Sektion könnte „jedes Repo braucht Workflow" implizieren — Gegenmittel:
+  Empty-State/abwesende H1 ist valide, kein Drift-Finding.
+- *Symmetrie-Falle?* „3 Ebenen sind logisch" verführt zum Vollausbau; B2 hält dagegen.
 
 **Alternativen**
 | Alt | Inhalt | Warum nicht (jetzt) |
 |-----|--------|---------------------|
-| A1 | Nur CSS-Gruppierung der flachen Tabelle je Repo | Löst L4 nicht (Blöcke fehlen weiter); kein Platz für H1/H2 |
-| A2 | Neues org-weites Spec-Feld `workflow:`/`macro_process:` | SSoT-Verschiebung über alle Repos = T3/ADR-211-Amendment; verfrüht bevor L2 belegt ist |
-| A3 | Nichts tun | „Inkonsistenz"-Wahrnehmung bleibt; vorhandene Bausteine bleiben ungenutzt |
+| A1 | Nur CSS-Gruppierung der flachen Tabelle | Löst L6 nicht; kein Platz für H1 |
+| A2 (Opt B) | Org-weites Spec-Feld `module:` | SSoT-Verschiebung = T3/ADR-211-Amendment; verfrüht vor L5-Auflösung |
+| A3 | Nichts tun | „Inkonsistenz" bleibt; H2/H3 bleiben ungenutzt nebeneinander |
 
 ## Offene Annahme (ungeprüft)
 Die User-Referenz „**3 Hierarchien — wie bereits besprochen**" konnte in KONZ-003/004 **nicht**
-verifiziert werden (nicht dort dokumentiert). Diese Schichtung H1/H2/H3 ist hier aus der
-Session-Vorgabe rekonstruiert — **vor Umsetzung mit dem Owner abgleichen**, ob es eine frühere
-Festlegung gibt, die H1/H2/H3 anders definiert.
+verifiziert werden. Das H1/H2/H3-Mapping hier ist aus Session-Dialog + Owner-Bestätigung an
+`lineage-meiki-hub.html` rekonstruiert. Falls es eine frühere, abweichende Festlegung gibt → vor
+Umsetzung abgleichen.
