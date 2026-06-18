@@ -9,7 +9,7 @@ import html
 from pathlib import Path
 from .config import _DOMAIN_STYLES, get_cfg
 from .mermaid import emit_mermaid, emit_screen_lineage, node_id
-from .scan import find_contracts_in_dir, read_doc_profile
+from .scan import detect_org, find_contracts_in_dir, read_doc_profile
 
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -272,10 +272,20 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
         )
 
         html_out = build_html(mermaid_themed, specs_for_repo, repo_contracts)
-        # Repo-spezifische Header-Beschriftung
+        # Repo-spezifische Header-Beschriftung + <title> + Feedback-Ziel.
+        # HTML_TEMPLATE hat meiki-hub als Platzhalter hartkodiert (H1 ·, <title> —,
+        # Feedback-Repo); alle drei je Repo ersetzen, sonst leakt meiki-hub in jede
+        # lineage-<repo>.html (Feedback würde an achimdehnert/meiki-hub fehlgeleitet).
+        repo_org = (repo_records[0].get("org") if repo_records else None) or detect_org(repo_name)
         html_out = html_out.replace(
             "Klickdummy-Lineage · meiki-hub",
             f"Klickdummy-Lineage · {repo_name}",
+        ).replace(
+            "Klickdummy-Lineage — meiki-hub (auto-generated)",
+            f"Klickdummy-Lineage — {repo_name} (auto-generated)",
+        ).replace(
+            'window.KLICKDUMMY_FEEDBACK_REPO = "achimdehnert/meiki-hub";',
+            f'window.KLICKDUMMY_FEEDBACK_REPO = "{html.escape(repo_org)}/{html.escape(repo_name)}";',
         )
 
         # Quick-Stats für Header (KD-Count, Profile, Smoke-Status — wird beim Build berechnet)

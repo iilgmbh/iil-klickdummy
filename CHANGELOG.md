@@ -5,6 +5,28 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.28.4] — 2026-06-18
+
+### Fixed — lineage-Seiten: meiki-hub-Identität leakte in JEDE lineage-<repo>.html
+
+`render_lineage.py`: `HTML_TEMPLATE` hatte `meiki-hub` als Platzhalter an drei
+Stellen hartkodiert; nur die H1 (`· meiki-hub`) wurde je Repo ersetzt. Dadurch
+trugen **alle** `lineage-<repo>.html` (risk-hub, ttz-hub, pg-hub, …) den falschen
+`<title>Klickdummy-Lineage — meiki-hub` und ein Feedback-Widget, das an
+`achimdehnert/meiki-hub` statt an das eigene Repo zielte (fehlgeleitetes UAT-Feedback).
+- `<title>` (em-dash-Form) und `KLICKDUMMY_FEEDBACK_REPO` werden jetzt ebenfalls
+  je Repo ersetzt; Feedback-Ziel = `<org>/<repo>` (`detect_org` analog
+  `render_fallback`).
+
+### Changed — genesor KD-Detail: Topologie-Zeile mit Genesor-Deep-Link
+
+`render_genesor.py` (KD-Detail-Karte, Topologie-Zeile):
+- Zeile verlinkt jetzt **beide** Ziele: `→ im Genesor öffnen`
+  (`index.html#/repo/<slug>`, vom SPA-Router unterstützt) **und** `→ Mermaid-Topologie`
+  (`lineage-<slug>.html`) — die Topologie-Seite bleibt aus der Zeile erreichbar.
+- 1-KD-Repos (kein eigener Mermaid-Graph) erhalten denselben `→ im Genesor`-Link
+  für konsistente Repo-Navigation.
+
 ## [1.28.3] — 2026-06-18
 
 ### Changed — genesor KD-Detail: Screens klickbar + Mockup-Link nach oben (UAT)

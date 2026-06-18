@@ -159,17 +159,25 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
 
     # Per-Repo-Mermaid-Lineage (Stufe 1b, F12: nur wenn ≥2 KDs im Repo)
     repo_kd_count = sum(1 for x in records if x["repo"] == r["repo"] and x.get("kind", "spec") == "spec")
+    repo_slug = html.escape(r["repo"])
+    # Deep-Link in die gefilterte Genesor-Übersicht (Hash-Route #/repo/<slug>,
+    # vom SPA-Router unterstützt: facets repo/org/class/role).
+    genesor_link = f'<a href="index.html#/repo/{repo_slug}">→ im Genesor öffnen</a>'
     if repo_kd_count >= 2:
+        # Beide Links: Genesor-Repo-Sicht UND standalone Mermaid-Topologie
+        # (sonst wäre die Topologie-Seite aus der Zeile nicht mehr erreichbar).
         lineage_link = (
             '<div class="lineage-link">'
-            f'🌐 Topologie für <code>{html.escape(r["repo"])}</code>: '
-            f'<a href="lineage-{html.escape(r["repo"])}.html" target="_blank">→ Mermaid-Lineage öffnen</a>'
+            f'🌐 Topologie für <code>{repo_slug}</code>: '
+            f'{genesor_link}'
+            f' · <a href="lineage-{repo_slug}.html" target="_blank">→ Mermaid-Topologie öffnen</a>'
             '</div>'
         )
     else:
         lineage_link = (
             '<div class="lineage-link muted small">'
-            f'ℹ Nur 1 KD in <code>{html.escape(r["repo"])}</code> — kein eigener Mermaid-Graph generiert.'
+            f'🌐 <code>{repo_slug}</code>: {genesor_link}'
+            f' · ℹ Nur 1 KD — kein eigener Mermaid-Graph generiert.'
             '</div>'
         )
 
