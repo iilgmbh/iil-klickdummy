@@ -102,6 +102,9 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
 
     # Screens
     screens = d.get("screens", []) or []
+    # Mockup-Einstiegs-URL einmal früh (für klickbare Screen-Links F17 + Mockup-Button F15).
+    _mockup_html_path = find_mockup_html(r["path"].parent, r["kd"])
+    mockup_url = url_for_path(_mockup_html_path) if _mockup_html_path else None
     screen_items = []
     for s in screens:
         if not isinstance(s, dict):
@@ -112,8 +115,13 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
         if isinstance(sper, str):
             sper = [sper]
         sper_str = ", ".join(sper) if sper else "—"
+        # F17: Screen klickbar → Deep-Link in den Mockup (#screen-<id>, Hash-Nav im KD).
+        label = f'<code>{html.escape(sid)}</code> <b>{html.escape(str(stitle))}</b>'
+        if mockup_url:
+            label = (f'<a href="{html.escape(mockup_url)}#screen-{html.escape(sid)}" '
+                     f'target="_blank" title="Diesen Screen im Mockup öffnen">{label}</a>')
         screen_items.append(
-            f'<li><code>{html.escape(sid)}</code> <b>{html.escape(str(stitle))}</b>'
+            f'<li>{label}'
             + f'<br/><span class="small muted">Personas: {html.escape(sper_str)}</span></li>'
         )
     screens_html = f'<ul class="compact">{"".join(screen_items)}</ul>' if screen_items else '<span class="muted">—</span>'
@@ -165,17 +173,15 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
             '</div>'
         )
 
-    # Mockup-HTML (Stufe 1b: "Klickdummy klickbar")
-    mockup_html_path = find_mockup_html(r["path"].parent, r["kd"])
-    if mockup_html_path:
-        mockup_url = url_for_path(mockup_html_path)
+    # Mockup-HTML (Stufe 1b: "Klickdummy klickbar") — mockup_url oben vorberechnet.
+    if _mockup_html_path and mockup_url:
         mockup_link = (
             '<div class="mockup-link">'
             f'📱 Klickdummy-Mockup: '
-            f'<a href="{mockup_url}" target="_blank">→ {html.escape(mockup_html_path.name)} öffnen</a>'
+            f'<a href="{mockup_url}" target="_blank">→ {html.escape(_mockup_html_path.name)} öffnen</a>'
             f' <span class="small muted">(echter klickbarer HTML-Render)</span>'
             '</div>'
-        ) if mockup_url else ""
+        )
     else:
         # Render-Fallback: aus Spec generierte minimal-klickbare HTML
         mockup_link = (
@@ -227,6 +233,7 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
     return f"""
     <tr class="detail-row" id="detail-{idx}">
       <td colspan="13" class="detail-cell">
+        {mockup_link}
         {warn_html}
         <div class="detail-grid">
           <div>
@@ -245,7 +252,6 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
             {('<h4 style="margin-top:12px;">📌 Grounding</h4>' + ground_html) if ground_html else ''}
           </div>
         </div>
-        {mockup_link}
         {lineage_link}
         <div class="spec-path small muted">Spec: <code>~/github/{html.escape(rel_path)}</code></div>
       </td>
