@@ -250,6 +250,10 @@ def test_gen_e2e_parametrised_route_skipped(tmp_path):
     assert "pytest.mark.skip" in code
     assert "route_example" in code          # Hinweis im skip-reason
     assert "page.goto" not in code          # kein goto gegen 404
+    # Regression: der parametrisierte skip-reason MUSS valides Python sein. Der unquoted
+    # `reason={skip_reason}` brach mit SyntaxError (U+2014 em-dash); Text-Marker allein
+    # fingen das nicht (vgl. ADR-211 Rev 21: „gebaut, nie ausgeführt").
+    compile(code, str(out), "exec")
 
 
 def test_gen_e2e_login_required_skip(tmp_path):
