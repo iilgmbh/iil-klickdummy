@@ -14,6 +14,14 @@
   Erkenntnis: **drei KD-Artefakt-Klassen** (A genesor-Render = Renderer-Hebel · B in-Repo-Shell
   bespoke · C conversational) — Renderer-weiter Hebel gilt nur für Klasse A; Klasse-A-Rollout
   damit erschöpft. Volltext + `offsetParent`-Probe-Falle: Memory `klickdummy-ux-test`.
+- **S13 Stufe 2 GESTARTET, blockiert** — Live-Renderer-#2-Parity-Job als **informational**
+  (`continue-on-error`) in risk-hub CI verdrahtet (**risk-hub PR #276**, gemergt): CI-Postgres →
+  `migrate --fake-initial` → `seed_dsb_demo` + `seed_sds_review_demo --tenant-slug dsb-demo` →
+  `runserver :8090` (DEBUG=1) → headless Login (`make_storage_state.py`) → generierte Suite. 3 echte
+  Erstinbetriebnahme-Bugs gefixt. Job bleibt **rot** an strukturellem Schema-Bootstrap-Blocker
+  (dual-tenancy-Migrationsgraph; der `test`-Job umgeht ihn mit `--no-migrations`) → Resthärtung
+  getrackt in **risk-hub#278** (Schema-Bootstrap + RLS + Playwright-Browser). Retro: Memory
+  [[ci-job-precheck-target-context]].
 
 ## ⚡ Stand 2026-06-14 (Session 2 abgeschlossen)
 
@@ -47,7 +55,7 @@
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | **Stufe 2 zu S13**: Live-Renderer-#2-Lauf in CI automatisieren — Auth-Automation (headless Login → `storage_state`) + Seed in CI-DB + Playwright gegen die echte App. Drift-Gate (Stufe 1) gemergt (risk-hub #184); descoped in `sds-verwalten/README.md` | `[Sonnet]` |
+| 1 | **Stufe 2 zu S13 — ⛔ in Arbeit, blockiert (risk-hub#278)**: Live-Job verdrahtet+informational gemergt (risk-hub PR #276); rot an strukturellem CI-Schema-Bootstrap (dual-tenancy-Migrationsgraph). Resthärtung (Schema-Bootstrap + RLS + Playwright-Browser) in **risk-hub#278** | `[Sonnet]` |
 | 2 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (braucht Session mit Outline-MCP; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
 | 3 | F23 (ADR-211): stabiler UI-Testkontrakt (`data-testid`/Manifest) als Konvention vs. semantischere Selektoren — offene Designfrage | `[Opus]` |
 | 4 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
