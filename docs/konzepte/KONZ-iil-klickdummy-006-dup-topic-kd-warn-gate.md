@@ -15,6 +15,7 @@ evidence_manifest:
   - {claim_id: C3, source_path: iilgmbh/risk-hub klickdummy/ex-schutz-konzept/screens-spec.yaml, commit_or_pr: "keine assert/data-testid (Prosa-Spec)", opened_in_session: true}
   - {claim_id: C4, source_path: iilgmbh/risk-hub src/exschutzdokument/, commit_or_pr: "models-only: keine views.py/urls.py/templates, nicht in config/urls", opened_in_session: true}
   - {claim_id: C5, source_path: iilgmbh/risk-hub src/templates/global_sds/review_queue.html, commit_or_pr: "6 data-testid + /sds/review/ → sds-Roundtrip lief Rev 21", opened_in_session: true}
+  - {claim_id: C6, source_path: src/iil_klickdummy/from_django.py, commit_or_pr: "klickdummy-from-django: Brownfield-Reverse-Onboarding, URLConf→Screens/Models→Entities, dann gen-e2e bis parity-grün", opened_in_session: true}
 created: 2026-06-24
 ---
 
@@ -34,6 +35,27 @@ KD-Dubletten entstehen **nur durch Pipeline-Bypass**: spec-lose lose `.html` wer
 `klickdummy/` abgelegt, ohne UC/Spec. Der Fix ist kein Detektor, sondern (a) **spec-first als Gate**
 (nichts kann an der Spec vorbei entstehen) und (b) der **Roundtrip als Beweis**, dass Code+Spec
 dieselbe Wahrheit sind — ein KD, das gegen die echte App geprüft wird, *kann* keine lose Dublette sein.
+
+## Drei legitime Einstiegspfade in die Pipeline (jeder spec-first)
+Ein KD entsteht **immer** über die Spec — nie als lose HTML. Es gibt drei gleichberechtigte Einstiege:
+
+| Einstieg | Richtung | Werkzeug |
+|----------|----------|----------|
+| **Greenfield** | workflow → UC → KD → mock → code | `/use-case`, `klickdummy` |
+| **Brownfield** (App existiert) | **code → KD extrahieren → optimieren → code angleichen** | **`klickdummy-from-django`** (C6) + `klickdummy-gen-e2e` |
+| **Mockup-getrieben** | bestehende Prototyp-HTMLs → in **eine** Spec kuratieren | manuell, dann gen-e2e |
+
+**Brownfield-Disziplin (der SoR-Flip — Kern, sonst Drift):** `klickdummy-from-django` leitet aus einer
+existierenden Django-App ein `screens-spec.yaml`-**Skelett** ab (URLConf→Screens, Models→Entities) —
+ein **einmaliger Seed**. Ab da ist die **Spec der System-of-Record**, nicht mehr der Code: KD
+optimieren = Spec wird die bessere Wahrheit; „Code anpassen wenn KD optimal" = der **Roundtrip**
+(`gen-e2e` Parity) zieht den Code an die Spec. **Wiederholt** aus dem Code zu extrahieren kippt die
+Wahrheit zurück zum Code = Drift → genau einmal seeden, dann führt die Spec.
+
+> **ex-schutz als Brownfield-Fall (geerdet, C4):** `exschutzdokument` ist models-only → `from_django`
+> liefert den **Entity-Katalog**, aber **keine Screens** (keine URLConf/Views). Die Screens stecken in
+> den bestehenden Prototyp-HTMLs → Mockup-getriebener Einstieg: in **eine** Spec kuratieren, nicht 3
+> lose HTMLs. So *hätte* ex-schutz entstehen sollen; die Konsolidierung (an #241 gehängt) holt das nach.
 
 ## Ledger
 | id | Aussage | Typ | Evidenz / Falsifikation | Status |
