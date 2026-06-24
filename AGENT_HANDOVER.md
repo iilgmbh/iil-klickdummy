@@ -4,7 +4,18 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-06-14, Session 2 abgeschlossen)
+## ⚡ Aktueller Stand (2026-06-24)
+
+- **UX-Test-Rollout ABGESCHLOSSEN** (vormalige Prio 1) — auf iPad/claude.ai gefahren
+  (geteiltes pgvector-Memory; auf Dev-Host daher keine lokalen Render-Artefakte/Commits).
+  **~35 KDs / 11 Repos** (ausschreibungs-hub-Pilot, **risk-hub**, **writing-hub**, meiki-,
+  nl2iot-, apo-, bahn-sqf-pg-, design-, pg-, sqf-, ttz-hub) — **alle sauber**, kein Renderer-
+  oder KD-spezifischer Bug; die 2 Pilot-Bugs sind renderer-weit behoben (Propagierung bestätigt).
+  Erkenntnis: **drei KD-Artefakt-Klassen** (A genesor-Render = Renderer-Hebel · B in-Repo-Shell
+  bespoke · C conversational) — Renderer-weiter Hebel gilt nur für Klasse A; Klasse-A-Rollout
+  damit erschöpft. Volltext + `offsetParent`-Probe-Falle: Memory `klickdummy-ux-test`.
+
+## ⚡ Stand 2026-06-14 (Session 2 abgeschlossen)
 
 - **Session-Retro A2+A3 gemergt** (PR #75, `cfbf590`): Smoke-Test kanonische Quelle
   stärker (importlib, sentinel-Format, `find_specs` beide Konventionen); neues
@@ -36,11 +47,12 @@
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | UX-Test-Rollout auf weitere Klickdummy-Repos (Prozedur: Memory `klickdummy-ux-test`; Pilot fand 2 renderer-weite Bugs) — Ziel-Repos vom User erfragen | `[Sonnet]` |
-| 2 | **Stufe 2 zu S13**: Live-Renderer-#2-Lauf in CI automatisieren — Auth-Automation (headless Login → `storage_state`) + Seed in CI-DB + Playwright gegen die echte App. Drift-Gate (Stufe 1) gemergt (risk-hub #184); descoped in `sds-verwalten/README.md` | `[Sonnet]` |
-| 3 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (braucht Session mit Outline-MCP; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
-| 4 | F23 (ADR-211): stabiler UI-Testkontrakt (`data-testid`/Manifest) als Konvention vs. semantischere Selektoren — offene Designfrage | `[Opus]` |
-| 5 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+| 1 | **Stufe 2 zu S13**: Live-Renderer-#2-Lauf in CI automatisieren — Auth-Automation (headless Login → `storage_state`) + Seed in CI-DB + Playwright gegen die echte App. Drift-Gate (Stufe 1) gemergt (risk-hub #184); descoped in `sds-verwalten/README.md` | `[Sonnet]` |
+| 2 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (braucht Session mit Outline-MCP; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
+| 3 | F23 (ADR-211): stabiler UI-Testkontrakt (`data-testid`/Manifest) als Konvention vs. semantischere Selektoren — offene Designfrage | `[Opus]` |
+| 4 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+
+> **Erledigt 2026-06-24:** ehem. Prio 1 *UX-Test-Rollout* — komplett, alle Repos sauber (s. „Aktueller Stand").
 
 ## Arbeitsregeln (repo-spezifisch)
 
