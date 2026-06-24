@@ -36,7 +36,7 @@
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | UX-Test-Rollout: **risk-hub + writing-hub + meiki-hub + nl2iot-hub erledigt 2026-06-24 — alle 20 KDs sauber** (kein Bug; 2 Pilot-Bugs renderer-weit behoben, Persona-Filter-Effekt definitiv falsifiziert). Genesor-Repos offen: apo/bahn-sqf-pg/design/pg/sqf/ttz-hub. Prozedur/Lehren: Memory `klickdummy-ux-test` | `[Sonnet]` |
+| 1 | ✅ **UX-Test-Rollout KOMPLETT 2026-06-24** — alle 11 KD-Repos / ~35 KDs sauber (kein Bug). Klasse A (genesor-Render: ausschr/meiki/nl2iot/risk) voll geprüft, 2 Pilot-Bugs behoben, Persona-Filter-Effekt falsifiziert. Klasse B (bespoke shell.html: apo/bahn/design/pg/ttz) + C (sqf chat-sim) sauber, ABER kein gemeinsamer Renderer → kein Hebel. Drei-Klassen-Erkenntnis + Mount-Artefakte (`/_widget/widget.js`, Skin-CSS) in Memory `klickdummy-ux-test`. Strang zu. | `[Sonnet]` |
 | 2 | **Stufe 2 zu S13**: Live-Renderer-#2-Lauf in CI automatisieren — Auth-Automation (headless Login → `storage_state`) + Seed in CI-DB + Playwright gegen die echte App. Drift-Gate (Stufe 1) gemergt (risk-hub #184); descoped in `sds-verwalten/README.md` | `[Sonnet]` |
 | 3 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (braucht Session mit Outline-MCP; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
 | 4 | F23 (ADR-211): stabiler UI-Testkontrakt (`data-testid`/Manifest) als Konvention vs. semantischere Selektoren — offene Designfrage | `[Opus]` |
