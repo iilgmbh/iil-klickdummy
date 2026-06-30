@@ -4,7 +4,14 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-06-24)
+## ⚡ Aktueller Stand (2026-06-30)
+
+- **Zwei offene PRs gemergt** (Session-Start-Aufräumen, beide CI 3/3 grün + CLEAN):
+  - **PR #83** — `gen_e2e` skip-reason quoten: parametrisierte Route brach mit `SyntaxError`.
+  - **PR #87** — KONZ-iil-klickdummy-006: Spec-first-Durchsetzung + Roundtrip-als-Zähne (T2).
+  - `main` jetzt @ `0c34167`; stale Worktree des #87-Session-Branches entfernt. Keine offenen PRs mehr.
+
+## ⚡ Stand 2026-06-24
 
 - **UX-Test-Rollout ABGESCHLOSSEN** (vormalige Prio 1) — auf iPad/claude.ai gefahren
   (geteiltes pgvector-Memory; auf Dev-Host daher keine lokalen Render-Artefakte/Commits).
