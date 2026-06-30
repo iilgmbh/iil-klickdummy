@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iil-klickdummy"
-version = "1.28.4"
+version = "1.29.0"
 description = "Shared infrastructure for platform:ADR-211 Klickdummy conformance — invariants, requirements bridge, co-creation widget, multi-klickdummy browser"
 readme = "README.md"
 requires-python = ">=3.10"

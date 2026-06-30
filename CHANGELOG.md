@@ -5,6 +5,25 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.29.0] — 2026-06-30
+
+### Added — F23 Selektor-Kontrakt: semantischer Fallback + Off-Ramp-Gate (KONZ-007)
+
+Setzt die ratifizierte Hybrid-Entscheidung aus `KONZ-iil-klickdummy-007` um
+(platform:ADR-211 F23). `gen_e2e`:
+- **`assert.selector` akzeptiert ein Präfix-Vokabular** (D2): `testid=…` →
+  `page.get_by_test_id(…)`, `role=…[name=…]` → `page.get_by_role(…)`, `label=…`
+  → `page.get_by_label(…)`, `text=…` → `page.get_by_text(…)`. Ohne Präfix bleibt
+  der String ein CSS-Selektor (`page.locator`). Kein Schema-Bruch — `selector`
+  bleibt ein `string`.
+- **`is_fragile_selector`** wertet `testid=`/`role=`/`label=` als stabile Anker;
+  `text=` (i18n-fragil) und bare CSS bleiben fragil.
+- **`--strict-selectors`** (D1): am Off-Ramp wird ein fragiler Selektor zum
+  harten Fehler (exit 3) statt nur zur Manifest-Warnung; Default-Lauf unverändert
+  (opt-in, reversibel). Manifest trägt `strict_selectors`.
+
+Locator-Registry/Manifest bleibt zurückgestellt (F18 unverändert).
+
 ## [1.28.4] — 2026-06-18
 
 ### Fixed — lineage-Seiten: meiki-hub-Identität leakte in JEDE lineage-<repo>.html

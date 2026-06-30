@@ -22,11 +22,19 @@ geben kann.
 `@pytest.mark.skip` mit der Prosa als Grund) — kein stilles Weglassen. Die
 Zusammenfassung zählt ausführbar vs. nur-Prosa.
 
-Aufruf:
-    klickdummy-gen-e2e <spec.yaml> [<out-file>]
-    # Default out-file: <spec-dir>/tests/test_parity_<spec-stem>.py
+`assert.selector` akzeptiert ein optionales Präfix-Vokabular (F23/D2,
+KONZ-iil-klickdummy-007): `testid=…`, `role=…[name=…]`, `label=…`, `text=…`
+wählen die passende Playwright-Locator-API; ohne Präfix bleibt der String ein
+CSS-Selektor (`page.locator`) und wird als fragil markiert.
 
-Exit: 0 ok, 1 Spec-Fehler, 2 Setup-Fehler.
+Aufruf:
+    klickdummy-gen-e2e <spec.yaml> [<out-file>] [--strict-selectors]
+    # Default out-file: <spec-dir>/tests/test_parity_<spec-stem>.py
+    # --strict-selectors: fragile Selektoren werden zum Fehler (exit 3) statt
+    #   nur zur Manifest-Warnung — für den Off-Ramp-Pfad (F23/D1).
+
+Exit: 0 ok, 1 Spec-Fehler, 2 Setup-Fehler, 3 Off-Ramp-Gate (fragile Selektoren
+mit --strict-selectors).
 """
 from __future__ import annotations
 
@@ -91,6 +99,37 @@ def _q(s) -> str:
     return json.dumps(str(s), ensure_ascii=False)
 
 
+# Semantischer Selektor-Fallback (KONZ-iil-klickdummy-007, F23/D2): ein optionales
+# Präfix im `selector`-String wählt die passende Playwright-Locator-API, OHNE das
+# Schema zu brechen (`selector` bleibt ein `string`). `testid=`/`role=`/`label=`
+# sind stabile Anker (data-testid bzw. Accessibility-Tree); `text=` ist der
+# i18n-fragile letzte Ausweg; ein präfixloser String bleibt CSS via `page.locator`.
+_ROLE_PATTERN = re.compile(r"^([A-Za-z]+)(?:\[name=(.+)\])?$")
+
+
+def _locator_expr(sel) -> str:
+    """Playwright-Locator-Ausdruck (ohne `.first`/`expect`) für einen Selektor.
+
+    Präfix-Vokabular (F23/D2): `testid=`→`get_by_test_id`, `role=`→`get_by_role`
+    (optional `role=button[name=Speichern]`), `label=`→`get_by_label`,
+    `text=`→`get_by_text`. Ohne Präfix: `page.locator(sel)` (CSS, fragil)."""
+    s = str(sel)
+    if s.startswith("testid="):
+        return f"page.get_by_test_id({_q(s.removeprefix('testid='))})"
+    if s.startswith("label="):
+        return f"page.get_by_label({_q(s.removeprefix('label='))})"
+    if s.startswith("text="):
+        return f"page.get_by_text({_q(s.removeprefix('text='))})"
+    if s.startswith("role="):
+        m = _ROLE_PATTERN.match(s.removeprefix("role="))
+        if m:
+            role, name = m.group(1), m.group(2)
+            if name:
+                return f"page.get_by_role({_q(role)}, name={_q(name)})"
+            return f"page.get_by_role({_q(role)})"
+    return f"page.locator({_q(s)})"
+
+
 def render_assertion(a: dict) -> str | None:
     """Eine Playwright-Assertion-Zeile oder None (= nicht ausführbar)."""
     if not isinstance(a, dict):
@@ -98,17 +137,18 @@ def render_assertion(a: dict) -> str | None:
     action = str(a.get("action", "")).strip()
     sel = a.get("selector", "")
     exp = a.get("expect", "")
+    loc = _locator_expr(sel)
     # Einzelelement-State-Asserts nutzen `.first`: ein Parity-Kontrakt-Selektor
     # (z.B. data-testid pro Tabellenzeile) matcht legitim mehrfach; ohne `.first`
     # bricht Playwrights Strict-Mode ("resolved to N elements"). Existenz-/State-
     # Prüfung ≠ Eindeutigkeit — Kardinalität deckt `count` separat ab.
     if action == "visible":
-        return f"expect(page.locator({_q(sel)}).first).to_be_visible()"
+        return f"expect({loc}.first).to_be_visible()"
     if action == "text":
-        return f"expect(page.locator({_q(sel)}).first).to_contain_text({_q(exp)})"
+        return f"expect({loc}.first).to_contain_text({_q(exp)})"
     if action == "clickable":
         # I2-Geist: kein toter Link — Element sichtbar UND bedienbar.
-        return f"expect(page.locator({_q(sel)}).first).to_be_enabled()"
+        return f"expect({loc}.first).to_be_enabled()"
     if action == "url":
         return f"assert {_q(exp)} in page.url, page.url"
     if action == "count":
@@ -116,7 +156,7 @@ def render_assertion(a: dict) -> str | None:
             n = int(exp)
         except (TypeError, ValueError):
             return None
-        return f"expect(page.locator({_q(sel)})).to_have_count({n})"
+        return f"expect({loc}).to_have_count({n})"
     return None
 
 
@@ -156,14 +196,23 @@ BASE = os.environ.get("SPEC_RENDERER_BASE_URL", "http://localhost:8000").rstrip(
 
 # Stabile, fachliche Test-Anker statt fragiler CSS-/Text-Pfade (REC-6/M28-3).
 STABLE_SELECTOR_HINTS = ("data-testid", "data-test", "data-acceptance-id", "data-qa")
+# Stabile Selektor-Präfixe (F23/D2): `testid=` = data-testid-Kontrakt, `role=`/
+# `label=` = Accessibility-Tree-Anker. `text=` zählt bewusst NICHT als stabil
+# (i18n-/Wording-Drift) — es bleibt der markierte Fallback.
+STABLE_SELECTOR_PREFIXES = ("testid=", "role=", "label=")
 
 
 def is_fragile_selector(sel) -> bool:
     """True, wenn ein Selektor an UI-Implementierungsdetails statt an einem
-    stabilen `data-*`-Anker hängt — Wartungs-/Drift-Risiko (AD-7/AD-8)."""
+    stabilen Anker hängt — Wartungs-/Drift-Risiko (AD-7/AD-8). Stabil sind
+    data-*-Attribute (CSS) und die semantischen Präfixe testid=/role=/label=
+    (F23/D2); bare CSS und text= bleiben fragil."""
     if not sel:
         return False
-    return not any(h in str(sel) for h in STABLE_SELECTOR_HINTS)
+    s = str(sel)
+    if s.startswith(STABLE_SELECTOR_PREFIXES):
+        return False
+    return not any(h in s for h in STABLE_SELECTOR_HINTS)
 
 
 def _gen_version() -> str:
@@ -316,14 +365,19 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
 # -- Main ---------------------------------------------------------------------
 
 def main(argv: list[str]) -> int:
-    if not argv:
-        print("Usage: klickdummy-gen-e2e <spec.yaml> [<out-file>]")
+    # Off-Ramp-Gate (F23/D1): `--strict-selectors` macht fragile Selektoren zum
+    # harten Fehler (exit 3) statt nur zur Manifest-Warnung. Der Off-Ramp-Pfad
+    # setzt das Flag; reine Mockup-Läufe lassen es weg (reversibel, opt-in).
+    strict_selectors = "--strict-selectors" in argv
+    positional = [a for a in argv if not a.startswith("--")]
+    if not positional:
+        print("Usage: klickdummy-gen-e2e <spec.yaml> [<out-file>] [--strict-selectors]")
         return 2
-    spec_path = pathlib.Path(argv[0])
+    spec_path = pathlib.Path(positional[0])
     spec = load_spec(spec_path)
     stem = re.sub(r"[^0-9a-z]+", "_", spec_path.stem.lower()).strip("_") or "spec"
-    if len(argv) > 1:
-        out = pathlib.Path(argv[1])
+    if len(positional) > 1:
+        out = pathlib.Path(positional[1])
     else:
         out = spec_path.parent / "tests" / f"test_parity_{stem}.py"
 
@@ -352,6 +406,7 @@ def main(argv: list[str]) -> int:
         "skipped": n_prose,
         "skipped_detail": stats["skipped_detail"],
         "fragile_selectors": stats["fragile_selectors"],
+        "strict_selectors": strict_selectors,
         "uncovered_note": (
             "NFR/Security/Accessibility/Performance/Audit sind NICHT aus "
             "parity_acceptance.assert ableitbar — separat führen "
@@ -370,10 +425,16 @@ def main(argv: list[str]) -> int:
     print(f"  Parity-Checks: {total}  ·  ausführbar: {n_exec}  ·  nur-Prosa (skip): {n_prose}")
     if n_prose:
         print(f"  ⚠ {n_prose} Check(s) ohne `assert`-Block bleiben als skip sichtbar (Skip-Debt).")
-    if stats["fragile_selectors"]:
-        print(f"  ⚠ {len(stats['fragile_selectors'])} fragile(r) Selektor(en) ohne data-* Anker "
-              f"(REC-6) — UI-Refactor-Risiko.")
+    n_fragile = len(stats["fragile_selectors"])
+    if n_fragile:
+        print(f"  ⚠ {n_fragile} fragile(r) Selektor(en) ohne stabilen Anker "
+              f"(REC-6/F23) — bare CSS/text=; testid=/role=/label= bevorzugen.")
     print("  Dual-Renderer: SPEC_RENDERER_BASE_URL umschalten (Renderer #1 ↔ #2).")
+    # F23/D1: am Off-Ramp ist ein fragiler Selektor kein bloßer Hinweis mehr.
+    if strict_selectors and n_fragile:
+        print(f"  ✗ --strict-selectors: {n_fragile} fragile(r) Selektor(en) → "
+              f"Off-Ramp-Gate ROT (exit 3). Auf stabilen Anker umstellen.")
+        return 3
     return 0
 
 

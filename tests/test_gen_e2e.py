@@ -319,3 +319,86 @@ def test_gen_e2e_auth_storage_state_uses_real_playwright_api(tmp_path):
     assert 'expect(page.locator("[data-testid=dash]").first).to_be_visible()' in code
     # Generierte Datei muss kompilieren
     compile(code, str(out), "exec")
+
+
+# -- F23/D2: semantischer Selektor-Fallback (KONZ-iil-klickdummy-007) ----------
+
+def test_locator_expr_prefix_dispatch():
+    """`selector`-Präfixe wählen die passende Playwright-Locator-API; ohne
+    Präfix bleibt es CSS via page.locator (F23/D2)."""
+    from iil_klickdummy import gen_e2e as g
+    assert g._locator_expr("testid=sds-review-row") == 'page.get_by_test_id("sds-review-row")'
+    assert g._locator_expr("label=E-Mail") == 'page.get_by_label("E-Mail")'
+    assert g._locator_expr("text=Speichern") == 'page.get_by_text("Speichern")'
+    assert g._locator_expr("role=button") == 'page.get_by_role("button")'
+    assert g._locator_expr("role=button[name=Verify]") \
+        == 'page.get_by_role("button", name="Verify")'
+    # Bare String bleibt CSS — unveränderte Bestandsbehandlung.
+    assert g._locator_expr("button.submit") == 'page.locator("button.submit")'
+    # Unvollständiges role= (kein Match) fällt sicher auf CSS zurück.
+    assert g._locator_expr("role=") == 'page.locator("role=")'
+
+
+def test_render_assertion_uses_prefix_dispatch():
+    """render_assertion routet Präfix-Selektoren durch _locator_expr; CSS-Form
+    bleibt bit-identisch zur Bestandsausgabe (Regressionsschutz)."""
+    from iil_klickdummy import gen_e2e as g
+    assert g.render_assertion({"action": "visible", "selector": "testid=queue"}) \
+        == 'expect(page.get_by_test_id("queue").first).to_be_visible()'
+    assert g.render_assertion({"action": "clickable", "selector": "role=button[name=Prüfen]"}) \
+        == 'expect(page.get_by_role("button", name="Prüfen").first).to_be_enabled()'
+    assert g.render_assertion({"action": "count", "selector": "testid=row", "expect": 2}) \
+        == 'expect(page.get_by_test_id("row")).to_have_count(2)'
+    # Bestands-CSS-Form unverändert.
+    assert g.render_assertion({"action": "visible", "selector": "#x"}) \
+        == 'expect(page.locator("#x").first).to_be_visible()'
+
+
+def test_is_fragile_selector_prefixes():
+    """testid=/role=/label= sind stabile Anker; text= und bare CSS bleiben fragil (F23/D2)."""
+    from iil_klickdummy import gen_e2e as g
+    assert g.is_fragile_selector("testid=row") is False
+    assert g.is_fragile_selector("role=button[name=OK]") is False
+    assert g.is_fragile_selector("label=E-Mail") is False
+    # text= ist der i18n-fragile Fallback → bewusst weiterhin fragil.
+    assert g.is_fragile_selector("text=Speichern") is True
+    # Bestandsverhalten unverändert.
+    assert g.is_fragile_selector("[data-testid=submit]") is False
+    assert g.is_fragile_selector("button.submit") is True
+
+
+def _strict_spec(selector: str) -> dict:
+    return {
+        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock", "grounding": "test", "off_ramp": {},
+        "personas": {"user": {}}, "screens": [
+            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
+             "parity_acceptance": [
+                 {"id": "s.vis", "check": "visible",
+                  "assert": {"action": "visible", "selector": selector}}
+             ]},
+        ],
+    }
+
+
+def test_strict_selectors_gate_blocks_fragile(tmp_path):
+    """F23/D1: `--strict-selectors` macht einen fragilen Selektor zum exit 3,
+    während der Default-Lauf (nur Warnung) 0 bleibt — und ein stabiler Anker
+    auch unter --strict-selectors grün ist."""
+    import json
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec_file = tmp_path / "spec.yaml"
+    out = tmp_path / "t.py"
+
+    # bare CSS = fragil → Default 0 (nur Warnung), strict 3 (Gate rot)
+    spec_file.write_text(yaml.dump(_strict_spec("button.submit")), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 0
+    assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 3
+    manifest = json.loads(out.with_suffix(".manifest.json").read_text())
+    assert manifest["strict_selectors"] is True
+
+    # stabiler Präfix-Anker → auch strict grün
+    spec_file.write_text(yaml.dump(_strict_spec("testid=submit")), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 0
