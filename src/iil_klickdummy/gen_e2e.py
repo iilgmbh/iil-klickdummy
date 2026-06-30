@@ -64,7 +64,11 @@ def load_spec(path: pathlib.Path) -> dict:
     if not path.exists():
         print(f"FAIL: Spec fehlt: {path}")
         sys.exit(1)
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:
+        print(f"FAIL: Spec-YAML ungültig ({path}): {exc}")
+        sys.exit(1)
 
 
 _PARAM_PATTERN = re.compile(r"<[^>]+>")
@@ -206,12 +210,20 @@ def is_fragile_selector(sel) -> bool:
     """True, wenn ein Selektor an UI-Implementierungsdetails statt an einem
     stabilen Anker hängt — Wartungs-/Drift-Risiko (AD-7/AD-8). Stabil sind
     data-*-Attribute (CSS) und die semantischen Präfixe testid=/role=/label=
-    (F23/D2); bare CSS und text= bleiben fragil."""
+    (F23/D2); bare CSS und text= bleiben fragil.
+
+    Wichtig: role= ist nur stabil, wenn _ROLE_PATTERN matched. Ein Wert wie
+    `role=123button` startet mit "role=", aber der Parser degradiert auf
+    page.locator() — ohne diesen Check würde er fälschlich als stabil gelten."""
     if not sel:
         return False
     s = str(sel)
-    if s.startswith(STABLE_SELECTOR_PREFIXES):
+    if s.startswith("testid=") or s.startswith("label="):
         return False
+    if s.startswith("role="):
+        return _ROLE_PATTERN.match(s.removeprefix("role=")) is None
+    if s.startswith(("text=",)):
+        return True
     return not any(h in s for h in STABLE_SELECTOR_HINTS)
 
 
