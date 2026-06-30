@@ -248,13 +248,13 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
             # Skip-Grund bestimmen (Priorität: parametrisiert > login_required > kein assert)
             if is_parametrised:
                 skip_reason = (
-                    f"parametrisierte Route {_q(route)} — bitte `route_example` in der Spec "
+                    f"parametrisierte Route {route} — bitte `route_example` in der Spec "
                     f"ergänzen (konkrete URL mit echten IDs/UUIDs)"
                 )
                 skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
                                  "skip_reason": "parametrised_route"})
                 blocks.append(
-                    f"{prefix}@pytest.mark.skip(reason={skip_reason})\n"
+                    f"{prefix}@pytest.mark.skip(reason={_q(skip_reason)})\n"
                     f"def {fn}(page: Page):\n"
                     f'    """[{sid}] {check}"""\n'
                     f"    pass  # route_example fehlt — würde 404 produzieren"
@@ -263,13 +263,13 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
 
             if auth_missing:
                 skip_reason = (
-                    f"login_required=True für Screen {_q(sid)} — "
+                    f"login_required=True für Screen {sid} — "
                     f"bitte `auth`-Block in der Spec ergänzen (storage_state oder login_fixture)"
                 )
                 skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
                                  "skip_reason": "login_required_no_auth"})
                 blocks.append(
-                    f"{prefix}@pytest.mark.skip(reason={skip_reason})\n"
+                    f"{prefix}@pytest.mark.skip(reason={_q(skip_reason)})\n"
                     f"def {fn}(page: Page):\n"
                     f'    """[{sid}] {check}"""\n'
                     f"    pass  # auth-Setup fehlt — kein Login möglich"
