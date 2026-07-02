@@ -4,7 +4,23 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-06-30)
+## ⚡ Aktueller Stand (2026-07-02)
+
+- **F23 GESCHLOSSEN (ehem. Prio 3)** — KONZ-iil-klickdummy-007 (T2, Hybrid D1+D2+D3, PR #89)
+  + Implementierung in PR #90 (gemergt 2026-06-30, **v1.29.0**): `--strict-selectors`-Off-Ramp-Gate
+  (D1, Exit-Code 3) + Präfix-Dispatch `testid=`/`role=`/`label=`/`text=` (D2); Locator-Registry
+  (F18) bleibt zurückgestellt, Trigger geschärft (D3). Ratifiziert als **ADR-211 Rev 22**
+  (platform). 151 Tests grün. Offene Follow-ups aus externer Zweitmeinung: **REC-1**
+  (Spec-Attribut `strict_selectors: true` zusätzlich zum CLI-Flag) + **REC-2** (Parser-Grenzfälle
+  der `role=`-Syntax formal dokumentieren + Roundtrip-Tests Sonderzeichen/Whitespace).
+- **Prio 1 ENTBLOCKT** — risk-hub#278 (Schema-Bootstrap + RLS + Playwright-Browser) am
+  2026-06-24 als COMPLETED geschlossen; Port-/Prod-Kollision via KONZ-risk-hub-004 Ebene A
+  gelöst (keine fixen Host-Ports mehr). Der Stufe-2-Job läuft weiterhin informational
+  (`continue-on-error: true` auf risk-hub main, verifiziert 2026-07-02); Restschritt =
+  Stabilität belegen (mehrere grüne Läufe), dann required schalten. **Nicht verifiziert:**
+  aktuelle Grün-Quote des Jobs — billigster Check: `gh run list` auf den Job filtern.
+
+## ⚡ Stand 2026-06-30
 
 - **Zwei offene PRs gemergt** (Session-Start-Aufräumen, beide CI 3/3 grün + CLEAN):
   - **PR #83** — `gen_e2e` skip-reason quoten: parametrisierte Route brach mit `SyntaxError`.
@@ -62,12 +78,13 @@
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | **Stufe 2 zu S13 — ⛔ in Arbeit, blockiert (risk-hub#278)**: Live-Job verdrahtet+informational gemergt (risk-hub PR #276); rot an strukturellem CI-Schema-Bootstrap (dual-tenancy-Migrationsgraph). Resthärtung (Schema-Bootstrap + RLS + Playwright-Browser) in **risk-hub#278** | `[Sonnet]` |
-| 2 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (braucht Session mit Outline-MCP; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
-| 3 | F23 (ADR-211): stabiler UI-Testkontrakt (`data-testid`/Manifest) als Konvention vs. semantischere Selektoren — offene Designfrage | `[Opus]` |
+| 1 | **S13 Stufe 2 Abschluss**: Grün-Quote des informational-Jobs `klickdummy-parity-renderer2-live` messen; bei Stabilität `continue-on-error` entfernen + required check + README-Update (DoD aus risk-hub#278 — Blocker sind behoben, Issue COMPLETED 2026-06-24) | `[Sonnet]` |
+| 2 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (Outline-MCP seit 2026-07-02 als `outline-knowledge` auf User-Scope registriert; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
+| 3 | **KONZ-007 Follow-ups**: REC-1 Spec-Attribut `strict_selectors: true` (zusätzlich zum CLI-Flag) + REC-2 `role=`-Parser-Grenzfälle formal dokumentieren + Roundtrip-Tests (Sonderzeichen/Whitespace) | `[Sonnet]` |
 | 4 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
 
-> **Erledigt 2026-06-24:** ehem. Prio 1 *UX-Test-Rollout* — komplett, alle Repos sauber (s. „Aktueller Stand").
+> **Erledigt 2026-06-30:** ehem. Prio 3 *F23* — geschlossen via KONZ-007 (PR #89/#90, v1.29.0) + ADR-211 Rev 22 (s. „Aktueller Stand 2026-07-02").
+> **Erledigt 2026-06-24:** ehem. Prio 1 *UX-Test-Rollout* — komplett, alle Repos sauber (s. „Stand 2026-06-24").
 
 ## Arbeitsregeln (repo-spezifisch)
 
