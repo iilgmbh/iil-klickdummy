@@ -40,6 +40,23 @@ Fragile Selektoren (bare CSS, `text=`) werden im Strict-Modus zum harten Fehler
   kann das Gate nicht mehr stumm schalten. Das Manifest-Feld
   `"strict_selectors"` zeigt den effektiven Wert (Spec-Attribut OR CLI-Flag).
 
+### `klickdummy-gen-e2e` — Präfix-Dispatch (`selector`, F23/D2)
+
+Der `selector`-String im `assert`-Block trägt ein optionales Präfix, das die
+Playwright-Locator-API wählt. Fehlerverhalten ist definiert (REC-2 · #92):
+kein silenter Fail, keine Exception — ungültige Formen fallen auf CSS zurück
+und werden als fragil gewarnt (Manifest bzw. exit 3 im Strict-Modus).
+
+| Präfix / Form | Playwright-API | Stabilität | Fehlerverhalten / Fallthrough |
+|---|---|---|---|
+| `testid=foo` | `get_by_test_id("foo")` | stabil (kanonisch) | — |
+| `role=button` | `get_by_role("button")` | stabil | — |
+| `role=button[name=Speichern]` | `get_by_role("button", name="Speichern")` | stabil | Leerzeichen/Sonderzeichen im `name`-Wert gültig (Quote übernimmt); fehlende `]` oder leerer Wert (`role=`) → `page.locator(sel)` + fragil-Warnung |
+| `label=E-Mail` | `get_by_label("E-Mail")` | stabil | — |
+| `text=Speichern` | `get_by_text("Speichern")` | **fragil** (i18n-Fallback) | zählt im Strict-Modus als Fehler |
+| ohne Präfix (CSS) | `page.locator(sel)` | **fragil** (außer `data-*`-Anker) | — |
+| unbekanntes Präfix (`rol=`, `foo=`) | `page.locator(sel)` | **fragil** | Fallthrough + Warnung — Tippfehler wird im Manifest sichtbar |
+
 ## Rendering
 
 | Befehl | Zweck | Modul |

@@ -116,7 +116,15 @@ def _locator_expr(sel) -> str:
 
     Präfix-Vokabular (F23/D2): `testid=`→`get_by_test_id`, `role=`→`get_by_role`
     (optional `role=button[name=Speichern]`), `label=`→`get_by_label`,
-    `text=`→`get_by_text`. Ohne Präfix: `page.locator(sel)` (CSS, fragil)."""
+    `text=`→`get_by_text`. Ohne Präfix: `page.locator(sel)` (CSS, fragil).
+
+    Fehlerverhalten (REC-2, #92) — definiert, kein silenter Fail, keine Exception:
+    - Unbekanntes Präfix (`rol=`, `foo=`): Fallthrough auf `page.locator(sel)`;
+      `is_fragile_selector` stuft den Wert fragil ein → Manifest-Warnung
+      (bzw. exit 3 im Strict-Modus).
+    - `role=`-Grenzfälle: Leerzeichen/Sonderzeichen im `name`-Wert sind GÜLTIG
+      (`_q` quotet); fehlende schließende `]` oder leerer Wert (`role=`) matchen
+      `_ROLE_PATTERN` nicht → Fallthrough + fragil (s.o.)."""
     s = str(sel)
     if s.startswith("testid="):
         return f"page.get_by_test_id({_q(s.removeprefix('testid='))})"

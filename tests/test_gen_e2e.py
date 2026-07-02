@@ -441,3 +441,43 @@ def test_strict_selectors_spec_attribute(tmp_path):
     spec["strict_selectors"] = False
     spec_file.write_text(yaml.dump(spec), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 3
+
+
+def test_locator_expr_role_roundtrip_edge_cases():
+    """REC-2 (#92): definiertes Verhalten der Präfix-Mini-DSL an den Grenzen —
+    gültige Grenzfälle roundtrippen korrekt gequotet, ungültige fallen
+    deterministisch auf page.locator zurück (kein silenter Fail, keine Exception)."""
+    from iil_klickdummy import gen_e2e as g
+    # Basisform + name-Wert (Referenzfall)
+    assert g._locator_expr("role=button[name=Speichern]") \
+        == 'page.get_by_role("button", name="Speichern")'
+    # Leerzeichen im name-Wert → gültig, String-Quote übernimmt
+    assert g._locator_expr("role=button[name=Bitte klicken]") \
+        == 'page.get_by_role("button", name="Bitte klicken")'
+    # Sonderzeichen (Umlaut + Pfeil) im name-Wert → gültig
+    assert g._locator_expr("role=link[name=Zum nächsten Schritt →]") \
+        == 'page.get_by_role("link", name="Zum nächsten Schritt →")'
+    # ohne [name=…] → kein name-Argument
+    assert g._locator_expr("role=button") == 'page.get_by_role("button")'
+    # fehlende schließende ] → kein Pattern-Match → Fallthrough auf CSS
+    assert g._locator_expr("role=button[name=Speichern") \
+        == 'page.locator("role=button[name=Speichern")'
+    # leerer Wert → Fallthrough auf CSS
+    assert g._locator_expr("role=") == 'page.locator("role=")'
+
+
+def test_unknown_prefix_falls_through_and_warns():
+    """REC-2 (#92): unbekanntes Präfix (Tippfehler `rol=`, Fantasie `foo=`) →
+    Fallthrough auf page.locator UND fragil-Warnung — der Tippfehler wird im
+    Manifest sichtbar (bzw. exit 3 im Strict-Modus), nie still geschluckt."""
+    from iil_klickdummy import gen_e2e as g
+    assert g._locator_expr("rol=button") == 'page.locator("rol=button")'
+    assert g.is_fragile_selector("rol=button") is True
+    assert g._locator_expr("foo=bar") == 'page.locator("foo=bar")'
+    assert g.is_fragile_selector("foo=bar") is True
+    # role=-Grenzfälle sind ebenfalls fragil markiert (Fallthrough-Konsistenz)
+    assert g.is_fragile_selector("role=button[name=Speichern") is True
+    assert g.is_fragile_selector("role=") is True
+    # Gegenprobe: gültige role=-Grenzfälle mit Leer-/Sonderzeichen sind stabil
+    assert g.is_fragile_selector("role=button[name=Bitte klicken]") is False
+    assert g.is_fragile_selector("role=link[name=Zum nächsten Schritt →]") is False

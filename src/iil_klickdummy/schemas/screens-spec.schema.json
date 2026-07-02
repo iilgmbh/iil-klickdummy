@@ -146,7 +146,10 @@
                   "additionalProperties": false,
                   "properties": {
                     "action":   { "type": "string", "enum": ["visible", "text", "clickable", "url", "count"] },
-                    "selector": { "type": "string" },
+                    "selector": {
+                      "type": "string",
+                      "description": "Element-Anker mit optionalem Präfix (F23/D2, ADR-211 Rev 22). Dispatch: `testid=foo` → get_by_test_id (stabil, kanonisch) · `role=button` oder `role=button[name=Speichern]` → get_by_role (stabil; Leerzeichen/Sonderzeichen im name-Wert gültig) · `label=E-Mail` → get_by_label (stabil) · `text=Speichern` → get_by_text (fragil, i18n-Fallback) · ohne Präfix → page.locator als CSS (fragil). Fehlerverhalten (REC-2): unbekanntes Präfix (z.B. `rol=`), fehlende schließende `]` oder leerer `role=`-Wert fallen auf page.locator zurück und werden als fragil gewarnt — kein silenter Fail."
+                    },
                     "expect":   { "type": ["string", "number"] }
                   }
                 }
