@@ -647,3 +647,74 @@ def test_should_sanitize_login_fixture_into_safe_identifier(tmp_path):
     compile(code, "gen.py", "exec")
     assert "def _auth(x_pass_import_os_evil: Page):" in code
     assert "import os  # evil" not in code.split("def _auth")[1][:120]
+
+
+# -- Follow-up-Härtungen zu PR #102 (externe Zweitmeinung AD-2/AD-3/AD-5/M28-3) --
+
+def test_should_neutralise_docstring_trailing_single_quote(tmp_path):
+    """AD-2: ein `check`, der auf einem einzelnen `"` endet, stieß sonst an das
+    schließende `\"\"\"` (`…\"` + `\"\"\"` = vier Quotes → unterminated string).
+    _doc_safe bricht die Quote-Adjacency; die generierte Datei kompiliert."""
+    from iil_klickdummy import gen_e2e
+    assert gen_e2e._doc_safe('foo"').endswith('" ')        # trailing " entschärft
+    spec = {
+        "spec_id": "repo:x", "spec_version": "0.1",
+        "screens": [
+            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
+             "parity_acceptance": [
+                 {"id": "s.vis", "check": 'ends with a quote "',
+                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+        ],
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text("sha-source", encoding="utf-8")
+    code, _ = gen_e2e.gen_suite(spec, spec_file, "t.py")
+    compile(code, "gen.py", "exec")   # vorher: SyntaxError
+
+
+def test_should_reject_trailing_newline_in_title_via_schema(tmp_path):
+    """AD-3: das bare `^[^\\n\\r]*$` ließ ein *trailing* `\\n` durch (`$` matcht vor
+    End-`\\n`), während `\\r` fiel. Die Negative-Lookahead-Form lehnt beides ab."""
+    from iil_klickdummy import gen_e2e
+    base = {
+        "spec_id": "repo:x", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock",
+    }
+    # trailing \n im Screen-title → jetzt schema-invalid
+    spec = _conform({**base, "screens": [
+        {"id": "s", "title": "Login\n",
+         "parity_acceptance": [{"id": "s.v", "check": "visible c",
+                                "assert": {"action": "visible", "selector": "[data-testid=x]"}}]}]})
+    assert any("title" in e for e in gen_e2e.validate_spec(spec))
+    # sauberer title bleibt valide
+    ok = _conform({**base, "screens": [
+        {"id": "s", "title": "Login",
+         "parity_acceptance": [{"id": "s.v", "check": "visible c",
+                                "assert": {"action": "visible", "selector": "[data-testid=x]"}}]}]})
+    assert not any("title" in e for e in gen_e2e.validate_spec(ok))
+
+
+def test_should_reject_non_identifier_login_fixture_via_schema(tmp_path):
+    """AD-5: ein login_fixture, das kein gültiger Python-Bezeichner ist, wird
+    fail-closed im Schema abgelehnt (statt still via ident() gecoerct)."""
+    from iil_klickdummy import gen_e2e
+    base = {
+        "spec_id": "repo:x", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock",
+        "screens": [{"id": "s", "title": "S",
+                     "parity_acceptance": [{"id": "s.v", "check": "visible c",
+                                            "assert": {"action": "visible", "selector": "[data-testid=x]"}}]}],
+    }
+    bad = _conform({**base, "auth": {"login_fixture": "x): pass\nimport os"}})
+    assert any("login_fixture" in e for e in gen_e2e.validate_spec(bad))
+    good = _conform({**base, "auth": {"login_fixture": "as_admin"}})
+    assert not any("login_fixture" in e for e in gen_e2e.validate_spec(good))
+
+
+def test_should_cache_loaded_schema(tmp_path):
+    """M28-3: _load_schema ist gecacht (unveränderliches Paket-Asset) — zwei
+    Aufrufe liefern dasselbe Objekt statt zweimal von Disk zu lesen."""
+    from iil_klickdummy import gen_e2e
+    assert gen_e2e._load_schema() is gen_e2e._load_schema()
