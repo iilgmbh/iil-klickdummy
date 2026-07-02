@@ -1,7 +1,7 @@
 # CORE_CONTEXT — iil-klickdummy
 
 > Agenten-/Onboarding-Kontext. Single source of facts für dieses Repo; ergänzt
-> README (Nutzung) und CHANGELOG (Historie). Stand: v1.22.2.
+> README (Nutzung) und CHANGELOG (Historie). Stand: v1.29.0.
 
 ## Was es ist
 
@@ -33,25 +33,32 @@ Vollständige Referenz: [`docs/reference/cli.md`](docs/reference/cli.md).
 
 `screens-spec.schema.json` · `story.schema.json` · `module-manifest.schema.json` · `feedback-payload.schema.json`
 
-## Spec-as-SoR / Parity-Status (WICHTIG — Stand 2026-06-04)
+## Spec-as-SoR / Parity-Status (WICHTIG — Stand 2026-06-30)
 
 Die **Executable-Parity-Bridge** (`klickdummy-gen-e2e`: eine Spec → Suite, die per
 `SPEC_RENDERER_BASE_URL` gegen Renderer #1 *und* #2 prüft) ist **`dormant`** (platform:ADR-211
-Rev 20, Scoreboard S13, `dormancy_review_by: 2026-12-04`):
-- **Mechanismus belegt** (A1: eine Suite, zwei Renderer, fängt injizierte Divergenz),
-- aber **0 reale Renderer #2** plattformweit — drei Lücken: keine ausführbaren `assert` außer
-  einem Stub, 0 `data-testid` in den echten Apps, kein Auth-Modell im Generator (F22).
+Rev 22, Scoreboard S13, `dormancy_review_by: 2026-12-04`):
+- **Mechanismus belegt** (3/3 grün gegen risk-hub `/sds/review/`),
+- aber **0 reale Renderer #2** plattformweit — F22 (Auth-Modell) noch offen.
 - **`klickdummy-parity-drift`** (Make-Target in Adopter-Repos) prüft **nur Spec↔Datei-Drift**
   (re-gen + diff), **nicht** Parität gegen einen Renderer.
+
+**F23 Selektor-Kontrakt (ADR-211 Rev 22, 2026-06-30 — GESCHLOSSEN):**
+- `testid=foo` ist der kanonische Selektor (`[data-testid=foo]` deprecated, Warnung generiert).
+- Präfix-Vokabular: `testid=`, `role=`, `label=` (stabil) · `text=` (fragil, Fallback).
+  Dispatch: `testid=` → `get_by_test_id`, `role=` → `get_by_role`, `label=` → `get_by_label`, `text=` → `get_by_text`, sonst `page.locator()`.
+- `--strict-selectors` Flag: bricht den Generator-Lauf ab, wenn ein Selektor als fragil klassifiziert
+  wird. Gedacht für Off-Ramp-Gates in CI. Ohne Flag: fragile Selektoren erzeugen nur eine Warnung.
+- F18 (Selector-Registry) bleibt deferred (Trigger: ≥2 Consumer-Specs müssen Selektor wegen App-Änderung ändern).
 
 Aktiv/in Nutzung bleiben: I1, I2-Pattern-Deklaration, I4, Co-Creation, Requirements-Bridge, Discovery.
 
 ## Cross-Referenzen
 
-- **platform:ADR-211** — Klickdummy-Rahmen (Mutter-ADR, vier Invarianten, Parity-Bridge, Rev 20 Dormancy)
+- **platform:ADR-211** — Klickdummy-Rahmen (Mutter-ADR, vier Invarianten, Parity-Bridge, Rev 22 F23-closed)
 - **platform:ADR-215** — pgvector-Discovery (Stage 1.5, vom Modul `discovery_push` bedient)
 - **platform:ADR-216** — Klickdummy-Hosting auf iil.pet
-- Konzepte: `docs/konzepte/KONZ-iil-klickdummy-00{1..4}.md`
+- Konzepte: `docs/konzepte/KONZ-iil-klickdummy-00{1..7}.md`
 
 ## Tests & Release
 

@@ -32,7 +32,3 @@ from . import (  # noqa: F401
     extract_requirements, gen_e2e, inventory, install_snippets, registry,
     sync_to_orchestrator, discovery_push, from_django,
 )
-# Hinweis: `manage` wird hier NICHT eager importiert — das Modul existiert
-# (noch) nicht; ein eager Import würde das gesamte Paket beim Laden crashen
-# (ImportError → blockiert alle console-scripts). pyproject verweist weiterhin
-# auf klickdummy-manage; das ist separat zu klären (pre-existing drift).

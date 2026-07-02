@@ -1,4 +1,4 @@
-# `iil-klickdummy` — Shared Infrastructure for `platform:ADR-211` (Rev 14)
+# `iil-klickdummy` — Shared Infrastructure for `platform:ADR-211` (Rev 22)
 
 > Versioniertes pip-Paket mit allem, was Klickdummy-Konformität braucht:
 > Schemas, Konformitäts-Checks (I1–I4), Requirements-Bridge, S11-Inventur,
@@ -7,16 +7,16 @@
 
 ## Install
 
-**Default (v1.28+):** public PyPI
+**Default (v1.29+):** public PyPI
 
 ```bash
-pip install "iil-klickdummy>=1.28,<2.0"
+pip install "iil-klickdummy>=1.29,<2.0"
 ```
 
 **Fallback / Dev:** via Git-URL
 
 ```bash
-pip install "iil-klickdummy @ git+https://github.com/achimdehnert/iil-klickdummy.git@v1.28.0"
+pip install "iil-klickdummy @ git+https://github.com/achimdehnert/iil-klickdummy.git@v1.29.0"
 ```
 
 **Workspace-Pattern (Development):**
@@ -33,9 +33,20 @@ klickdummy-i2 <spec>:<schema> ...          # 4-Pattern (strict-mode)
 klickdummy-i3 <spec>:<schema> ...          # Off-Ramp + Sunset
 klickdummy-i4 docs/                        # Cross-Repo-Ref-Format
 klickdummy-extract-requirements <spec>     # Spec → UC/FR/NFR/Lasten/Pflicht
+klickdummy-gen-e2e <spec> [--output <dir>] [--strict-selectors]
+                                           # Spec → ausführbare Playwright/pytest-Parity-Suite
+                                           # --strict-selectors: bricht ab bei fragilen Selektoren
+                                           #   Präfix-Vokabular: testid= (stabil, kanonisch),
+                                           #   role=<name> (stabil), label= (stabil), text= (fragil)
+klickdummy-stories <spec>                  # story.yaml-Validierung
+klickdummy-flow <spec>                     # Screen-Flow-DAG-Lint
+klickdummy-stories-manifest               # Stories-Manifest generieren
+klickdummy-genesor                         # Lineage-Renderer (genesor)
 klickdummy-inventory                       # S11 cross-repo legacy class scan
 klickdummy-install-snippets [--symlink]    # HTML+JS+templates in <repo>/platform-snippets/
 klickdummy-browser [--output X.html]       # v1.1: Multi-Klickdummy-Browser (Listbox + iframe)
+klickdummy-sync                            # Klickdummy-Meta → pgvector-Orchestrator
+klickdummy-manage                          # Verwaltungs-CLI (list/status/topics/versions/diff)
 ```
 
 ## v1.1 — Browser-Feature (Stufe 1+2)
