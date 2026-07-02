@@ -204,20 +204,25 @@
   // Fläche zeigt WIE der Browser mit Inhalt aussieht (statt leerem Platzhalter).
   function mockPreview(k, ver) {
     var tag = ver ? ('v' + esc(ver.spec_version) + ' · ' + esc(ver.commit_date) + ' · read-only') : ('v' + esc(k.spec_version) + ' · aktuell');
+    // EHRLICHER Vorschau-Slot: der Browser hat KEINEN eigenen Inhalt — hier lädt im
+    // echten Betrieb die Shell des ausgewählten Klickdummy. Kein Fake-Inhalt, der eine
+    // Aussage vortäuscht; stattdessen klar benannter Render-Bereich.
     return '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><style>'
-      + 'body{font-family:system-ui,sans-serif;margin:0;color:#1a3a6c;background:#eef2f7}'
-      + '.bar{background:#1a3a6c;color:#fff;padding:14px 20px;display:flex;align-items:center;gap:10px}'
-      + '.bar .t{font-size:15px;font-weight:600}.bar .b{margin-left:auto;font-size:11px;background:#ffffff22;padding:3px 9px;border-radius:10px}'
-      + '.wrap{padding:20px;max-width:760px}.card{background:#fff;border:1px solid #d8e0e8;border-radius:8px;padding:16px;margin-bottom:14px}'
-      + '.row{display:flex;gap:10px;margin:8px 0}.chip{background:#f3f4f6;border-radius:6px;padding:6px 10px;font-size:12px;flex:1}'
-      + '.btn{display:inline-block;background:#1a3a6c;color:#fff;border-radius:6px;padding:8px 14px;font-size:13px;margin-top:6px}'
-      + '.mut{color:#6a7888;font-size:12px}h2{font-size:14px;margin:0 0 8px}</style></head><body>'
-      + '<div class="bar"><span class="t">' + esc(k.title) + '</span><span class="b">' + esc(k.class) + ' · ' + tag + '</span></div>'
-      + '<div class="wrap">'
-      + '<div class="card"><h2>Übersicht</h2><div class="row"><div class="chip">Feld A</div><div class="chip">Feld B</div><div class="chip">Feld C</div></div>'
-      + '<p class="mut">Mock-Render von <code>' + esc(k.spec_id) + '</code> — im echten Browser lädt hier die Shell aus <code>' + esc(k.path) + '</code>.</p>'
-      + '<span class="btn">Aktion (Mock)</span></div>'
-      + '<div class="card"><h2>Detail</h2><p class="mut">Repräsentativer Platzhalter-Screen — dient nur der UX-Abnahme des Browser-Rahmens.</p></div>'
+      + 'html,body{height:100%}body{font-family:system-ui,sans-serif;margin:0;color:#1a3a6c;'
+      + 'background:repeating-linear-gradient(45deg,#f4f7fb,#f4f7fb 12px,#eef2f7 12px,#eef2f7 24px);'
+      + 'display:flex;align-items:center;justify-content:center}'
+      + '.slot{background:#fff;border:2px dashed #c5d5ec;border-radius:12px;padding:28px 32px;max-width:560px;text-align:center}'
+      + '.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6a7888;font-weight:600}'
+      + '.t{font-size:20px;font-weight:700;margin:8px 0 4px}.b{display:inline-block;font-size:11px;background:#e0f2fe;color:#075985;padding:3px 10px;border-radius:10px}'
+      + '.mut{color:#6a7888;font-size:13px;line-height:1.5;margin-top:14px}code{background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px}</style></head><body>'
+      + '<div class="slot">'
+      + '<div class="eyebrow">Render-Bereich · iframe</div>'
+      + '<div class="t">' + esc(k.title) + '</div>'
+      + '<span class="b">' + esc(k.class) + ' · ' + tag + '</span>'
+      + '<p class="mut">Hier rendert im echten Browser die <strong>Shell dieses Klickdummy</strong> aus '
+      + '<code>' + esc(k.path) + '</code>.<br>Der Browser selbst hat keinen eigenen Inhalt — er ist der '
+      + '<strong>Navigationsrahmen</strong> um beliebige Klickdummies (Auswahl · Story-Walk · Versionen), '
+      + 'der links bedient wird. Dieser Mock nimmt genau diesen Rahmen ab.</p>'
       + '</div></body></html>';
   }
   function showPreview(k, ver) {
