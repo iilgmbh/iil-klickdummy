@@ -52,11 +52,18 @@ import pathlib
 import re
 import sys
 from datetime import date
+from importlib.resources import files
 
 try:
     import yaml
 except ImportError:
     print("FAIL (setup): PyYAML fehlt. pip install pyyaml")
+    sys.exit(2)
+
+try:
+    import jsonschema
+except ImportError:
+    print("FAIL (setup): jsonschema fehlt. pip install jsonschema")
     sys.exit(2)
 
 
@@ -68,15 +75,54 @@ def ident(s: str) -> str:
     return out or "x"
 
 
+def _load_schema() -> dict:
+    """Gebündeltes Screens-Spec-Schema (Single Source of Truth für Validierung)."""
+    text = (files("iil_klickdummy") / "schemas" / "screens-spec.schema.json").read_text(
+        encoding="utf-8"
+    )
+    return json.loads(text)
+
+
+def validate_spec(spec: dict) -> list[str]:
+    """Validiert eine Spec gegen ``screens-spec.schema.json``.
+
+    Gibt eine Liste von Fehler-Strings zurück (leer = konform). Die Spec ist
+    eine **Vertrauensgrenze**: ihre Werte landen in generiertem Python
+    (Kommentare, Docstrings, Locator-Ausdrücke). Ohne Validierung konnte ein
+    bösartiges/kaputtes Feld strukturell durchrutschen (B-1). Escaping in
+    ``gen_suite`` ist die zweite, unabhängige Verteidigungslinie.
+    """
+    schema = _load_schema()
+    return [
+        f"{'/'.join(str(p) for p in e.absolute_path) or '(root)'}: {e.message}"
+        for e in sorted(
+            jsonschema.Draft7Validator(schema).iter_errors(spec),
+            key=lambda x: list(x.absolute_path),
+        )
+    ]
+
+
 def load_spec(path: pathlib.Path) -> dict:
     if not path.exists():
         print(f"FAIL: Spec fehlt: {path}")
         sys.exit(1)
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        spec = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as exc:
         print(f"FAIL: Spec-YAML ungültig ({path}): {exc}")
         sys.exit(1)
+    if not isinstance(spec, dict):
+        print(f"FAIL: Spec-Top-Level ist kein Mapping ({path})")
+        sys.exit(1)
+    # Vertrauensgrenze: gegen Schema validieren, BEVOR irgendein Wert in
+    # generierten Code eingebettet wird (B-1, platform:ADR-211 §I1-Spec-Schema).
+    errors = validate_spec(spec)
+    if errors:
+        print(f"FAIL: Spec verletzt screens-spec.schema.json ({path}):")
+        for e in errors:
+            print(f"  ✗ {e}")
+        sys.exit(1)
+    return spec
 
 
 _PARAM_PATTERN = re.compile(r"<[^>]+>")
@@ -109,6 +155,23 @@ def _q(s) -> str:
     """Double-quoted Python-String-Literal — `ruff format`-konform (nicht `repr`,
     das Single-Quotes liefert und Adopter mit `ruff format --check` rot macht)."""
     return json.dumps(str(s), ensure_ascii=False)
+
+
+def _comment_safe(s) -> str:
+    """Ein Spec-Wert, der roh in eine `#`-Kommentarzeile eingebettet wird, darf
+    NIE aus dieser Zeile ausbrechen (RCE-Härtung B-1). Ein `\\n` im Wert würde
+    sonst eine aktive Python-Zeile öffnen, die bei `pytest`-collect läuft — noch
+    VOR dem `importorskip`. Deshalb: jeden Whitespace-Lauf (inkl. Zeilenumbruch
+    und Carriage-Return) zu genau einem Space kollabieren."""
+    return re.sub(r"\s+", " ", str(s)).strip()
+
+
+def _doc_safe(s) -> str:
+    """Spec-Wert, der roh in einen `\"\"\"`-Docstring eingebettet wird, härten
+    (B-1/B-2): Whitespace/Zeilenumbrüche kollabieren, `\"\"\"` neutralisieren und
+    einen trailing Backslash entfernen — sonst escaped er die schließende Quote
+    und die Folgezeile wird ausführbarer Code."""
+    return re.sub(r"\s+", " ", str(s)).replace('"""', "'''").rstrip("\\")
 
 
 # Semantischer Selektor-Fallback (KONZ-iil-klickdummy-007, F23/D2): ein optionales
@@ -320,10 +383,14 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
                 f"    return {{**browser_context_args, \"storage_state\": {_q(storage)}}}"
             )
         elif login_fixture:
+            # `login_fixture` wird als Funktions-Parametername emittiert — auf
+            # einen sicheren Python-Bezeichner zwingen, sonst injiziert ein
+            # bösartiger Name ausführbaren Code in die Signatur (B-1).
+            fixture_ident = ident(login_fixture)
             auth_blocks.append(
                 f"@pytest.fixture(autouse=True)\n"
-                f"def _auth({login_fixture}: Page):\n"
-                f'    """Auth via Login-Fixture `{login_fixture}` aus Spec-Block."""\n'
+                f"def _auth({fixture_ident}: Page):\n"
+                f'    """Auth via Login-Fixture `{_doc_safe(login_fixture)}` aus Spec-Block."""\n'
                 f"    pass  # Fixture übernimmt Login"
             )
 
@@ -331,7 +398,12 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
         sid = sc.get("id", "screen")
         stitle = sc.get("title", sid)
         route, is_parametrised = screen_route(sc)
-        screen_comment = f"# ── Screen: {sid} · {stitle}  (route {route}) ──"
+        # Alle drei Werte kommen aus der Spec (Vertrauensgrenze) und landen roh in
+        # einer `#`-Kommentarzeile — kollabieren, damit kein `\n` ausbricht (B-1).
+        screen_comment = (
+            f"# ── Screen: {_comment_safe(sid)} · {_comment_safe(stitle)}  "
+            f"(route {_comment_safe(route)}) ──"
+        )
 
         # Auth-Pflicht: `login_required` in Spec + kein auth-Block → alle Checks skip
         login_required = sc.get("login_required", False) or spec_auth.get("required", False)
@@ -344,7 +416,9 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
         first = True
         for pa in pas:
             acc_id = pa.get("id", "check")
-            check = str(pa.get("check", "")).replace('"""', "'''")
+            # `check` ist ein freier Spec-String und landet roh im Docstring —
+            # gegen `"""`-Ausbruch UND trailing `\`-Quote-Escape härten (B-1/B-2).
+            check = _doc_safe(pa.get("check", ""))
             fn = f"test_{ident(sid)}__{ident(acc_id)}"
             prefix = f"{screen_comment}\n" if first else ""
             first = False

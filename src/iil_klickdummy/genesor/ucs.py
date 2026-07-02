@@ -595,7 +595,11 @@ def generate_uc_skeletons(records: list[dict], existing_ucs: list[dict],
             sid = s.get("id")
             if not sid:
                 continue
-            personas = s.get("persona") or []
+            # Schema-Feld ist `personas` (Plural, required); `persona` (Singular)
+            # war ein stiller No-Op — der Generator fand nie eine Persona und
+            # erzeugte keine UC-Skelette (B-3). Wie render_genesor/render_fallback
+            # `personas or persona` lesen (Singular als Rückwärtskompat-Fallback).
+            personas = s.get("personas") or s.get("persona") or []
             if isinstance(personas, str):
                 personas = [personas]
             primary = personas[0] if personas else None
