@@ -5,6 +5,51 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.30.0] — 2026-07-02
+
+Erstes Release seit **1.28.4** — 1.29.0 (F23-Selektor-Kontrakt) wurde nie getaggt/
+publiziert; dessen Inhalt ist in diesem Release enthalten (s. [1.29.0] unten). Kern
+dieses Release: der **klickdummy-browser-Redesign** (spec-first, ADR-002) und eine
+**Security-Serie** (S-01 XSS + gen_e2e-RCE), beide mit dem Prinzip *Spec/Daten sind
+eine Vertrauensgrenze*.
+
+### Added — klickdummy-browser Redesign (spec-first, iil-klickdummy:ADR-002)
+
+- Neuaufbau des `klickdummy-browser` strikt gegen eine abgenommene Klickdummy-Spec
+  (PR #100 UCs/Mock, PR #101 Renderer). `--pui-*`-Design-Tokens statt Hex (ADR-048/049),
+  `addEventListener`/Event-Delegation statt inline `onclick`, `data-testid` an jedem
+  interaktiven Element (ADR-040), definierte Fehlerzustände. Verhalten erhalten
+  (shell-Laden mit `?feedback=on`, Versions-Switcher read-only, Story-Walk, cross-repo).
+- `strict_selectors` als Spec-Attribut zusätzlich zum CLI-Flag `--strict-selectors`
+  (REC-1, PR #91). `role=`-Präfix-Parser mit definiertem Fehlerverhalten + Roundtrip-Tests
+  (REC-2, PR #92).
+
+### Security
+
+- **S-01 (XSS im klickdummy-browser geschlossen, PR #101):** Daten werden als
+  `<script type="application/json">`-Insel + `JSON.parse` eingebettet und via
+  `textContent`/`<template>` ins DOM gebaut (nie `innerHTML`-Concat). `registry`
+  escaped beim Einbetten jedes `</` zu `<\/` — der HTML-Parser beendet sonst *jedes*
+  `<script>` (auch `application/json`) an einem literalen `</script>`.
+- **gen_e2e Input-Injection/RCE gehärtet (PR #102):** die Spec ist eine Vertrauensgrenze.
+  `load_spec` validiert jetzt fatal gegen `screens-spec.schema.json` (exit 1 bei
+  Verstoß), *bevor* ein Wert in generierten Code fließt; zusätzlich Runtime-Escaping
+  (`_comment_safe`/`_doc_safe`/`ident`) als zweite, unabhängige Linie. Schloss den
+  Vektor „`\n` im `title` bricht aus der Kommentarzeile aus und läuft bei pytest-collect".
+- **Folge-Härtungen (PR #104):** `_doc_safe` gegen trailing `"` (Docstring-Bruch);
+  `title`-Schema-Pattern lehnt trailing `\n` symmetrisch zu `\r` ab; `login_fixture`
+  fail-closed als Python-Bezeichner; `_load_schema` gecacht.
+
+### Fixed
+
+- `is_fragile_selector` `role=`-Validierung + `load_spec` YAML-Fehlerbehandlung
+  (KONZ-007/R01/R03, PR #93).
+- `generate_uc_skeletons` liest `personas` (Schema-Plural) statt `persona` (war
+  stiller No-Op); `discover_klickdummies` nutzt Ein-Ebenen-Glob statt `rglob`
+  (verschachtelte Fixture-Specs nicht mehr als KDs) (PR #102).
+- README-Git-Fallback-URL auf korrekte Org (`iilgmbh`); `datetime.utcnow()`-Deprecation;
+  CHANGELOG-/Doku-Stale-Verweise (PR #99).
+
 ## [1.29.0] — 2026-06-30
 
 ### Added — F23 Selektor-Kontrakt: semantischer Fallback + Off-Ramp-Gate (KONZ-007)
