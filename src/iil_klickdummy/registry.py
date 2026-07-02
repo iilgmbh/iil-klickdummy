@@ -70,8 +70,13 @@ def discover_klickdummies(repo_root: pathlib.Path) -> list[KlickdummyMeta]:
     for base in ("klickdummy", "docs/01-architektur/mockups"):
         d = repo_root / base
         if d.exists():
-            candidates.extend(d.rglob("screens-spec.yaml"))
-            candidates.extend(d.rglob("spec.yaml"))   # alt: writing-hub-Variante
+            # Ein-Ebenen-Glob (`<name>/spec`) statt `rglob`: die Konvention ist
+            # genau `klickdummy/<name>/screens-spec.yaml`. `rglob` erkannte
+            # verschachtelte Fixture-Specs (z.B. in `<name>/tests/…`) als
+            # eigenständige KDs und verschmutzte die Registry (B-5, analog
+            # scan.py `glob("klickdummy/*/screens-spec.yaml")`).
+            candidates.extend(d.glob("*/screens-spec.yaml"))
+            candidates.extend(d.glob("*/spec.yaml"))   # alt: writing-hub-Variante
     seen: set[pathlib.Path] = set()
     for spec_path in candidates:
         if spec_path in seen:

@@ -12,6 +12,38 @@ from importlib.resources import files
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "example-screens-spec.yaml"
 
 
+def _conform(spec: dict) -> dict:
+    """Ergänzt die schema-pflichtigen Rahmenfelder, die diese bewusst minimalen
+    Inline-Specs auslassen, damit `load_spec`s jsonschema-Validierung (B-1-Fix)
+    greift, ohne zu verschleiern, was der jeweilige Test prüft. Überschreibt nur
+    strukturelle Felder (grounding/off_ramp/personas) + füllt fehlende
+    Screen-Pflichtfelder — kein Test asserted deren Inhalt."""
+    spec = dict(spec)
+    spec["grounding"] = {"konzept": "-", "pilot": "-"}
+    spec["off_ramp"] = {
+        "policy": "-", "unit": "per-screen", "rule": "-",
+        "doppelquell_grenze": "prod-release", "parity_runner": "-",
+    }
+    spec["personas"] = {"user": {"label": "User", "rolle": "user", "sieht": []}}
+    screens = []
+    for sc in spec.get("screens", []):
+        sc = dict(sc)
+        sc.setdefault("personas", ["user"])
+        sc.setdefault("purpose", "-")
+        sc.setdefault("off_ramp_status", "static")
+        pas = []
+        for pa in sc.get("parity_acceptance", []):
+            pa = dict(pa)
+            # Schema verlangt `check` minLength 8 — kurze Inline-Checks padden.
+            pa["check"] = f"{pa.get('check', '')}".ljust(8, ".")
+            pas.append(pa)
+        if pas:
+            sc["parity_acceptance"] = pas
+        screens.append(sc)
+    spec["screens"] = screens
+    return spec
+
+
 def test_gen_e2e_module_present():
     from iil_klickdummy import gen_e2e
     assert callable(getattr(gen_e2e, "main_cli", None))
@@ -217,7 +249,7 @@ def test_gen_e2e_route_example_used(tmp_path):
         ]
     }
     spec_file = tmp_path / "spec.yaml"
-    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     out = tmp_path / "test_parity.py"
     gen_e2e.main([str(spec_file), str(out)])
     code = out.read_text(encoding="utf-8")
@@ -243,7 +275,7 @@ def test_gen_e2e_parametrised_route_skipped(tmp_path):
         ]
     }
     spec_file = tmp_path / "spec.yaml"
-    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     out = tmp_path / "test_parity.py"
     gen_e2e.main([str(spec_file), str(out)])
     code = out.read_text(encoding="utf-8")
@@ -273,7 +305,7 @@ def test_gen_e2e_login_required_skip(tmp_path):
         ]
     }
     spec_file = tmp_path / "spec.yaml"
-    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     out = tmp_path / "test_parity.py"
     gen_e2e.main([str(spec_file), str(out)])
     code = out.read_text(encoding="utf-8")
@@ -305,7 +337,7 @@ def test_gen_e2e_auth_storage_state_uses_real_playwright_api(tmp_path):
         ],
     }
     spec_file = tmp_path / "spec.yaml"
-    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     out = tmp_path / "test_parity.py"
     gen_e2e.main([str(spec_file), str(out)])
     code = out.read_text(encoding="utf-8")
@@ -419,7 +451,7 @@ def test_fallthrough_hint_lands_in_manifest(tmp_path):
     from iil_klickdummy import gen_e2e
     spec_file = tmp_path / "spec.yaml"
     out = tmp_path / "t.py"
-    spec_file.write_text(yaml.dump(_strict_spec("rol=button")), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(_strict_spec("rol=button"))), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out)]) == 0
     manifest = json.loads(out.with_suffix(".manifest.json").read_text())
     (entry,) = manifest["fragile_selectors"]
@@ -453,14 +485,14 @@ def test_strict_selectors_gate_blocks_fragile(tmp_path):
     out = tmp_path / "t.py"
 
     # bare CSS = fragil → Default 0 (nur Warnung), strict 3 (Gate rot)
-    spec_file.write_text(yaml.dump(_strict_spec("button.submit")), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(_strict_spec("button.submit"))), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out)]) == 0
     assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 3
     manifest = json.loads(out.with_suffix(".manifest.json").read_text())
     assert manifest["strict_selectors"] is True
 
     # stabiler Präfix-Anker → auch strict grün
-    spec_file.write_text(yaml.dump(_strict_spec("testid=submit")), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(_strict_spec("testid=submit"))), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 0
 
 
@@ -478,7 +510,7 @@ def test_strict_selectors_spec_attribute_without_cli_flag(tmp_path):
     # Spec-Attribut + fragiler Selektor → Gate rot (exit 3) ohne CLI-Flag
     spec = _strict_spec("button.submit")
     spec["strict_selectors"] = True
-    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out)]) == 3
     manifest = json.loads(out.with_suffix(".manifest.json").read_text())
     assert manifest["strict_selectors"] is True
@@ -486,13 +518,132 @@ def test_strict_selectors_spec_attribute_without_cli_flag(tmp_path):
     # Spec-Attribut + stabiler Präfix-Anker → grün
     spec = _strict_spec("testid=submit")
     spec["strict_selectors"] = True
-    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out)]) == 0
 
     # strict_selectors: false = Default-Verhalten (Warnung statt Gate)
     spec = _strict_spec("button.submit")
     spec["strict_selectors"] = False
-    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out)]) == 0
     manifest = json.loads(out.with_suffix(".manifest.json").read_text())
     assert manifest["strict_selectors"] is False
+
+
+# -- B-1/B-2: Input-Injection/RCE-Härtung (Spec = Vertrauensgrenze) ------------
+
+def test_should_reject_newline_in_title_via_schema_validation(tmp_path):
+    """B-1: ein `\\n` in screens[].title bräche sonst aus der `#`-Kommentarzeile
+    der generierten Datei aus (aktive Python-Zeile bei pytest-collect, VOR
+    importorskip → RCE). load_spec validiert jetzt gegen das Schema; der
+    newline-verbietende title-Pattern macht das zum harten Fehler (exit 1)."""
+    import pytest
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec = _conform({
+        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock",
+        "screens": [
+            {"id": "login", "title": "Login\nimport os", "route": "/login/",
+             "route_example": "/login/",
+             "parity_acceptance": [
+                 {"id": "l.vis", "check": "visible check",
+                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+        ],
+    })
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    with pytest.raises(SystemExit) as ei:
+        gen_e2e.load_spec(spec_file)
+    assert ei.value.code == 1
+
+
+def test_should_reject_schema_invalid_spec_in_load_spec(tmp_path):
+    """B-1: load_spec ruft jsonschema.validate — eine strukturell kaputte Spec
+    (fehlendes Pflichtfeld) wird zum harten Fehler statt blind generiert."""
+    import pytest
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec = {"spec_id": "repo:x", "screens": []}   # viele Pflichtfelder fehlen
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    with pytest.raises(SystemExit) as ei:
+        gen_e2e.load_spec(spec_file)
+    assert ei.value.code == 1
+    assert gen_e2e.validate_spec(spec)   # nicht-leere Fehlerliste
+
+
+def test_should_escape_malicious_title_in_generated_comment(tmp_path):
+    """B-1 Defense-in-Depth: selbst wenn ein `\\n`-Titel die Validierung umginge,
+    darf gen_suite daraus KEINE aktive Codezeile machen — der Wert wird in der
+    `#`-Kommentarzeile zu einem Space kollabiert; die Datei bleibt harmlos."""
+    from iil_klickdummy import gen_e2e
+    payload = "PWNED = __import__('os').system('touch /tmp/pwned')"
+    spec = {
+        "spec_id": "repo:x", "spec_version": "0.1",
+        "screens": [
+            {"id": "login", "title": f"Login\n{payload}",
+             "route": "/login/", "route_example": "/login/",
+             "parity_acceptance": [
+                 {"id": "l.vis", "check": "visible check",
+                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+        ],
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text("sha-source", encoding="utf-8")   # nur für die SHA
+    code, _ = gen_e2e.gen_suite(spec, spec_file, "test_parity.py")
+    # Der Payload darf NUR innerhalb einer Kommentarzeile stehen, nie als Codezeile
+    for ln in code.splitlines():
+        if payload in ln:
+            assert ln.lstrip().startswith("#"), f"Payload als aktive Zeile: {ln!r}"
+    assert not any(ln.startswith("PWNED") for ln in code.splitlines())
+    compile(code, "gen.py", "exec")   # muss valides, harmloses Python sein
+
+
+def test_should_neutralise_docstring_backslash_and_triple_quote(tmp_path):
+    """B-2: ein `check`, der `\"\"\"` enthält oder auf `\\` endet, darf den
+    Docstring nicht schließen/escapen und die Folgezeile ausführbar machen.
+    Härtung gegen `\"\"\"` UND trailing Backslash → die Datei kompiliert sauber."""
+    from iil_klickdummy import gen_e2e
+    payload = 'evil """ + __import__("os").system("id") + """ tail\\'
+    spec = {
+        "spec_id": "repo:x", "spec_version": "0.1",
+        "screens": [
+            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
+             "parity_acceptance": [
+                 {"id": "s.vis", "check": payload,
+                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+        ],
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text("sha-source", encoding="utf-8")
+    code, _ = gen_e2e.gen_suite(spec, spec_file, "t.py")
+    compile(code, "gen.py", "exec")           # kaputter Docstring → SyntaxError, hier nicht
+    assert "evil ''' +" in code               # `"""` im check → `'''` neutralisiert
+    assert 'tail"""' in code                   # Docstring schließt sauber
+    assert "tail\\" not in code                # trailing `\` entfernt (escaped Quote nicht)
+
+
+def test_should_sanitize_login_fixture_into_safe_identifier(tmp_path):
+    """B-1: auth.login_fixture wird als Funktions-Parametername emittiert; ein
+    bösartiger Wert muss zu einem sicheren Python-Bezeichner gezwungen werden,
+    sonst injiziert er ausführbaren Code in die Fixture-Signatur."""
+    from iil_klickdummy import gen_e2e
+    spec = {
+        "spec_id": "repo:x", "spec_version": "0.1",
+        "auth": {"login_fixture": "x): pass\nimport os  # evil"},
+        "screens": [
+            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
+             "login_required": True,
+             "parity_acceptance": [
+                 {"id": "s.vis", "check": "visible check",
+                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+        ],
+    }
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text("sha-source", encoding="utf-8")
+    code, _ = gen_e2e.gen_suite(spec, spec_file, "t.py")
+    compile(code, "gen.py", "exec")
+    assert "def _auth(x_pass_import_os_evil: Page):" in code
+    assert "import os  # evil" not in code.split("def _auth")[1][:120]
