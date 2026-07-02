@@ -25,7 +25,12 @@ Zusammenfassung zählt ausführbar vs. nur-Prosa.
 `assert.selector` akzeptiert ein optionales Präfix-Vokabular (F23/D2,
 KONZ-iil-klickdummy-007): `testid=…`, `role=…[name=…]`, `label=…`, `text=…`
 wählen die passende Playwright-Locator-API; ohne Präfix bleibt der String ein
-CSS-Selektor (`page.locator`) und wird als fragil markiert.
+CSS-Selektor (`page.locator`) und wird als fragil markiert. Das ist ein
+**Parser mit definiertem Fehlerverhalten** (REC-2/AD-2), keine lose String-
+Konvention: unbekanntes Präfix (`rol=…`) oder ungültige `role=`-Syntax (leerer
+Wert, fehlende `]`) → Fallthrough auf CSS + benannter Manifest-Hint, nie
+Exception; Leerzeichen/Sonderzeichen im `name=`-Wert sind gültig (Quoting via
+json.dumps).
 
 Aufruf:
     klickdummy-gen-e2e <spec.yaml> [<out-file>] [--strict-selectors]
@@ -227,6 +232,41 @@ def is_fragile_selector(sel) -> bool:
     return not any(h in s for h in STABLE_SELECTOR_HINTS)
 
 
+# Präfix-Parser mit definiertem Fehlerverhalten (REC-2/AD-2): kein silenter
+# Fail, keine Exception — ein nicht parsebares Präfix fällt IMMER auf CSS
+# (`page.locator`) zurück und wird hier als benannter Hint sichtbar gemacht.
+_PREFIX_LIKE = re.compile(r"^([A-Za-z][A-Za-z0-9_-]*)=")
+_KNOWN_PREFIXES = ("testid", "role", "label", "text")
+
+
+def selector_fallthrough_hint(sel) -> str | None:
+    """Benennt, WARUM ein präfix-artiger Selektor auf CSS zurückfällt — oder None.
+
+    Deckt die zwei Fehlerklassen der Mini-DSL ab (REC-2): (a) unbekanntes
+    Präfix (Tippfehler wie `rol=`), (b) `role=` mit ungültiger Syntax (leerer
+    Wert, fehlende schließende `]`). Beides sind legitime CSS-Selektoren aus
+    Playwright-Sicht — aber fast immer Spec-Autor-Fehler, daher Warnung statt
+    silentem Fallthrough. Bare CSS ohne `<wort>=`-Form gibt None (kein Hint)."""
+    s = str(sel or "")
+    m = _PREFIX_LIKE.match(s)
+    if not m:
+        return None
+    prefix = m.group(1)
+    if prefix == "role":
+        if _ROLE_PATTERN.match(s.removeprefix("role=")) is None:
+            return (
+                "role=-Syntax ungültig (erwartet: role=<rolle> oder "
+                "role=<rolle>[name=…]) — Fallthrough auf CSS (page.locator)"
+            )
+        return None
+    if prefix not in _KNOWN_PREFIXES:
+        return (
+            f"unbekanntes Präfix '{prefix}=' (bekannt: testid=, role=, label=, "
+            f"text=) — Fallthrough auf CSS (page.locator); Tippfehler?"
+        )
+    return None
+
+
 def _gen_version() -> str:
     try:
         from iil_klickdummy import __version__
@@ -353,7 +393,13 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
             else:
                 n_exec += 1
                 if isinstance(a, dict) and is_fragile_selector(a.get("selector")):
-                    fragile.append({"screen": sid, "id": acc_id, "selector": a.get("selector")})
+                    entry = {"screen": sid, "id": acc_id, "selector": a.get("selector")}
+                    # REC-2: Fallthrough der Präfix-Mini-DSL benennen (Tippfehler-
+                    # Präfix / kaputte role=-Syntax) statt nur "fragil" zu sagen.
+                    hint = selector_fallthrough_hint(a.get("selector"))
+                    if hint:
+                        entry["hint"] = hint
+                    fragile.append(entry)
                 blocks.append(
                     f"{prefix}def {fn}(page: Page):\n"
                     f'    """[{sid}] {check}"""\n'
@@ -441,6 +487,11 @@ def main(argv: list[str]) -> int:
     if n_fragile:
         print(f"  ⚠ {n_fragile} fragile(r) Selektor(en) ohne stabilen Anker "
               f"(REC-6/F23) — bare CSS/text=; testid=/role=/label= bevorzugen.")
+        # REC-2: Präfix-Parser-Fallthroughs (Tippfehler/kaputte Syntax) explizit
+        # benennen — die sehen wie DSL aus, laufen aber als CSS.
+        for f in stats["fragile_selectors"]:
+            if f.get("hint"):
+                print(f"    ↳ {f['screen']}/{f['id']} `{f['selector']}`: {f['hint']}")
     print("  Dual-Renderer: SPEC_RENDERER_BASE_URL umschalten (Renderer #1 ↔ #2).")
     # F23/D1: am Off-Ramp ist ein fragiler Selektor kein bloßer Hinweis mehr.
     if strict_selectors and n_fragile:

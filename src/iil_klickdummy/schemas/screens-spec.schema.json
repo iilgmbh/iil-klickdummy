@@ -140,7 +140,7 @@
                   "additionalProperties": false,
                   "properties": {
                     "action":   { "type": "string", "enum": ["visible", "text", "clickable", "url", "count"] },
-                    "selector": { "type": "string" },
+                    "selector": { "type": "string", "description": "Playwright-Ziel. Präfix-Dispatch (F23/D2, Parser mit definiertem Fehlerverhalten — REC-2/AD-2): `testid=<id>` → get_by_test_id (stabil) · `role=<rolle>` oder `role=<rolle>[name=<text>]` → get_by_role (stabil; Leerzeichen/Sonderzeichen im name-Wert erlaubt) · `label=<text>` → get_by_label (stabil) · `text=<text>` → get_by_text (fragil, i18n). Ohne Präfix: CSS via page.locator (fragil ohne data-*-Anker). Fehlerverhalten: unbekanntes Präfix (z.B. Tippfehler `rol=`) oder ungültige role=-Syntax (fehlende schließende `]`, leerer Wert) → Fallthrough auf CSS + Manifest-Warnung, nie Exception." },
                     "expect":   { "type": ["string", "number"] }
                   }
                 }
