@@ -10,11 +10,16 @@ Schulden.
   in ein `<script>const KLICKDUMMIES = …</script>` eingesetzt (`registry.py` +
   `browser.html.tmpl`). Ein Spec-Feld mit `</script>` oder HTML bricht aus dem Kontext.
 - **Soll:**
-  - JSON sicher einbetten: `<script type="application/json" id="kd-data">…</script>` +
-    `JSON.parse`, **oder** `</`→`<\/` beim Serialisieren.
+  - JSON in einer `<script type="application/json">`-Insel + `JSON.parse`.
+  - **⚠️ Insel allein reicht NICHT:** der HTML-Parser beendet **jedes** `<script>`-Element
+    (auch `type="application/json"`) an einem literalen `</script>`. Beim Serialisieren
+    MUSS daher jedes `</` zu `<\/` escaped werden — `json.dumps(data, ensure_ascii=False).replace("</", "<\\/")`.
+    JSON liest `\/` als `/`, der Parser sieht kein Ende-Tag. (Real belegt: die erste
+    Mock-Fassung ohne dieses Escaping führte das Payload aus — Browser-Test, nicht Annahme.)
   - DOM aus Daten via `textContent` / geklonte `<template>`-Nodes bauen, **nicht** via `innerHTML`-Concat.
-- **Nachweis:** Ein Klickdummy mit `title = 'x</script><script>alert(1)</script>'` und eine
-  Entity-`description` mit `<img src=x onerror=alert(1)>` erzeugen sichtbaren Text, kein Script/Event.
+- **Nachweis (verifiziert 2026-07-02, headless):** Ein Klickdummy mit
+  `title = 'x</script><script>window.__XSS__=1</script>'` erzeugt sichtbaren Text;
+  `window.__XSS__` bleibt `undefined`; das Detail-Panel enthält kein `<script>`-Element.
 
 ## N2 — Design-System-Konformität (ADR-048/049)
 

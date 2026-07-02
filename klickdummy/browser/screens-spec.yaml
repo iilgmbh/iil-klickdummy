@@ -1,0 +1,116 @@
+# Klickdummy — klickdummy-browser (Spec-first-Neuaufbau, /repo-ux-opt B)
+# Erdet 1:1 an docs/use-cases/UC-001..003 + NFR-browser.md (PR #100).
+# Ist-Verhalten aus src/iil_klickdummy/snippets/browser/browser.html.tmpl als Vertrag;
+# offene Spec-Fragen als ASSUMPTION[unverified] im check-Text (Ist-Default), zu klären
+# bei der KD-Abnahme (ADR-251). Der Neuaufbau löst S-01 (N1) + ADR-048-AP (N2).
+$schema: ./screens-spec.schema.json
+spec_id: iil-klickdummy:klickdummy-spec-browser
+spec_version: "0.1"
+spec_schema_version: "1.1"
+spec_date: "2026-07-02"
+title: Klickdummy-Browser — Redesign
+
+adr:
+  local: iil-klickdummy:ADR-002
+  conforms_to: platform:ADR-211
+  sister_of: []
+
+class: mock
+class_evidence:
+  no_backend: true
+  no_demo_param: true
+  target_mocks_visible: true
+  systemgrenzen:
+    - Klickdummy-Registry (KLICKDUMMIES-JSON, generiert)
+    - Story-Manifest (STORIES-JSON, generiert)
+    - Klickdummy-Shell-iframe-Quelle
+
+grounding:
+  konzept: docs/use-cases/README.md
+  konzept_id: iil-klickdummy:UX-B-browser
+  pilot: "Ist-Browser src/iil_klickdummy/snippets/browser/browser.html.tmpl (registry.py render)"
+  rechtsrahmen_kernnormen: {}
+
+off_ramp:
+  policy: platform:ADR-211 Static→Echt-Migrationspfad
+  unit: per-screen
+  rule: "Parity-grün pro Screen ⇒ Screen aus statischer Mock-Quelle in den echten Renderer (registry.py/browser.html.tmpl) migrieren"
+  doppelquell_grenze: prod-release
+  parity_runner: klickdummy-gen-e2e
+  product_repo_planned: iil-klickdummy (Selbst-Konsument)
+  status_overall: static
+
+personas:
+  reviewer:
+    label: Reviewer / Fachbereich
+    rolle: Sichtet die Klickdummies eines Repos, klickt Journeys durch, schaltet Versionen um
+    sieht:
+      - Klickdummy-Auswahl und Detail-Metadaten
+      - Story-Walk mit Stepper
+      - historische Spec-Versionen (read-only)
+  agent:
+    label: Coding-Agent
+    rolle: Nutzt den Browser, um vorhandene Klickdummies eines Repos vor Weiterarbeit zu sichten
+    sieht:
+      - dieselbe Oberfläche wie Reviewer (kein Sonderzustand)
+
+screens:
+  - id: browser-frei
+    title: Frei-Modus — Klickdummy auswählen & ansehen
+    personas: [reviewer, agent]
+    purpose: "Einen Klickdummy aus der Liste wählen; Detail-Metadaten + Render im iframe."
+    use_cases: [UC-001-browser-frei-auswahl]
+    parity_acceptance:
+      - id: browser-frei.select-visible
+        check: "Das Klickdummy-Auswahl-Dropdown ist sichtbar und bedienbar."
+        assert: { action: visible, selector: "testid=kd-select" }
+      - id: browser-frei.detail-after-select
+        check: "Nach Auswahl erscheint das Detail-Panel mit Spec-ID, Klasse-Badge, ADR, Pfad."
+        assert: { action: visible, selector: "testid=kd-detail" }
+      - id: browser-frei.class-badge-stable
+        check: "Die Klasse wird als stabiler Badge-Anker gezeigt (nicht als fragiler CSS-Pfad)."
+        assert: { action: visible, selector: "testid=kd-class-badge" }
+      - id: browser-frei.frame-visible
+        check: "Der iframe wird nach einer Auswahl sichtbar (Leerzustand verschwindet)."
+        assert: { action: visible, selector: "testid=kd-frame" }
+      - id: browser-frei.no-injection
+        check: "N1/S-01: Ein Klickdummy mit title 'x</script><script>...' wird als Text gezeigt, kein Script läuft. ASSUMPTION[unverified]: Titel-Sortierung bleibt Generierungsreihenfolge (Ist-Default) — bei Abnahme bestätigen."
+        assert: { action: visible, selector: "testid=kd-select" }
+    off_ramp_status: static
+
+  - id: browser-story
+    title: Story-Walk — geführte Journey über mehrere Klickdummies
+    personas: [reviewer]
+    purpose: "Eine Story wählen und Schritt für Schritt über mehrere Klickdummies gehen."
+    use_cases: [UC-002-browser-story-walk]
+    parity_acceptance:
+      - id: browser-story.toggle-when-stories
+        check: "Der Modus-Toggle ist sichtbar, wenn Stories vorhanden sind."
+        assert: { action: visible, selector: "testid=mode-toggle" }
+      - id: browser-story.stepper-count
+        check: "Der Stepper listet genau so viele Einträge wie die Story Schritte hat."
+        assert: { action: visible, selector: "testid=story-stepper" }
+      - id: browser-story.next-enabled
+        check: "Auf Schritt 1 einer mehrschrittigen Story ist Weiter bedienbar."
+        assert: { action: clickable, selector: "testid=btn-next" }
+      - id: browser-story.error-visible
+        check: "N4: Ein Schritt mit fehlendem kd_index zeigt eine sichtbare Meldung, keinen leeren iframe. ASSUMPTION[unverified]: Meldung statt Auto-Skip (Ist-nah) — bei Abnahme entscheiden."
+        assert: { action: visible, selector: "testid=step-load-error" }
+    off_ramp_status: static
+
+  - id: browser-versionen
+    title: Versions-Historie — historische Spec-Version read-only ansehen
+    personas: [reviewer]
+    purpose: "Zwischen aktueller und historischen Spec-Versionen eines Klickdummy umschalten."
+    use_cases: [UC-003-browser-versionen]
+    parity_acceptance:
+      - id: browser-versionen.select-present
+        check: "Das Versions-Dropdown ist vorhanden (disabled, wenn keine Historie)."
+        assert: { action: visible, selector: "testid=ver-select" }
+      - id: browser-versionen.readonly-marker
+        check: "Eine gewählte historische Version ist als read-only gekennzeichnet."
+        assert: { action: visible, selector: "testid=version-readonly" }
+      - id: browser-versionen.no-snapshot-hint
+        check: "Eine Version ohne Shell-Snapshot zeigt einen Hinweis statt eines iframes. ASSUMPTION[unverified]: read-only-Kennzeichnung nur im Detail-Panel, kein iframe-Banner (Ist-Default) — bei Abnahme entscheiden."
+        assert: { action: visible, selector: "testid=version-no-snapshot" }
+    off_ramp_status: static
