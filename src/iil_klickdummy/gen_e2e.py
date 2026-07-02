@@ -387,6 +387,11 @@ def main(argv: list[str]) -> int:
         return 2
     spec_path = pathlib.Path(positional[0])
     spec = load_spec(spec_path)
+    # REC-1 (#91): `strict_selectors: true` in der Spec wirkt wie das CLI-Flag —
+    # das Enforcement steht damit AN der Spec statt nur im CI-Makefile des
+    # Aufrufers (vergessenes Flag = Warnungs-ohne-Wirkung-Muster). OR-Verknüpfung:
+    # das CLI-Flag greift weiterhin auch ohne Spec-Attribut (rückwärtskompatibel).
+    strict_selectors = strict_selectors or bool(spec.get("strict_selectors", False))
     stem = re.sub(r"[^0-9a-z]+", "_", spec_path.stem.lower()).strip("_") or "spec"
     if len(positional) > 1:
         out = pathlib.Path(positional[1])

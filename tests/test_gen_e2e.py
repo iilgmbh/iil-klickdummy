@@ -196,6 +196,8 @@ def test_schema_allows_assert_and_route():
         ["visible", "text", "clickable", "url", "count"]
     # `check` bleibt Pflicht — Rückwärtskompatibilität
     assert screen_props["parity_acceptance"]["items"]["required"] == ["id", "check"]
+    # REC-1 (#91): Top-Level strict_selectors ist im Schema deklariert
+    assert schema["properties"]["strict_selectors"]["type"] == "boolean"
 
 
 def test_gen_e2e_route_example_used(tmp_path):
@@ -402,3 +404,40 @@ def test_strict_selectors_gate_blocks_fragile(tmp_path):
     # stabiler Präfix-Anker → auch strict grün
     spec_file.write_text(yaml.dump(_strict_spec("testid=submit")), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 0
+
+
+def test_strict_selectors_spec_attribute(tmp_path):
+    """REC-1 (#91): `strict_selectors: true` in der Spec wirkt wie das CLI-Flag —
+    Enforcement steht AN der Spec, ein vergessenes Flag im CI-Makefile kann das
+    Gate nicht mehr stumm schalten. CLI-Flag bleibt OR-verknüpft wirksam."""
+    import json
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec_file = tmp_path / "spec.yaml"
+    out = tmp_path / "t.py"
+
+    # Spec-Attribut + fragiler Selektor → exit 3 OHNE CLI-Flag
+    spec = _strict_spec("button.submit")
+    spec["strict_selectors"] = True
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 3
+    manifest = json.loads(out.with_suffix(".manifest.json").read_text())
+    assert manifest["strict_selectors"] is True    # Quelle: Spec-Attribut
+
+    # Spec-Attribut + stabiler Anker → grün (Attribut allein macht nichts rot)
+    spec = _strict_spec("testid=submit")
+    spec["strict_selectors"] = True
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 0
+
+    # Rückwärtskompatibilität: ohne Attribut + ohne Flag bleibt fragil nur Warnung
+    spec_file.write_text(yaml.dump(_strict_spec("button.submit")), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 0
+    manifest = json.loads(out.with_suffix(".manifest.json").read_text())
+    assert manifest["strict_selectors"] is False
+
+    # explizites strict_selectors: false in der Spec wird vom CLI-Flag überstimmt
+    spec = _strict_spec("button.submit")
+    spec["strict_selectors"] = False
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 3

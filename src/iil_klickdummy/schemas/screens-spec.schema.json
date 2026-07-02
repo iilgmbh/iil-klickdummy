@@ -34,6 +34,12 @@
     },
     "class_evidence": { "type": "object" },
 
+    "strict_selectors": {
+      "type": "boolean",
+      "default": false,
+      "description": "F23/D1-Enforcement per Spec (ADR-211 Rev 22, REC-1): true ⇒ klickdummy-gen-e2e behandelt fragile Selektoren (bare CSS, text=) als harten Fehler (exit 3), auch OHNE CLI-Flag `--strict-selectors`. OR-Verknüpfung mit dem CLI-Flag — verhindert das Warnungs-ohne-Wirkung-Muster durch vergessenes Flag in CI-Makefiles."
+    },
+
     "grounding": {
       "type": "object",
       "required": ["konzept", "pilot"],

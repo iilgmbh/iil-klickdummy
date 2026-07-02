@@ -29,6 +29,17 @@ für volle Argumente; unten Zweck + Modul je Befehl. Quelle der Beschreibungen: 
 | `klickdummy-extract-requirements` | Klickdummy → Requirements-Skelett (UC/FR/NFR/Lasten-/Pflichtenheft) | `extract_requirements` |
 | `klickdummy-install-snippets` | Gebündelte Snippets (HTML+JS+Templates) in ein Repo installieren (Rev 13) | `install_snippets` |
 
+### `klickdummy-gen-e2e` — Strict-Modus (F23/D1, ADR-211 Rev 22)
+
+Fragile Selektoren (bare CSS, `text=`) werden im Strict-Modus zum harten Fehler
+(**exit 3**) statt nur zur Manifest-Warnung. Zwei Aktivierungswege, OR-verknüpft:
+
+- **CLI-Flag** `--strict-selectors` — pro Lauf (der Off-Ramp-Pfad setzt es).
+- **Spec-Attribut** `strict_selectors: true` (Top-Level, REC-1 · #91) — das
+  Enforcement steht an der Spec selbst; ein vergessenes Flag im CI-Makefile
+  kann das Gate nicht mehr stumm schalten. Das Manifest-Feld
+  `"strict_selectors"` zeigt den effektiven Wert (Spec-Attribut OR CLI-Flag).
+
 ## Rendering
 
 | Befehl | Zweck | Modul |
