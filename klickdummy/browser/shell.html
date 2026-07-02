@@ -35,6 +35,9 @@
     --pui-badge-specdemo-bg: #dcfce7;  --pui-badge-specdemo-fg: #166534;
   }
   *, *::before, *::after { box-sizing: border-box; }
+  /* [hidden] robust durchsetzen — sonst überschreibt display:flex/block das Attribut
+     (UA-Regel [hidden]{display:none} hat zu geringe Spezifität). */
+  [hidden] { display: none !important; }
   body { font-family: system-ui, -apple-system, sans-serif; margin: 0; height: 100vh; display: flex; color: var(--pui-primary); }
   aside { width: 320px; padding: var(--pui-space-4); border-right: 1px solid var(--pui-border); background: var(--pui-surface); overflow-y: auto; }
   aside h1 { font-size: 16px; margin: 0 0 var(--pui-space-3); }
@@ -187,8 +190,40 @@
 
   function loadFrame(srcOrNull, emptyMsg) {
     var fr = $('kd-frame'), empty = $('empty');
-    if (srcOrNull) { fr.src = srcOrNull; show(fr, true); show(empty, false); }
+    if (srcOrNull) { fr.removeAttribute('srcdoc'); fr.src = srcOrNull; show(fr, true); show(empty, false); }
     else { setText(empty, emptyMsg || ''); show(fr, false); show(empty, true); }
+  }
+
+  // N1-sicher: Titel/Felder werden HTML-escaped, bevor sie in den srcdoc-String gehen.
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  // Mock-Vorschau: repräsentativer Fake-Screen je Klickdummy, damit die rechte
+  // Fläche zeigt WIE der Browser mit Inhalt aussieht (statt leerem Platzhalter).
+  function mockPreview(k, ver) {
+    var tag = ver ? ('v' + esc(ver.spec_version) + ' · ' + esc(ver.commit_date) + ' · read-only') : ('v' + esc(k.spec_version) + ' · aktuell');
+    return '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><style>'
+      + 'body{font-family:system-ui,sans-serif;margin:0;color:#1a3a6c;background:#eef2f7}'
+      + '.bar{background:#1a3a6c;color:#fff;padding:14px 20px;display:flex;align-items:center;gap:10px}'
+      + '.bar .t{font-size:15px;font-weight:600}.bar .b{margin-left:auto;font-size:11px;background:#ffffff22;padding:3px 9px;border-radius:10px}'
+      + '.wrap{padding:20px;max-width:760px}.card{background:#fff;border:1px solid #d8e0e8;border-radius:8px;padding:16px;margin-bottom:14px}'
+      + '.row{display:flex;gap:10px;margin:8px 0}.chip{background:#f3f4f6;border-radius:6px;padding:6px 10px;font-size:12px;flex:1}'
+      + '.btn{display:inline-block;background:#1a3a6c;color:#fff;border-radius:6px;padding:8px 14px;font-size:13px;margin-top:6px}'
+      + '.mut{color:#6a7888;font-size:12px}h2{font-size:14px;margin:0 0 8px}</style></head><body>'
+      + '<div class="bar"><span class="t">' + esc(k.title) + '</span><span class="b">' + esc(k.class) + ' · ' + tag + '</span></div>'
+      + '<div class="wrap">'
+      + '<div class="card"><h2>Übersicht</h2><div class="row"><div class="chip">Feld A</div><div class="chip">Feld B</div><div class="chip">Feld C</div></div>'
+      + '<p class="mut">Mock-Render von <code>' + esc(k.spec_id) + '</code> — im echten Browser lädt hier die Shell aus <code>' + esc(k.path) + '</code>.</p>'
+      + '<span class="btn">Aktion (Mock)</span></div>'
+      + '<div class="card"><h2>Detail</h2><p class="mut">Repräsentativer Platzhalter-Screen — dient nur der UX-Abnahme des Browser-Rahmens.</p></div>'
+      + '</div></body></html>';
+  }
+  function showPreview(k, ver) {
+    var fr = $('kd-frame'), empty = $('empty');
+    fr.removeAttribute('src'); fr.srcdoc = mockPreview(k, ver);
+    show(fr, true); show(empty, false);
   }
 
   var currentKD = null;
@@ -197,9 +232,7 @@
     var k = KDS[parseInt(e.target.value, 10)];
     if (!k) return;
     currentKD = k; renderDetail(k); populateVersions(k);
-    // Mock: kein echter Render — Platzhalter statt iframe-Quelle.
-    loadFrame(null, '▶ Render von „' + k.title + '" (Mock — im echten Browser lädt hier die Shell).');
-    show($('empty'), true);
+    showPreview(k);   // repräsentative Mock-Vorschau im iframe
   });
 
   $('ver-select').addEventListener('change', function (e) {
@@ -208,7 +241,7 @@
     var v = (currentKD.versions || [])[parseInt(e.target.value, 10)];
     if (!v) return;
     renderDetail(currentKD, v);
-    if (v.shell_path) { show($('version-no-snapshot'), false); loadFrame(v.shell_path); }
+    if (v.shell_path) { show($('version-no-snapshot'), false); showPreview(currentKD, v); }
     else { var n = $('version-no-snapshot'); setText(n, 'Kein shell.html-Snapshot für v' + v.spec_version + ' (nur Spec versioniert).'); show(n, true); loadFrame(null, ''); }
   });
 
@@ -238,7 +271,7 @@
     var step = story.steps[sti], k = KDS[step.kd_index];
     var err = $('step-load-error');
     if (!k) { setText(err, 'N4: Schritt „' + step.label + '" verweist auf einen fehlenden Klickdummy (kd_index ' + step.kd_index + ') — kein stiller Leerzustand.'); show(err, true); loadFrame(null, ''); }
-    else { show(err, false); loadFrame(null, '▶ Render von „' + k.title + '" (Mock).'); show($('empty'), true); }
+    else { show(err, false); showPreview(k); }
     $('btn-prev').disabled = sti === 0; $('btn-next').disabled = sti === story.steps.length - 1;
   }
 
