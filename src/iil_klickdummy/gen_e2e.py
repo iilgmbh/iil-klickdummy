@@ -32,9 +32,12 @@ Aufruf:
     # Default out-file: <spec-dir>/tests/test_parity_<spec-stem>.py
     # --strict-selectors: fragile Selektoren werden zum Fehler (exit 3) statt
     #   nur zur Manifest-Warnung — für den Off-Ramp-Pfad (F23/D1).
+    # Alternativ deklariert die Spec selbst `strict_selectors: true` (Top-Level,
+    # REC-1/AD-1): Enforcement hängt dann nicht an CI-Configs/Makefiles, die das
+    # CLI-Flag vergessen können. CLI-Flag ODER Spec-Attribut genügt.
 
 Exit: 0 ok, 1 Spec-Fehler, 2 Setup-Fehler, 3 Off-Ramp-Gate (fragile Selektoren
-mit --strict-selectors).
+mit --strict-selectors bzw. Spec-Attribut `strict_selectors: true`).
 """
 from __future__ import annotations
 
@@ -377,16 +380,18 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
 # -- Main ---------------------------------------------------------------------
 
 def main(argv: list[str]) -> int:
-    # Off-Ramp-Gate (F23/D1): `--strict-selectors` macht fragile Selektoren zum
-    # harten Fehler (exit 3) statt nur zur Manifest-Warnung. Der Off-Ramp-Pfad
-    # setzt das Flag; reine Mockup-Läufe lassen es weg (reversibel, opt-in).
-    strict_selectors = "--strict-selectors" in argv
     positional = [a for a in argv if not a.startswith("--")]
     if not positional:
         print("Usage: klickdummy-gen-e2e <spec.yaml> [<out-file>] [--strict-selectors]")
         return 2
     spec_path = pathlib.Path(positional[0])
     spec = load_spec(spec_path)
+    # Off-Ramp-Gate (F23/D1): fragile Selektoren werden zum harten Fehler (exit 3)
+    # statt nur zur Manifest-Warnung. Zwei gleichwertige Aktivierungswege (OR):
+    # CLI-Flag `--strict-selectors` (der Off-Ramp-Pfad setzt es pro Lauf) ODER
+    # Spec-Attribut `strict_selectors: true` (REC-1/AD-1: spec-deklariert, damit
+    # ein vergessenes Flag in CI-Configs das Gate nicht stumm schaltet).
+    strict_selectors = "--strict-selectors" in argv or bool(spec.get("strict_selectors", False))
     stem = re.sub(r"[^0-9a-z]+", "_", spec_path.stem.lower()).strip("_") or "spec"
     if len(positional) > 1:
         out = pathlib.Path(positional[1])
@@ -444,8 +449,8 @@ def main(argv: list[str]) -> int:
     print("  Dual-Renderer: SPEC_RENDERER_BASE_URL umschalten (Renderer #1 ↔ #2).")
     # F23/D1: am Off-Ramp ist ein fragiler Selektor kein bloßer Hinweis mehr.
     if strict_selectors and n_fragile:
-        print(f"  ✗ --strict-selectors: {n_fragile} fragile(r) Selektor(en) → "
-              f"Off-Ramp-Gate ROT (exit 3). Auf stabilen Anker umstellen.")
+        print(f"  ✗ strict-selectors (CLI-Flag oder Spec-Attribut): {n_fragile} fragile(r) "
+              f"Selektor(en) → Off-Ramp-Gate ROT (exit 3). Auf stabilen Anker umstellen.")
         return 3
     return 0
 

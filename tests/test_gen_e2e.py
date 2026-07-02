@@ -402,3 +402,37 @@ def test_strict_selectors_gate_blocks_fragile(tmp_path):
     # stabiler Präfix-Anker → auch strict grün
     spec_file.write_text(yaml.dump(_strict_spec("testid=submit")), encoding="utf-8")
     assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 0
+
+
+def test_strict_selectors_spec_attribute_without_cli_flag(tmp_path):
+    """REC-1 (AD-1/M28-2): `strict_selectors: true` als Spec-Top-Level-Attribut
+    aktiviert das Off-Ramp-Gate OHNE CLI-Flag — Enforcement ist spec-deklariert
+    und hängt nicht daran, dass jede CI-Config das Flag korrekt setzt. Das
+    CLI-Flag bleibt rückwärtskompatibel (Test oben deckt es ohne Spec-Attribut)."""
+    import json
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec_file = tmp_path / "spec.yaml"
+    out = tmp_path / "t.py"
+
+    # Spec-Attribut + fragiler Selektor → Gate rot (exit 3) ohne CLI-Flag
+    spec = _strict_spec("button.submit")
+    spec["strict_selectors"] = True
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 3
+    manifest = json.loads(out.with_suffix(".manifest.json").read_text())
+    assert manifest["strict_selectors"] is True
+
+    # Spec-Attribut + stabiler Präfix-Anker → grün
+    spec = _strict_spec("testid=submit")
+    spec["strict_selectors"] = True
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 0
+
+    # strict_selectors: false = Default-Verhalten (Warnung statt Gate)
+    spec = _strict_spec("button.submit")
+    spec["strict_selectors"] = False
+    spec_file.write_text(yaml.dump(spec), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 0
+    manifest = json.loads(out.with_suffix(".manifest.json").read_text())
+    assert manifest["strict_selectors"] is False

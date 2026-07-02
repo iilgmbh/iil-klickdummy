@@ -25,7 +25,7 @@ für volle Argumente; unten Zweck + Modul je Befehl. Quelle der Beschreibungen: 
 
 | Befehl | Zweck | Modul |
 |--------|-------|-------|
-| `klickdummy-gen-e2e` | Spec → ausführbare E2E-Parity-Suite (Playwright/pytest). **Hinweis:** Bridge ist `dormant` (ADR-211 Rev 20); `klickdummy-parity-drift` prüft nur Datei-Drift, nicht Parität | `gen_e2e` |
+| `klickdummy-gen-e2e` | Spec → ausführbare E2E-Parity-Suite (Playwright/pytest). Bridge reaktiviert (ADR-211 Rev 21). **Off-Ramp-Gate (F23/D1):** fragile Selektoren (bare CSS ohne `data-*`-Anker, `text=`) → Exit-Code 3 statt Manifest-Warnung; aktivierbar per CLI-Flag `--strict-selectors` **oder** Spec-Top-Level-Attribut `strict_selectors: true` (REC-1 — eines von beiden genügt). **Hinweis:** `klickdummy-parity-drift` prüft nur Datei-Drift, nicht Parität | `gen_e2e` |
 | `klickdummy-extract-requirements` | Klickdummy → Requirements-Skelett (UC/FR/NFR/Lasten-/Pflichtenheft) | `extract_requirements` |
 | `klickdummy-install-snippets` | Gebündelte Snippets (HTML+JS+Templates) in ein Repo installieren (Rev 13) | `install_snippets` |
 

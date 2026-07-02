@@ -87,6 +87,12 @@
       }
     },
 
+    "strict_selectors": {
+      "type": "boolean",
+      "default": false,
+      "description": "Optional (REC-1/AD-1, ADR-211 Rev 22 Follow-up): True = Off-Ramp-Gate spec-seitig aktiv — `klickdummy-gen-e2e` behandelt fragile Selektoren (bare CSS ohne data-*-Anker, text=) als Fehler (Exit-Code 3), auch ohne `--strict-selectors`-CLI-Flag. Enforcement steht damit in der Spec statt in CI-Configs/Makefiles."
+    },
+
     "screens": {
       "type": "array",
       "minItems": 1,
