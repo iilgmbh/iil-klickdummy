@@ -52,6 +52,7 @@ import pathlib
 import re
 import sys
 from datetime import date
+from functools import lru_cache
 from importlib.resources import files
 
 try:
@@ -75,8 +76,12 @@ def ident(s: str) -> str:
     return out or "x"
 
 
+@lru_cache(maxsize=1)
 def _load_schema() -> dict:
-    """Gebündeltes Screens-Spec-Schema (Single Source of Truth für Validierung)."""
+    """Gebündeltes Screens-Spec-Schema (Single Source of Truth für Validierung).
+
+    Gecacht (M28-3): das Schema ist ein unveränderliches Paket-Asset; ohne Cache
+    las jeder `validate_spec`-Call es neu von Disk."""
     text = (files("iil_klickdummy") / "schemas" / "screens-spec.schema.json").read_text(
         encoding="utf-8"
     )
@@ -170,8 +175,16 @@ def _doc_safe(s) -> str:
     """Spec-Wert, der roh in einen `\"\"\"`-Docstring eingebettet wird, härten
     (B-1/B-2): Whitespace/Zeilenumbrüche kollabieren, `\"\"\"` neutralisieren und
     einen trailing Backslash entfernen — sonst escaped er die schließende Quote
-    und die Folgezeile wird ausführbarer Code."""
-    return re.sub(r"\s+", " ", str(s)).replace('"""', "'''").rstrip("\\")
+    und die Folgezeile wird ausführbarer Code.
+
+    AD-2: ein Wert, der auf `"` endet, stößt sonst an das schließende `\"\"\"`
+    (`…\"` + `\"\"\"` = `\"\"\"\"` → unterminated string / SyntaxError). Daher nach
+    dem Backslash-Strip auch ein trailing `\"` entschärfen (ein Space anhängen —
+    innerhalb des Docstrings unsichtbar, aber die Quote-Adjacency ist gebrochen)."""
+    out = re.sub(r"\s+", " ", str(s)).replace('"""', "'''").rstrip("\\")
+    if out.endswith('"'):
+        out += " "
+    return out
 
 
 # Semantischer Selektor-Fallback (KONZ-iil-klickdummy-007, F23/D2): ein optionales

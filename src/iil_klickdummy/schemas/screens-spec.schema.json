@@ -12,7 +12,7 @@
     "spec_version":  { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
     "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix. Generationen: 1.0 = Baseline; 1.1 = + `screen.use_cases[]` (Spec-Layer/X-Ray)." },
     "spec_date":     { "type": "string", "format": "date" },
-    "title":         { "type": "string", "pattern": "^[^\\n\\r]*$" },
+    "title":         { "type": "string", "pattern": "^(?!.*[\\n\\r])[^\\n\\r]*$", "description": "Kein Zeilenumbruch (AD-3): das bare `^[^\\n\\r]*$` ließ in re-basierten Validatoren ein *trailing* \\n durch (`$` matcht vor End-\\n); die Negative-Lookahead-Form lehnt es symmetrisch zu \\r ab. Runtime-`_comment_safe`/`_doc_safe` bleibt die eigentliche Barriere." },
 
     "adr": {
       "type": "object",
@@ -82,7 +82,7 @@
       "description": "Optionaler Auth-Block für gen_e2e. Mindestens eines der Felder erforderlich.",
       "properties": {
         "storage_state": { "type": "string", "description": "Pfad zur Playwright-storage_state.json (enthält Cookies/LocalStorage einer eingeloggten Session)." },
-        "login_fixture":  { "type": "string", "description": "Name eines pytest-Fixtures, das den Login übernimmt (wird als autouse-Fixture in die Suite eingebunden)." },
+        "login_fixture":  { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "description": "Name eines pytest-Fixtures, das den Login übernimmt (wird als autouse-Fixture-Parametername in die Suite emittiert). Muss ein gültiger Python-Bezeichner sein — fail-closed (AD-5): ein Wert, den `ident()` erst zu einem sicheren Namen coercen müsste, wird schon hier abgelehnt (zwei Werte könnten sonst auf denselben Ident kollabieren → falsche Fixture/False-Green-Auth). `ident()` in gen_suite bleibt die zweite Linie." },
         "required":       { "type": "boolean", "description": "True = alle Screens dieser Spec brauchen Auth (Shortcut zu login_required pro Screen)." }
       }
     },
@@ -102,7 +102,7 @@
         "additionalProperties": true,
         "properties": {
           "id":        { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
-          "title":     { "type": "string", "pattern": "^[^\\n\\r]*$" },
+          "title":     { "type": "string", "pattern": "^(?!.*[\\n\\r])[^\\n\\r]*$" },
           "route":         { "type": "string", "pattern": "^/", "description": "Optionale Render-Route; Default-Konvention `/<id>`. Kann Django-Parameter enthalten (<uuid:pk>). Ziel von `klickdummy-gen-e2e`." },
           "route_example": { "type": "string", "pattern": "^/", "description": "Konkrete Beispiel-URL mit echten IDs/Werten (z.B. /outlines/3f2a1b.../). Wird von `klickdummy-gen-e2e` bevorzugt; löst parametrisierte `route`-Platzhalter auf." },
           "login_required": { "type": "boolean", "description": "True wenn der Screen LoginRequired ist. gen_e2e erzeugt skip mit klarem Grund wenn kein `auth`-Block gesetzt." },
