@@ -29,6 +29,25 @@ für volle Argumente; unten Zweck + Modul je Befehl. Quelle der Beschreibungen: 
 | `klickdummy-extract-requirements` | Klickdummy → Requirements-Skelett (UC/FR/NFR/Lasten-/Pflichtenheft) | `extract_requirements` |
 | `klickdummy-install-snippets` | Gebündelte Snippets (HTML+JS+Templates) in ein Repo installieren (Rev 13) | `install_snippets` |
 
+### `assert.selector` — Präfix-Dispatch (F23/D2, REC-2)
+
+Der `selector`-String in `parity_acceptance[].assert` ist ein **Parser mit
+definiertem Fehlerverhalten**, kein loses String-Präfix: jede nicht parsebare
+Form fällt auf CSS (`page.locator`) zurück — nie Exception, nie silent.
+
+| Form | Playwright-API | Stabilität | Fehlerverhalten / Fallthrough |
+|------|----------------|-----------|-------------------------------|
+| `testid=<id>` | `get_by_test_id` | stabil | — |
+| `role=<rolle>` | `get_by_role` | stabil | ungültige Syntax (leerer Wert, `role=123x`) → CSS-Fallthrough + Manifest-Hint |
+| `role=<rolle>[name=<text>]` | `get_by_role(…, name=…)` | stabil | Leerzeichen/Sonderzeichen im `name`-Wert gültig (Quoting via json.dumps); fehlende `]` → CSS-Fallthrough + Manifest-Hint |
+| `label=<text>` | `get_by_label` | stabil | — |
+| `text=<text>` | `get_by_text` | **fragil** (i18n) | zählt als fragil → Warnung; unter strict-selectors Exit 3 |
+| unbekanntes Präfix (`rol=…`) | `page.locator` | fragil | CSS-Fallthrough + Manifest-Hint `unbekanntes Präfix` (Tippfehler-Schutz) |
+| ohne Präfix (bare CSS) | `page.locator` | fragil ohne `data-*`-Anker | Warnung; unter strict-selectors Exit 3 |
+
+Hints stehen im Manifest unter `fragile_selectors[].hint` und in der
+Konsolen-Ausgabe (`↳`-Zeilen).
+
 ## Rendering
 
 | Befehl | Zweck | Modul |

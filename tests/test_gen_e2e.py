@@ -367,6 +367,66 @@ def test_is_fragile_selector_prefixes():
     assert g.is_fragile_selector("button.submit") is True
 
 
+# -- REC-2/AD-2: role=-Parser-Grenzfälle + definiertes Fehlerverhalten ---------
+
+def test_role_prefix_roundtrip_edge_cases():
+    """REC-2: die role=-Mini-DSL ist ein Parser mit definiertem Verhalten —
+    Leerzeichen und Sonderzeichen im name-Wert sind gültig (Quoting via
+    json.dumps), ohne [name=…] entsteht kein name-Argument."""
+    from iil_klickdummy import gen_e2e as g
+    assert g._locator_expr("role=button[name=Speichern]") \
+        == 'page.get_by_role("button", name="Speichern")'
+    # Leerzeichen im name-Wert → gültig, korrekt gequotet.
+    assert g._locator_expr("role=button[name=Bitte klicken]") \
+        == 'page.get_by_role("button", name="Bitte klicken")'
+    # Sonderzeichen (Unicode) im name-Wert → gültig, korrekt gequotet.
+    assert g._locator_expr("role=link[name=Zum nächsten Schritt →]") \
+        == 'page.get_by_role("link", name="Zum nächsten Schritt →")'
+    assert g._locator_expr("role=button") == 'page.get_by_role("button")'
+
+
+def test_role_prefix_fallthrough_edge_cases():
+    """REC-2: unbekanntes Präfix (Tippfehler `rol=`) und kaputte role=-Syntax
+    (leerer Wert, fehlende `]`) fallen definiert auf CSS zurück — fragil
+    markiert, mit benanntem Hint, nie Exception."""
+    from iil_klickdummy import gen_e2e as g
+    # Tippfehler-Präfix → CSS-Fallthrough + fragil + Hint.
+    assert g._locator_expr("rol=button") == 'page.locator("rol=button")'
+    assert g.is_fragile_selector("rol=button") is True
+    assert "unbekanntes Präfix 'rol='" in g.selector_fallthrough_hint("rol=button")
+    # Leerer role=-Wert → Fallthrough + Hint.
+    assert g._locator_expr("role=") == 'page.locator("role=")'
+    assert g.is_fragile_selector("role=") is True
+    assert "role=-Syntax ungültig" in g.selector_fallthrough_hint("role=")
+    # Fehlende schließende `]` → Fallthrough + Hint.
+    assert g._locator_expr("role=button[name=Verify") \
+        == 'page.locator("role=button[name=Verify")'
+    assert g.is_fragile_selector("role=button[name=Verify") is True
+    assert "role=-Syntax ungültig" in g.selector_fallthrough_hint("role=button[name=Verify")
+    # Kein Hint für gültige Präfixe, bare CSS und text= (bekannt-fragil ≠ Tippfehler).
+    assert g.selector_fallthrough_hint("role=button") is None
+    assert g.selector_fallthrough_hint("testid=row") is None
+    assert g.selector_fallthrough_hint("button.submit") is None
+    assert g.selector_fallthrough_hint("text=Speichern") is None
+    assert g.selector_fallthrough_hint("") is None
+
+
+def test_fallthrough_hint_lands_in_manifest(tmp_path):
+    """REC-2: der Fallthrough-Hint steht im Manifest (fragile_selectors[].hint),
+    damit CI/Autoren den Tippfehler sehen statt nur 'fragil'."""
+    import json
+    import yaml
+    from iil_klickdummy import gen_e2e
+    spec_file = tmp_path / "spec.yaml"
+    out = tmp_path / "t.py"
+    spec_file.write_text(yaml.dump(_strict_spec("rol=button")), encoding="utf-8")
+    assert gen_e2e.main([str(spec_file), str(out)]) == 0
+    manifest = json.loads(out.with_suffix(".manifest.json").read_text())
+    (entry,) = manifest["fragile_selectors"]
+    assert entry["selector"] == "rol=button"
+    assert "unbekanntes Präfix 'rol='" in entry["hint"]
+
+
 def _strict_spec(selector: str) -> dict:
     return {
         "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
