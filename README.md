@@ -16,7 +16,7 @@ pip install "iil-klickdummy>=1.29,<2.0"
 **Fallback / Dev:** via Git-URL
 
 ```bash
-pip install "iil-klickdummy @ git+https://github.com/achimdehnert/iil-klickdummy.git@v1.29.0"
+pip install "iil-klickdummy @ git+https://github.com/iilgmbh/iil-klickdummy.git@v1.29.0"
 ```
 
 **Workspace-Pattern (Development):**
@@ -101,7 +101,7 @@ schema = json.loads(files("iil_klickdummy.schemas").joinpath("screens-spec.schem
 
 ## Bezug
 
-- `platform:ADR-211` Rev 13 — Konvention + Distribution + Co-Creation-Pfade
+- `platform:ADR-211` (aktuell Rev 22) — Konvention + Distribution + Co-Creation-Pfade (seit Rev 13)
 - `platform:ADR-212` — Traefik-Ingress (für künftige PyPI-Selbsthost)
 - `platform:ADR-213` — Cross-Repo-Ref-Format (was `klickdummy-i4` prüft)
 

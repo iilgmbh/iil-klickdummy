@@ -23,7 +23,7 @@ def build_uc_export_json(ucs: list[dict], kds: list[dict], coverage: dict) -> st
     PDF-Reportgenerator. SSoT bleibt YAML im git; dieser Export ist Read-Only-
     Snapshot zum Build-Zeitpunkt.
     """
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     cfg = get_cfg()
     real_count = coverage["uc_realized_count"]
@@ -89,7 +89,9 @@ def build_uc_export_json(ucs: list[dict], kds: list[dict], coverage: dict) -> st
 
     payload = {
         "schema_version": UC_EXPORT_SCHEMA_VERSION,
-        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "generated_at": datetime.now(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z"),
         "source": "klickdummy_lineage.py --genesor (ADR-211 Rev 16)",
         "summary": {
             "n_ucs": len(ucs_out),

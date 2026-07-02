@@ -24,6 +24,14 @@ Setzt die ratifizierte Hybrid-Entscheidung aus `KONZ-iil-klickdummy-007` um
 
 Locator-Registry/Manifest bleibt zurückgestellt (F18 unverändert).
 
+### Fixed (PR #93, vor Tag v1.29.0)
+
+- **`is_fragile_selector`**: `role=<ungültig>` (kein `_ROLE_PATTERN`-Match) galt via
+  `startswith("role=")` fälschlich als stabil, obwohl der Generator auf
+  `page.locator()` degradiert — jetzt nur stabil bei echtem Pattern-Match.
+- **`load_spec`**: kaputte Spec-YAML → saubere Fehlermeldung + `exit(1)` statt
+  rohem `yaml.YAMLError`-Traceback.
+
 ## [1.28.4] — 2026-06-18
 
 ### Fixed — lineage-Seiten: meiki-hub-Identität leakte in JEDE lineage-<repo>.html
