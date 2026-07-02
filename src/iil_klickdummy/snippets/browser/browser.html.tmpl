@@ -5,273 +5,253 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Klickdummy-Browser · __REPO_LABEL__</title>
 <style>
+  :root {
+    /* Zwei-Layer-Token-System (platform:ADR-049) — lokale --pui-*-Bridge, keine
+       shared UI-Lib (ADR-200 paused). Ersetzt hartkodierte Hex-Farben (AP-007). */
+    --pui-primary:   #1a3a6c;
+    --pui-surface:   #f8fafc;
+    --pui-surface-2: #ffffff;
+    --pui-border:    #d8e0e8;
+    --pui-muted:     #6a7888;
+    --pui-success:   #22c55e;
+    --pui-space-1: 4px;
+    --pui-space-2: 8px;
+    --pui-space-3: 12px;
+    --pui-space-4: 16px;
+    --pui-radius:   6px;
+    --pui-radius-lg: 8px;
+    --pui-badge-mock-bg: #e0f2fe;      --pui-badge-mock-fg: #075985;
+    --pui-badge-stub-bg: #fef3c7;      --pui-badge-stub-fg: #92400e;
+    --pui-badge-story-bg: #f3e8ff;     --pui-badge-story-fg: #6b21a8;
+    --pui-badge-specdemo-bg: #dcfce7;  --pui-badge-specdemo-fg: #166534;
+  }
   *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; height: 100vh; display: flex; color: #1a3a6c; }
-  aside { width: 320px; padding: 16px; border-right: 1px solid #d8e0e8; background: #f8fafc; overflow-y: auto; display: flex; flex-direction: column; gap: 0; }
-  aside h1 { font-size: 16px; margin: 0 0 12px; }
-  aside .meta { font-size: 11px; color: #6a7888; }
-  aside label { display: block; font-size: 11px; color: #6a7888; margin-top: 12px; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-  aside select { width: 100%; font-family: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid #d8e0e8; border-radius: 6px; background: #fff; }
-  aside .detail { margin-top: 16px; padding: 12px; background: #fff; border: 1px solid #d8e0e8; border-radius: 8px; font-size: 12px; }
-  aside .detail dt { font-weight: 600; color: #3a4a5a; margin-top: 6px; }
-  aside .detail dt:first-child { margin-top: 0; }
-  aside .detail dd { margin: 2px 0 0; color: #1a3a6c; }
-  aside .detail dd code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
-  aside .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
-  aside .badge.mock { background: #e0f2fe; color: #075985; }
-  aside .badge.stub-demo { background: #fef3c7; color: #92400e; }
-  aside .badge.story { background: #f3e8ff; color: #6b21a8; }
-  aside .badge.spec-demo { background: #dcfce7; color: #166534; }
-  /* Mode Toggle */
-  .mode-toggle { display: flex; gap: 4px; margin-bottom: 12px; }
-  .mode-toggle button { flex: 1; padding: 5px 8px; font-size: 12px; border: 1px solid #d8e0e8; border-radius: 6px; background: #fff; color: #6a7888; cursor: pointer; font-family: inherit; }
-  .mode-toggle button.active { background: #1a3a6c; color: #fff; border-color: #1a3a6c; font-weight: 600; }
-  /* Story stepper */
-  .story-panel { display: none; }
-  .story-panel.visible { display: block; }
-  .free-panel { display: block; }
-  .free-panel.hidden { display: none; }
-  .story-progress { font-size: 11px; color: #6a7888; margin: 8px 0 6px; }
-  .story-stepper { list-style: none; margin: 0 0 12px; padding: 0; }
-  .story-stepper li { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid transparent; }
-  .story-stepper li:hover { background: #eef2f7; }
-  .story-stepper li.active { background: #e8eef8; border-color: #c5d5ec; font-weight: 600; color: #1a3a6c; }
-  .story-stepper li.visited .step-icon { color: #22c55e; }
-  .step-icon { font-size: 13px; min-width: 16px; }
-  .step-label { line-height: 1.3; }
-  .story-nav { display: flex; gap: 8px; margin-top: 4px; }
-  .story-nav button { flex: 1; padding: 7px 10px; font-size: 12px; border: 1px solid #d8e0e8; border-radius: 6px; background: #fff; color: #1a3a6c; cursor: pointer; font-family: inherit; font-weight: 600; }
-  .story-nav button:hover:not(:disabled) { background: #1a3a6c; color: #fff; border-color: #1a3a6c; }
-  .story-nav button:disabled { opacity: 0.35; cursor: default; }
+  /* [hidden] robust durchsetzen — sonst überschreibt display:flex/block das
+     Attribut (UA-Regel [hidden]{display:none} hat zu geringe Spezifität). */
+  [hidden]{display:none!important}
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; height: 100vh; display: flex; color: var(--pui-primary); }
+  aside { width: 320px; padding: var(--pui-space-4); border-right: 1px solid var(--pui-border); background: var(--pui-surface); overflow-y: auto; }
+  aside h1 { font-size: 16px; margin: 0 0 var(--pui-space-3); }
+  .meta { font-size: 11px; color: var(--pui-muted); }
+  label { display: block; font-size: 11px; color: var(--pui-muted); margin-top: var(--pui-space-3); margin-bottom: var(--pui-space-1); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  select { width: 100%; font-family: inherit; font-size: 13px; padding: var(--pui-space-1) var(--pui-space-2); border: 1px solid var(--pui-border); border-radius: var(--pui-radius); background: var(--pui-surface-2); }
+  select:disabled { opacity: .5; }
+  .detail { margin-top: var(--pui-space-4); padding: var(--pui-space-3); background: var(--pui-surface-2); border: 1px solid var(--pui-border); border-radius: var(--pui-radius-lg); font-size: 12px; }
+  .detail dt { font-weight: 600; color: var(--pui-primary); margin-top: var(--pui-space-2); }
+  .detail dt:first-child { margin-top: 0; }
+  .detail dd { margin: 2px 0 0; }
+  code { background: var(--pui-surface); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .badge.mock { background: var(--pui-badge-mock-bg); color: var(--pui-badge-mock-fg); }
+  .badge.stub-demo { background: var(--pui-badge-stub-bg); color: var(--pui-badge-stub-fg); }
+  .badge.story { background: var(--pui-badge-story-bg); color: var(--pui-badge-story-fg); }
+  .badge.spec-demo { background: var(--pui-badge-specdemo-bg); color: var(--pui-badge-specdemo-fg); }
+  .mode-toggle { display: flex; gap: var(--pui-space-1); margin-top: var(--pui-space-3); }
+  .mode-toggle button { flex: 1; padding: var(--pui-space-1) var(--pui-space-2); font-size: 12px; border: 1px solid var(--pui-border); border-radius: var(--pui-radius); background: var(--pui-surface-2); color: var(--pui-muted); cursor: pointer; font-family: inherit; }
+  .mode-toggle button[aria-pressed="true"] { background: var(--pui-primary); color: var(--pui-surface-2); border-color: var(--pui-primary); font-weight: 600; }
+  .story-progress { font-size: 11px; color: var(--pui-muted); margin: var(--pui-space-2) 0 var(--pui-space-1); }
+  .story-stepper { list-style: none; margin: 0 0 var(--pui-space-3); padding: 0; }
+  .story-stepper li { display: flex; align-items: flex-start; gap: var(--pui-space-2); padding: var(--pui-space-1) var(--pui-space-2); border-radius: var(--pui-radius); font-size: 12px; cursor: pointer; border: 1px solid transparent; }
+  .story-stepper li[data-active="true"] { background: #e8eef8; border-color: #c5d5ec; font-weight: 600; }
+  .story-stepper li[data-visited="true"] .step-icon { color: var(--pui-success); }
+  .story-nav { display: flex; gap: var(--pui-space-2); }
+  .story-nav button { flex: 1; padding: var(--pui-space-1) var(--pui-space-2); font-size: 12px; border: 1px solid var(--pui-border); border-radius: var(--pui-radius); background: var(--pui-surface-2); color: var(--pui-primary); cursor: pointer; font-family: inherit; font-weight: 600; }
+  .story-nav button:disabled { opacity: .35; cursor: default; }
   main { flex: 1; display: flex; flex-direction: column; }
-  main .empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #8893a3; font-size: 14px; }
-  main iframe { flex: 1; width: 100%; border: 0; }
-  footer { padding: 6px 16px; font-size: 10px; color: #8893a3; border-top: 1px solid #e5e9ef; background: #f8fafc; }
-  footer a { color: #1a3a6c; text-decoration: none; }
-  footer a:hover { text-decoration: underline; }
+  .empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--pui-muted); font-size: 14px; padding: var(--pui-space-4); text-align: center; }
+  .error { color: var(--pui-badge-stub-fg); background: var(--pui-badge-stub-bg); }
+  iframe { flex: 1; width: 100%; border: 0; }
+  footer { padding: var(--pui-space-1) var(--pui-space-4); font-size: 10px; color: var(--pui-muted); border-top: 1px solid var(--pui-border); background: var(--pui-surface); }
 </style>
 </head>
 <body>
 <aside>
   <h1>🗂 Klickdummies</h1>
-  <div class="meta">Repo: <code id="repo-label">__REPO_LABEL__</code> · platform:ADR-211 Rev 14</div>
+  <div class="meta">Repo: <code data-testid="repo-label" id="repo-label">__REPO_LABEL__</code> · platform:ADR-211</div>
 
-  <!-- Mode Toggle (nur sichtbar wenn Stories vorhanden) -->
-  <div class="mode-toggle" id="mode-toggle" style="display:none;margin-top:12px">
-    <button id="btn-free" class="active" onclick="setMode('free')">🗂 Frei</button>
-    <button id="btn-story" onclick="setMode('story')">📖 Story-Walk</button>
+  <div class="mode-toggle" data-testid="mode-toggle" id="mode-toggle" hidden>
+    <button data-testid="btn-free" id="btn-free" data-mode="free" aria-pressed="true">🗂 Frei</button>
+    <button data-testid="btn-story" id="btn-story" data-mode="story" aria-pressed="false">📖 Story-Walk</button>
   </div>
 
-  <!-- Frei-Modus -->
-  <div class="free-panel" id="free-panel">
+  <section class="panel" data-testid="free-panel" id="free-panel" data-panel="free">
     <label for="kd-select">Klickdummy</label>
-    <select id="kd-select"></select>
+    <select id="kd-select" data-testid="kd-select"></select>
 
     <label for="ver-select">Spec-Version</label>
-    <select id="ver-select">
+    <select id="ver-select" data-testid="ver-select" disabled>
       <option value="current">aktuell (HEAD)</option>
     </select>
 
-    <div class="detail" id="kd-detail">
-      <em>Klickdummy auswählen…</em>
-    </div>
-  </div>
+    <dl class="detail" data-testid="kd-detail" id="kd-detail"><dd><em>Klickdummy auswählen…</em></dd></dl>
+    <div class="detail error" data-testid="version-no-snapshot" id="version-no-snapshot" hidden></div>
+    <div class="meta" data-testid="version-readonly" id="version-readonly" hidden>Historische Version — read-only (ohne Feedback-Widget).</div>
+  </section>
 
-  <!-- Story-Walk-Modus -->
-  <div class="story-panel" id="story-panel">
+  <section class="panel" data-testid="story-panel" id="story-panel" data-panel="story" hidden>
     <label for="story-select">Story</label>
-    <select id="story-select"></select>
-
-    <div class="story-progress" id="story-progress"></div>
-    <ul class="story-stepper" id="story-stepper"></ul>
-
+    <select id="story-select" data-testid="story-select"></select>
+    <div class="story-progress" data-testid="story-progress" id="story-progress"></div>
+    <ul class="story-stepper" data-testid="story-stepper" id="story-stepper"></ul>
     <div class="story-nav">
-      <button id="btn-prev" onclick="storyNav(-1)" disabled>← Zurück</button>
-      <button id="btn-next" onclick="storyNav(1)" disabled>Weiter →</button>
+      <button data-testid="btn-prev" id="btn-prev" data-nav="-1" disabled>← Zurück</button>
+      <button data-testid="btn-next" id="btn-next" data-nav="1" disabled>Weiter →</button>
     </div>
-  </div>
+    <div class="detail error" data-testid="step-load-error" id="step-load-error" hidden></div>
+  </section>
 </aside>
 <main>
-  <div class="empty" id="empty">Klickdummy links auswählen, um ihn rechts zu laden.</div>
-  <iframe id="kd-frame" style="display:none" title="Aktiver Klickdummy"></iframe>
+  <div class="empty" data-testid="empty" id="empty">Klickdummy links auswählen, um ihn rechts zu laden.</div>
+  <iframe data-testid="kd-frame" id="kd-frame" title="Aktiver Klickdummy" hidden></iframe>
 </main>
-<footer>
-  Generiert durch <code>iil-klickdummy</code> v1.2 · Browser-Snippet · <a href="https://github.com/achimdehnert/platform/blob/main/docs/adr/ADR-211-klickdummy-benutzeranforderungen-entwicklungsprozess.md">platform:ADR-211</a>
-</footer>
+<footer>Generiert durch <code>iil-klickdummy</code> · Browser-Snippet · platform:ADR-211</footer>
+
+<!-- N1 (löst S-01): Daten als JSON-Insel + JSON.parse — NICHT als
+     <script>const X = …</script>-Concat (dort brach ein Feld mit </script> aus).
+     registry.py escaped beim Einbetten zusätzlich jedes </ zu <\/, weil der
+     HTML-Parser JEDES <script> (auch type=application/json) an einem literalen
+     </script> beendet. DOM wird via textContent + <template> gebaut, nie innerHTML. -->
+<script type="application/json" data-testid="kd-data" id="kd-data">__KLICKDUMMIES_JSON__</script>
+<script type="application/json" id="stories-data">__STORIES_JSON__</script>
+
+<template id="tpl-detail-row"><dt></dt><dd></dd></template>
+<template id="tpl-step"><li><span class="step-icon"></span><span class="step-label"></span></li></template>
 
 <script>
 'use strict';
-const KLICKDUMMIES = __KLICKDUMMIES_JSON__;
-const STORIES = __STORIES_JSON__;
+(function () {
+  var KLICKDUMMIES = JSON.parse(document.getElementById('kd-data').textContent);
+  var STORIES = JSON.parse(document.getElementById('stories-data').textContent);
 
-// ── Frei-Modus ──────────────────────────────────────────────────────────────
+  var $ = function (id) { return document.getElementById(id); };
+  function show(el, on) { el.hidden = !on; }
+  function setText(el, s) { el.textContent = s == null ? '' : String(s); } // N1: nie innerHTML
 
-function populateFree() {
-  var sel = document.getElementById('kd-select');
-  sel.innerHTML = '<option value="">— wählen —</option>' +
-    KLICKDUMMIES.map(function(k, i) {
-      return '<option value="' + i + '">' + k.title + ' (v' + k.spec_version + ')</option>';
-    }).join('');
-  sel.addEventListener('change', function() { onSelectFree(sel.value); });
-}
+  var currentKD = null;
 
-var currentKD = null;
+  // ── Detail (N1: textContent + geklonte <template>-Rows) ──
+  function renderDetail(k, ver) {
+    var dl = $('kd-detail'); dl.textContent = '';
+    var tpl = $('tpl-detail-row');
+    function row(label, valueFn) {
+      var frag = tpl.content.cloneNode(true);
+      setText(frag.querySelector('dt'), label);
+      valueFn(frag.querySelector('dd'));
+      dl.appendChild(frag);
+    }
+    row('Spec', function (dd) { var c = document.createElement('code'); setText(c, k.spec_id); dd.appendChild(c); dd.append(' v' + k.spec_version); });
+    if (ver) row('Angezeigte Version', function (dd) { setText(dd, 'v' + ver.spec_version + ' · ' + ver.commit_date + ' · ' + ver.commit_sha + ' (historisch, read-only)'); });
+    row('Klasse', function (dd) { var b = document.createElement('span'); b.className = 'badge ' + k.class; b.setAttribute('data-testid', 'kd-class-badge'); setText(b, k.class); dd.appendChild(b); });
+    row('ADR', function (dd) { if (k.adr_local) { var c = document.createElement('code'); setText(c, k.adr_local); dd.appendChild(c); } else { var e = document.createElement('em'); setText(e, 'kein ADR-Ref'); dd.appendChild(e); } });
+    if (k.sister_of && k.sister_of.length) row('Schwester-Klickdummies', function (dd) {
+      k.sister_of.forEach(function (s, i) { if (i) dd.append(', '); var c = document.createElement('code'); setText(c, s); dd.appendChild(c); });
+    });
+    row('Spec-Pfad', function (dd) { var c = document.createElement('code'); setText(c, k.path); dd.appendChild(c); });
+    show($('version-readonly'), !!ver);
+  }
 
-function renderDetail(k, versionInfo) {
-  var det = document.getElementById('kd-detail');
-  det.innerHTML =
-    '<dt>Spec</dt><dd><code>' + k.spec_id + '</code> v' + k.spec_version + '</dd>' +
-    (versionInfo
-      ? '<dt>Angezeigte Version</dt><dd><code>v' + versionInfo.spec_version + '</code> · ' +
-        versionInfo.commit_date + ' · <code>' + versionInfo.commit_sha + '</code> <em>(historisch, read-only)</em></dd>'
-      : '') +
-    '<dt>Klasse</dt><dd><span class="badge ' + k.class + '">' + k.class + '</span></dd>' +
-    '<dt>ADR</dt><dd>' + (k.adr_local ? '<code>' + k.adr_local + '</code>' : '<em>kein ADR-Ref</em>') + '</dd>' +
-    (k.sister_of && k.sister_of.length
-      ? '<dt>Schwester-Klickdummies</dt><dd>' + k.sister_of.map(function(s) { return '<code>' + s + '</code>'; }).join(', ') + '</dd>'
-      : '') +
-    '<dt>Spec-Pfad</dt><dd><code>' + k.path + '</code></dd>';
-}
+  function populateVersions(k) {
+    var vsel = $('ver-select'), vs = k.versions || [];
+    vsel.textContent = '';
+    vsel.add(new Option('aktuell (HEAD, v' + k.spec_version + ')', 'current'));
+    vs.forEach(function (v, i) { vsel.add(new Option('v' + v.spec_version + ' · ' + v.commit_date + (v.shell_path ? '' : ' (kein Shell-Snapshot)'), String(i))); });
+    vsel.value = 'current'; vsel.disabled = vs.length === 0;
+  }
 
-function populateVersions(k) {
-  var vsel = document.getElementById('ver-select');
-  var versions = k.versions || [];
-  var opts = '<option value="current">aktuell (HEAD, v' + k.spec_version + ')</option>';
-  versions.forEach(function(v, i) {
-    opts += '<option value="' + i + '">v' + v.spec_version + ' · ' + v.commit_date +
-      (v.shell_path ? '' : ' (kein Shell-Snapshot)') + '</option>';
+  // ── iframe-Loader (echte Shell) ──
+  function loadCurrent(k) {
+    show($('version-no-snapshot'), false);
+    var fr = $('kd-frame'), empty = $('empty');
+    if (k.shell_path) { fr.src = k.shell_path + '?feedback=on'; show(fr, true); show(empty, false); }
+    else { setText(empty, 'Kein shell.html für ' + k.name + ' gefunden (nur Spec vorhanden).'); show(fr, false); show(empty, true); }
+  }
+
+  function onSelectVersion(value) {
+    if (!currentKD) return;
+    if (value === 'current') { renderDetail(currentKD); loadCurrent(currentKD); return; }
+    var v = (currentKD.versions || [])[parseInt(value, 10)];
+    if (!v) return;
+    renderDetail(currentKD, v);
+    var fr = $('kd-frame'), n = $('version-no-snapshot');
+    if (v.shell_path) {
+      // historischer Snapshot — bewusst ohne ?feedback=on (read-only)
+      show(n, false); fr.src = v.shell_path; show(fr, true); show($('empty'), false);
+    } else {
+      setText(n, 'Kein shell.html-Snapshot für v' + v.spec_version + ' (nur Spec versioniert).'); show(n, true);
+      show(fr, false); show($('empty'), false);
+    }
+  }
+
+  function onSelectFree(idx) {
+    var k = KLICKDUMMIES[parseInt(idx, 10)];
+    if (!k) return;
+    currentKD = k; renderDetail(k); populateVersions(k); loadCurrent(k);
+  }
+
+  // ── Story-Walk ──
+  var storyIdx = 0, stepIdx = 0;
+  function vkey(sid, i) { return 'kd-story-visited:' + sid + ':' + i; }
+  function visited(sid, i) { try { return !!localStorage.getItem(vkey(sid, i)); } catch (e) { return false; } }
+  function markVisited(sid, i) { try { localStorage.setItem(vkey(sid, i), '1'); } catch (e) {} }
+
+  function renderStepper(story, active) {
+    setText($('story-progress'), 'Schritt ' + (active + 1) + ' / ' + story.steps.length);
+    var ul = $('story-stepper'); ul.textContent = '';
+    var tpl = $('tpl-step');
+    story.steps.forEach(function (step, i) {
+      var frag = tpl.content.cloneNode(true), li = frag.querySelector('li');
+      li.dataset.active = String(i === active); li.dataset.visited = String(visited(story.id, i)); li.dataset.step = String(i);
+      setText(li.querySelector('.step-icon'), i === active ? '●' : (visited(story.id, i) ? '✅' : '○'));
+      setText(li.querySelector('.step-label'), step.label);
+      ul.appendChild(frag);
+    });
+    markVisited(story.id, active);
+  }
+
+  function loadStory(si, sti) {
+    storyIdx = si; stepIdx = sti;
+    var story = STORIES[si]; renderStepper(story, sti);
+    var step = story.steps[sti], k = KLICKDUMMIES[step.kd_index], err = $('step-load-error');
+    if (!k) { setText(err, 'Schritt „' + step.label + '" verweist auf einen fehlenden Klickdummy (kd_index ' + step.kd_index + ') — kein stiller Leerzustand.'); show(err, true); show($('kd-frame'), false); show($('empty'), false); }
+    else { show(err, false); currentKD = k; renderDetail(k); populateVersions(k); loadCurrent(k); }
+    $('btn-prev').disabled = sti === 0; $('btn-next').disabled = sti === story.steps.length - 1;
+  }
+
+  function populateStories() {
+    var sel = $('story-select');
+    STORIES.forEach(function (s, i) { sel.add(new Option(s.title + ' (' + s.steps.length + ' Schritte)', String(i))); });
+    sel.addEventListener('change', function (e) { loadStory(parseInt(e.target.value, 10), 0); });
+  }
+
+  // ── Event-Verdrahtung (addEventListener/Delegation statt inline onclick, AP-003) ──
+  $('kd-select').addEventListener('change', function (e) { onSelectFree(e.target.value); });
+  $('ver-select').addEventListener('change', function (e) { onSelectVersion(e.target.value); });
+
+  document.querySelectorAll('[data-nav]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = stepIdx + parseInt(btn.dataset.nav, 10);
+      if (next < 0 || next >= STORIES[storyIdx].steps.length) return;
+      loadStory(storyIdx, next);
+    });
   });
-  vsel.innerHTML = opts;
-  vsel.value = 'current';
-  vsel.disabled = versions.length === 0;
-}
+  document.querySelectorAll('[data-mode]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var mode = btn.dataset.mode;
+      document.querySelectorAll('[data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+      show($('free-panel'), mode === 'free'); show($('story-panel'), mode === 'story');
+      if (mode === 'story' && STORIES.length && !$('story-stepper').children.length) loadStory(0, 0);
+    });
+  });
+  $('story-stepper').addEventListener('click', function (e) {
+    var li = e.target.closest('[data-step]'); if (li) loadStory(storyIdx, parseInt(li.dataset.step, 10));
+  });
 
-function onSelectVersion(value) {
-  var k = currentKD;
-  if (!k) return;
-  if (value === 'current') { renderDetail(k); loadKD(k); return; }
-  var v = (k.versions || [])[parseInt(value, 10)];
-  if (!v) return;
-  renderDetail(k, v);
-  var frame = document.getElementById('kd-frame');
-  var empty = document.getElementById('empty');
-  if (v.shell_path) {
-    // historischer Snapshot — bewusst ohne ?feedback=on (read-only)
-    frame.src = v.shell_path;
-    frame.style.display = '';
-    empty.style.display = 'none';
-  } else {
-    empty.textContent = 'Kein shell.html-Snapshot für v' + v.spec_version + ' (nur Spec versioniert).';
-    frame.style.display = 'none';
-    empty.style.display = '';
-  }
-}
-
-function onSelectFree(idx) {
-  if (idx === '' || idx === null) return;
-  var k = KLICKDUMMIES[parseInt(idx, 10)];
-  if (!k) return;
-  currentKD = k;
-  renderDetail(k);
-  populateVersions(k);
-  loadKD(k);
-}
-
-// ── Story-Modus ─────────────────────────────────────────────────────────────
-
-var currentStoryIdx = 0;
-var currentStepIdx = 0;
-
-function populateStories() {
-  var sel = document.getElementById('story-select');
-  sel.innerHTML = STORIES.map(function(s, i) {
-    return '<option value="' + i + '">' + s.title + ' (' + s.steps.length + ' Schritte)</option>';
-  }).join('');
-  sel.addEventListener('change', function() { loadStory(parseInt(sel.value, 10), 0); });
-}
-
-function loadStory(storyIdx, stepIdx) {
-  currentStoryIdx = storyIdx;
-  currentStepIdx = stepIdx;
-  var story = STORIES[storyIdx];
-  renderStepper(story, stepIdx);
-  var step = story.steps[stepIdx];
-  var k = KLICKDUMMIES[step.kd_index];
-  if (k) loadKD(k);
-  updateNavButtons(story, stepIdx);
-}
-
-function renderStepper(story, activeStep) {
-  document.getElementById('story-progress').textContent =
-    'Schritt ' + (activeStep + 1) + ' / ' + story.steps.length;
-  var ul = document.getElementById('story-stepper');
-  ul.innerHTML = story.steps.map(function(step, i) {
-    var visited = isVisited(story.id, i);
-    var icon = i === activeStep ? '●' : (visited ? '✅' : '○');
-    var cls = (i === activeStep ? ' active' : '') + (visited ? ' visited' : '');
-    return '<li class="' + cls.trim() + '" onclick="loadStory(' + currentStoryIdx + ',' + i + ')">' +
-      '<span class="step-icon">' + icon + '</span>' +
-      '<span class="step-label">' + step.label + '</span></li>';
-  }).join('');
-  markVisited(story.id, activeStep);
-}
-
-function updateNavButtons(story, stepIdx) {
-  document.getElementById('btn-prev').disabled = stepIdx === 0;
-  document.getElementById('btn-next').disabled = stepIdx === story.steps.length - 1;
-}
-
-function storyNav(delta) {
-  var story = STORIES[currentStoryIdx];
-  var next = currentStepIdx + delta;
-  if (next < 0 || next >= story.steps.length) return;
-  loadStory(currentStoryIdx, next);
-}
-
-// Visited-State via localStorage (pro Story-Session)
-function visitedKey(storyId, stepIdx) { return 'kd-story-visited:' + storyId + ':' + stepIdx; }
-function isVisited(storyId, stepIdx) { try { return !!localStorage.getItem(visitedKey(storyId, stepIdx)); } catch(e) { return false; } }
-function markVisited(storyId, stepIdx) { try { localStorage.setItem(visitedKey(storyId, stepIdx), '1'); } catch(e) {} }
-
-// ── iframe-Loader ────────────────────────────────────────────────────────────
-
-function loadKD(k) {
-  var frame = document.getElementById('kd-frame');
-  var empty = document.getElementById('empty');
-  if (k.shell_path) {
-    frame.src = k.shell_path + '?feedback=on';
-    frame.style.display = '';
-    empty.style.display = 'none';
-  } else {
-    empty.textContent = 'Kein shell.html für ' + k.name + ' gefunden (nur Spec vorhanden).';
-    frame.style.display = 'none';
-    empty.style.display = '';
-  }
-}
-
-// ── Mode-Toggle ──────────────────────────────────────────────────────────────
-
-function setMode(mode) {
-  var isStory = mode === 'story';
-  document.getElementById('free-panel').classList.toggle('hidden', isStory);
-  document.getElementById('story-panel').classList.toggle('visible', isStory);
-  document.getElementById('btn-free').classList.toggle('active', !isStory);
-  document.getElementById('btn-story').classList.toggle('active', isStory);
-  if (isStory && STORIES.length > 0) loadStory(currentStoryIdx, 0);
-}
-
-// ── Init ─────────────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', function() {
-  populateFree();
-  var vsel = document.getElementById('ver-select');
-  vsel.disabled = true; // aktiv erst, wenn ein KD mit Historie gewählt ist
-  vsel.addEventListener('change', function() { onSelectVersion(vsel.value); });
-  if (STORIES.length > 0) {
-    document.getElementById('mode-toggle').style.display = '';
-    populateStories();
-  }
-});
+  // ── Init ──
+  var sel = $('kd-select');
+  sel.add(new Option('— wählen —', ''));
+  KLICKDUMMIES.forEach(function (k, i) { sel.add(new Option(k.title + ' (v' + k.spec_version + ')', String(i))); });
+  if (STORIES.length) { show($('mode-toggle'), true); populateStories(); }
+})();
 </script>
 </body>
 </html>
