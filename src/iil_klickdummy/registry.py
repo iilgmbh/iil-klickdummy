@@ -334,6 +334,19 @@ def write_stories_manifest(
     return out
 
 
+def _embed_json(obj) -> str:
+    """JSON für die Einbettung in eine `<script>`-Insel serialisieren (S-01-Fix).
+
+    Der HTML-Parser beendet JEDES `<script>`-Element (auch `type="application/json"`)
+    an einem literalen `</script>`. Ein Klickdummy-Feld (z.B. `title`) mit Substring
+    `</script>` bräche sonst aus dem Script-Kontext aus (XSS). `</` → `<\\/` neutralisiert
+    das; JSON.parse liest `<\\/` wieder als `</`. Zusätzlich `<!--`/`-->` entschärfen,
+    die einen HTML-Kommentar im Script öffnen/schließen könnten.
+    """
+    s = json.dumps(obj, ensure_ascii=False, indent=2)
+    return s.replace("</", "<\\/").replace("<!--", "<\\!--").replace("-->", "--\\>")
+
+
 def render_browser_html(
     klickdummies: list[KlickdummyMeta],
     output: pathlib.Path,
@@ -369,8 +382,8 @@ def render_browser_html(
         }
         for k in klickdummies
     ]
-    html = tmpl_text.replace("__KLICKDUMMIES_JSON__", json.dumps(data, ensure_ascii=False, indent=2))
-    html = html.replace("__STORIES_JSON__", json.dumps(stories or [], ensure_ascii=False, indent=2))
+    html = tmpl_text.replace("__KLICKDUMMIES_JSON__", _embed_json(data))
+    html = html.replace("__STORIES_JSON__", _embed_json(stories or []))
     html = html.replace("__REPO_LABEL__", repo_label)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")
@@ -409,8 +422,8 @@ def render_cross_repo_browser_html(
         }
         for org, repo, k in triples
     ]
-    html = tmpl_text.replace("__KLICKDUMMIES_JSON__", json.dumps(data, ensure_ascii=False, indent=2))
-    html = html.replace("__STORIES_JSON__", json.dumps(stories or [], ensure_ascii=False, indent=2))
+    html = tmpl_text.replace("__KLICKDUMMIES_JSON__", _embed_json(data))
+    html = html.replace("__STORIES_JSON__", _embed_json(stories or []))
     html = html.replace("__REPO_LABEL__", f"cross-repo · {base_label} · {len(data)} Klickdummies")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")

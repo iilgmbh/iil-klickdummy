@@ -93,3 +93,45 @@ def test_template_has_version_select_handler():
     assert "populateVersions" in tmpl
     # historische Snapshots laden read-only, ohne Feedback-Widget
     assert "ohne ?feedback=on" in tmpl
+
+
+def test_should_neutralize_script_break_in_embedded_json(tmp_path):
+    """S-01: ein Klickdummy-Titel mit `</script>` darf nicht aus der JSON-Insel
+    ausbrechen. Der HTML-Parser beendet jedes <script> (auch application/json) an
+    einem literalen </script>; registry escaped daher </ zu <\\/ beim Einbetten."""
+    repo = tmp_path / "repo"
+    kd = repo / "klickdummy" / "xss"
+    kd.mkdir(parents=True)
+    payload_title = "x</script><script>window.__XSS__=1</script>"
+    spec = (
+        "spec_id: demo:klickdummy-spec-xss\n"
+        'spec_version: "0.1"\n'
+        "class: mock\n"
+        f'title: "{payload_title}"\n'
+    )
+    (kd / "screens-spec.yaml").write_text(spec, encoding="utf-8")
+    (kd / "shell.html").write_text("<html>x</html>", encoding="utf-8")
+    kds = registry.discover_klickdummies(repo)
+    out = tmp_path / "browser.html"
+    registry.render_browser_html(kds, out)
+    html = out.read_text(encoding="utf-8")
+    # Das rohe, ausbrechende Payload darf NICHT im Output stehen …
+    assert "</script><script>window.__XSS__" not in html
+    # … sondern nur in escapeter Form (</ → <\/).
+    assert "<\\/script><script>window.__XSS__" in html
+
+
+def test_should_use_json_island_not_inline_const(tmp_path):
+    """N1: Daten stehen in einer <script type=application/json>-Insel + JSON.parse,
+    nicht als `const KLICKDUMMIES = {…}`-Zuweisung (die alte, ausbruchsanfällige Form)."""
+    repo = tmp_path / "repo"
+    kd = repo / "klickdummy" / "demo"
+    kd.mkdir(parents=True)
+    (kd / "screens-spec.yaml").write_text(_spec("0.1"), encoding="utf-8")
+    (kd / "shell.html").write_text("<html>x</html>", encoding="utf-8")
+    kds = registry.discover_klickdummies(repo)
+    out = tmp_path / "browser.html"
+    registry.render_browser_html(kds, out)
+    html = out.read_text(encoding="utf-8")
+    assert 'type="application/json" data-testid="kd-data"' in html
+    assert "JSON.parse(document.getElementById('kd-data')" in html
