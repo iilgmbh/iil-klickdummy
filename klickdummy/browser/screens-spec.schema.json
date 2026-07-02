@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "meiki:klickdummy-spec-fristenmanagement.schema",
+  "title": "Klickdummy Screens-Spec (App-Deep-Dive)",
+  "description": "I1 Spec-Schema. Konformität wird via `make klickdummy-i1` geprüft (platform:ADR-211).",
+  "type": "object",
+  "required": ["spec_id", "spec_version", "spec_date", "adr", "class", "grounding", "off_ramp", "personas", "screens"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema":       { "type": "string" },
+    "spec_id":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*$" },
+    "spec_version":  { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
+    "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix. Generationen: 1.0 = Baseline; 1.1 = + `screen.use_cases[]` (Spec-Layer/X-Ray)." },
+    "spec_date":     { "type": "string", "format": "date" },
+    "title":         { "type": "string" },
+
+    "adr": {
+      "type": "object",
+      "required": ["local", "conforms_to"],
+      "properties": {
+        "local":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:ADR-[0-9]{3}$" },
+        "conforms_to": { "type": "string", "pattern": "^platform:ADR-[0-9]{3}$" },
+        "sister_of": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:ADR-[0-9]{3}$" }
+        }
+      }
+    },
+
+    "class": {
+      "type": "string",
+      "enum": ["mock", "stub-demo", "story", "spec-demo"],
+      "description": "I2 Prod-Sicherheit (platform:ADR-211 Rev 11, 4-Pattern). Genau eine Klasse — kein vacuous pass."
+    },
+    "class_evidence": { "type": "object" },
+
+    "grounding": {
+      "type": "object",
+      "required": ["konzept", "pilot"],
+      "properties": {
+        "konzept":  { "type": "string" },
+        "konzept_id":     { "type": "string" },
+        "konzept_version":{ "type": "string" },
+        "pilot":          { "type": "string" },
+        "rechtsrahmen_kernnormen": { "type": "object" }
+      }
+    },
+
+    "off_ramp": {
+      "type": "object",
+      "required": ["policy", "unit", "rule", "doppelquell_grenze", "parity_runner"],
+      "properties": {
+        "policy":              { "type": "string" },
+        "unit":                { "type": "string", "enum": ["per-screen", "per-feature"] },
+        "rule":                { "type": "string" },
+        "doppelquell_grenze":  { "type": "string", "enum": ["prod-release"] },
+        "staging_doppelquell": { "type": "string", "enum": ["allowed"] },
+        "parity_runner":       { "type": "string" },
+        "product_repo_planned":{ "type": "string" },
+        "status_overall":      { "type": "string" }
+      }
+    },
+
+    "personas": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label", "rolle", "sieht"],
+        "properties": {
+          "label": { "type": "string" },
+          "rolle": { "type": "string" },
+          "sieht": { "type": "array", "items": { "type": "string" } },
+          "sieht_eingeschraenkt": { "type": "array", "items": { "type": "string" } },
+          "freigaben": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+
+    "auth": {
+      "type": "object",
+      "description": "Optionaler Auth-Block für gen_e2e. Mindestens eines der Felder erforderlich.",
+      "properties": {
+        "storage_state": { "type": "string", "description": "Pfad zur Playwright-storage_state.json (enthält Cookies/LocalStorage einer eingeloggten Session)." },
+        "login_fixture":  { "type": "string", "description": "Name eines pytest-Fixtures, das den Login übernimmt (wird als autouse-Fixture in die Suite eingebunden)." },
+        "required":       { "type": "boolean", "description": "True = alle Screens dieser Spec brauchen Auth (Shortcut zu login_required pro Screen)." }
+      }
+    },
+
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "personas", "purpose", "parity_acceptance", "off_ramp_status"],
+        "additionalProperties": true,
+        "properties": {
+          "id":        { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+          "title":     { "type": "string" },
+          "route":         { "type": "string", "pattern": "^/", "description": "Optionale Render-Route; Default-Konvention `/<id>`. Kann Django-Parameter enthalten (<uuid:pk>). Ziel von `klickdummy-gen-e2e`." },
+          "route_example": { "type": "string", "pattern": "^/", "description": "Konkrete Beispiel-URL mit echten IDs/Werten (z.B. /outlines/3f2a1b.../). Wird von `klickdummy-gen-e2e` bevorzugt; löst parametrisierte `route`-Platzhalter auf." },
+          "login_required": { "type": "boolean", "description": "True wenn der Screen LoginRequired ist. gen_e2e erzeugt skip mit klarem Grund wenn kein `auth`-Block gesetzt." },
+          "personas":  { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "purpose":   { "type": "string" },
+          "konzept_ref": { "type": "array", "items": { "type": "string" } },
+          "use_cases": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Betroffene Use Cases dieses Screens (Spec-Layer/X-Ray-Strip, ab spec_schema_version 1.1). Strukturierte First-Class-Form; ohne dieses Feld fällt der Renderer auf `konzept_ref[]` bzw. `akte_next.uc` zurück."
+          },
+          "datafields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "additionalProperties": true,
+              "properties": {
+                "name":     { "type": "string" },
+                "type":     { "type": "string" },
+                "source":   { "type": "string" },
+                "semantic": { "type": "string" }
+              }
+            }
+          },
+          "target_mocks": { "type": "array", "items": { "type": "string" } },
+          "parity_acceptance": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "check"],
+              "additionalProperties": true,
+              "properties": {
+                "id":    { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*$" },
+                "check": { "type": "string", "minLength": 8 },
+                "assert": {
+                  "type": "object",
+                  "description": "Optional, ausführbare Form (platform:ADR-211 §Parity-Off-Ramp). `klickdummy-gen-e2e` macht hieraus einen Playwright-Testfall, der Klickdummy UND echte App validiert. Fehlt der Block, bleibt der Check als skip sichtbar (kein vacuous pass).",
+                  "required": ["action"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "action":   { "type": "string", "enum": ["visible", "text", "clickable", "url", "count"] },
+                    "selector": { "type": "string" },
+                    "expect":   { "type": ["string", "number"] }
+                  }
+                }
+              }
+            }
+          },
+          "off_ramp_status": {
+            "type": "string",
+            "enum": ["static", "parity-staging", "parity-green", "removed"]
+          }
+        }
+      }
+    }
+  }
+}
