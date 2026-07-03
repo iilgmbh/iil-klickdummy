@@ -107,11 +107,13 @@
           },
           {
             "title": "Flow-Knoten (weiterfuehrend)",
-            "required": ["id", "title", "next_screens"]
+            "required": ["id", "title", "next_screens"],
+            "not": {"required": ["parity_acceptance"]}
           },
           {
             "title": "Flow-Knoten (terminal)",
-            "required": ["id", "title", "back_screen"]
+            "required": ["id", "title", "back_screen"],
+            "not": {"required": ["parity_acceptance"]}
           }
         ],
         "properties": {
