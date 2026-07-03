@@ -98,8 +98,22 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "title", "personas", "purpose", "parity_acceptance", "off_ramp_status"],
         "additionalProperties": true,
+        "description": "Zwei Screen-Klassen (KONZ-008): ein Assertions-Screen (braucht purpose+parity_acceptance+off_ramp_status) ODER ein Flow-Knoten (Navigations-Graph-Knoten mit next_screens, ohne die Assertions-Pflichtfelder). Der Flow-Knoten entschaerft die fatale Validierung fuer Multi-Screen-Flow-KDs (M28-2): ein Screen, der nur den Mermaid-Flow abbildet, muss keine parity_acceptance tragen.",
+        "anyOf": [
+          {
+            "title": "Assertions-Screen",
+            "required": ["id", "title", "personas", "purpose", "parity_acceptance", "off_ramp_status"]
+          },
+          {
+            "title": "Flow-Knoten (weiterfuehrend)",
+            "required": ["id", "title", "next_screens"]
+          },
+          {
+            "title": "Flow-Knoten (terminal)",
+            "required": ["id", "title", "back_screen"]
+          }
+        ],
         "properties": {
           "id":        { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
           "title":     { "type": "string", "pattern": "^(?!.*[\\n\\r])[^\\n\\r]*$" },

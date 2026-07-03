@@ -61,9 +61,16 @@ def main(argv: list[str]) -> int:
                 bad = []
                 missing = []
                 for sc in screens:
+                    # Flow-Knoten (next_screens, keine parity_acceptance) sind
+                    # Navigations-Graph-Knoten, keine Assertions-Screens — kein
+                    # off_ramp_status nötig (Schema: screens.items anyOf-Klasse).
+                    is_flow_node = (bool(sc.get("next_screens")) or bool(sc.get("back_screen"))) \
+                        and not sc.get("parity_acceptance")
                     st = sc.get("off_ramp_status")
                     if st is None:
-                        # Schema-Pflichtfeld — Fehlen ist FAIL, kein stiller
+                        if is_flow_node:
+                            continue
+                        # Assertions-Screen ohne Status — FAIL, kein stiller
                         # 'static'-Default (False-Pass).
                         missing.append(sc.get("id", "?"))
                         continue
