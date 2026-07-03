@@ -121,6 +121,20 @@ zu inferieren. Nachteil: härtere Autoren-Reibung am Anfang (Greenfield-Skizze w
 Nicht verworfen — Kandidat für Phase-A-Verschärfung *nachdem* die Inferenz die Alt-Bestände
 (ex-schutz) aufgeräumt hat.
 
+## B (State-/Interaktions-DSL) — VERWORFEN nach Portfolio-Evidenz (2026-07-03)
+
+Der Kill-/Bau-Gate für B war: *nur bauen, wenn Verhaltens-Checks portfolio-weit
+wiederkehren*. Messung (Scan über `~/github/*/klickdummy/*/screens-spec.yaml`):
+**397 Checks ohne `assert` über 44 KDs, davon ~3% (12) behavioral** (Verb-Heuristik).
+Die Masse (comic 43, lernmodul 22, …) ist Präsenz/Zähl → **A-adressierbar**. ex-schutz
+(3/4 behavioral) ist ein Ausreißer, kein Muster.
+
+**Entscheidung:** B **nicht bauen.** Eine State-DSL für ~3% der Checks ist Over-Engineering
+und vergrößert die F17-DSL-Fläche ohne Ertrag. Die behavioral-manual-Checks bleiben getaggt
+(sichtbar, C-konform) und manuell. **Reaktivierungs-Trigger:** falls diese ~3% je einen
+Off-Ramp real blockieren (ein Screen kommt nicht parity-grün, *weil* ein behavioral-Check
+zwingend ausführbar sein müsste) — dann erneut messen. Bis dahin: `sunset` für B.
+
 ## Entscheidung + 30/60/90
 
 **Entscheidung:** T2 annehmen. Bauen in Reihenfolge **M4 → M1 (Pilot ex-schutz) → M2 → M3**,
