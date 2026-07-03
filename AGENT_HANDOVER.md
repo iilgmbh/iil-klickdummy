@@ -4,7 +4,32 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-07-02)
+## ⚡ Aktueller Stand (2026-07-02, Session 2 — abgeschlossen)
+
+Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PRs gemergt/merge-fertig:
+
+- **KONZ-007 Follow-ups erledigt (ehem. Prio 3):** REC-1 `strict_selectors` als Spec-Attribut
+  (#91→#97 gemergt) + REC-2 `role=`-Parser-Grenzfälle mit `selector_fallthrough_hint()` (#92→#98
+  gemergt). Meine Parallel-PRs #95/#96 zugunsten der stärkeren #97/#98 geschlossen (Duplikat-Kollision
+  zweier Sessions — s. Memory-Kandidat).
+- **klickdummy-browser Redesign (spec-first, `iil-klickdummy:ADR-002`):** UCs + abgenommener Mock
+  (#100) → echter Renderer (#101). Schließt **S-01 XSS** (`registry._embed_json` escaped `</`→`<\/`;
+  JSON-Insel + `textContent`/`<template>`); ADR-048-konform (`--pui-*`-Tokens, `addEventListener`,
+  `data-testid`). Headless verifiziert am echten Output.
+- **gen_e2e Input-Injection/RCE gehärtet (#102):** Spec als Vertrauensgrenze — fatale
+  `jsonschema.validate` in `load_spec` + Runtime-Escaping. Danach **externe Cross-Provider-Zweitmeinung**
+  (`/adr-handoff-extern`): AD-1-HIGH per Code-Check entkräftet, aber 3 echte Lücken verifiziert →
+  Härtungen **#104** (AD-2 Docstring-End-Quote, AD-3 title-`\n`-Pattern, AD-5 login_fixture fail-closed,
+  M28-3 schema-cache). Step-5-Tagging am PR.
+- **Quick Wins #99** (README-Org-URL 404→iilgmbh, CHANGELOG-#93-Nachtrag, utcnow-Deprecation).
+- **Release-Prep #117 (offen):** v1.29.0→**1.30.0** + CHANGELOG-Sammeleintrag. Wheel baut inkl.
+  package-data (schemas + browser-Template verifiziert). **KEIN Publish** — Tag+`/release` steht aus.
+- **Issue-Backlog angelegt** aus /repo-optimize (2 Läufe): **#103** (AD-6 genesor-Validierungspfad,
+  Wurzel von S-02/S-03) + **#105–#116** (S-02 HTML-Sanitize, S-03 Path-Traversal, Actions-SHA-Pinning,
+  Publish-Wheel-Smoke, genesor-Tests, CLI-Test-Lücken, ruff-Gate [11 Bestandsfehler], Makefile/CONTRIBUTING,
+  Loader-Konsolidierung, Kleinfixes, Determinismus, Schema-descriptions). Reports: `~/shared/repo-optimize-iil-klickdummy-2026-07-02*.md`.
+
+## ⚡ Aktueller Stand (2026-07-02, Session 1)
 
 - **F23 GESCHLOSSEN (ehem. Prio 3)** — KONZ-iil-klickdummy-007 (T2, Hybrid D1+D2+D3, PR #89)
   + Implementierung in PR #90 (gemergt 2026-06-30, **v1.29.0**): `--strict-selectors`-Off-Ramp-Gate
@@ -78,13 +103,16 @@
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | **S13 Stufe 2 Abschluss**: Grün-Quote des informational-Jobs `klickdummy-parity-renderer2-live` messen; bei Stabilität `continue-on-error` entfernen + required check + README-Update (DoD aus risk-hub#278 — Blocker sind behoben, Issue COMPLETED 2026-06-24) | `[Sonnet]` |
-| 2 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (Outline-MCP seit 2026-07-02 als `outline-knowledge` auf User-Scope registriert; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
-| 3 | **KONZ-007 Follow-ups**: REC-1 Spec-Attribut `strict_selectors: true` (zusätzlich zum CLI-Flag) + REC-2 `role=`-Parser-Grenzfälle formal dokumentieren + Roundtrip-Tests (Sonderzeichen/Whitespace) | `[Sonnet]` |
-| 4 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+| 1 | **Release v1.30.0 publizieren**: PR #117 mergen → Tag `v1.30.0` → `/release` (PyPI). Erst damit landen S-01-Renderer-Fix (#101), gen_e2e-RCE (#102) + Härtungen (#104) bei den Adoptern (v1.29.0 wurde nie getaggt). Gegated: Publish braucht User-Freigabe | `[Sonnet]` |
+| 2 | **Security-Backlog abarbeiten**: #103 (genesor-Validierungspfad = Wurzel S-02/S-03) zuerst; dann #105 (render_uc HTML-Sanitize), #107 (Publish-Actions SHA-Pinning), #108 (Publish-Smoke gegen Wheel) | `[Sonnet]` |
+| 3 | **S13 Stufe 2 Abschluss**: Grün-Quote des informational-Jobs `klickdummy-parity-renderer2-live` messen; bei Stabilität `continue-on-error` entfernen + required check + README-Update (DoD aus risk-hub#278 — Blocker behoben, COMPLETED 2026-06-24) | `[Sonnet]` |
+| 4 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (Outline-MCP seit 2026-07-02 als `outline-knowledge` auf User-Scope registriert; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
+| 5 | Qualitäts-Backlog: #110 (ruff-Gate + 11 Bestandsfehler), #109 (genesor-Tests), #112 (Makefile/CONTRIBUTING) — gate-frei, gut für Sonnet/Queue | `[Sonnet]` |
+| 6 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
 
-> **Erledigt 2026-06-30:** ehem. Prio 3 *F23* — geschlossen via KONZ-007 (PR #89/#90, v1.29.0) + ADR-211 Rev 22 (s. „Aktueller Stand 2026-07-02").
-> **Erledigt 2026-06-24:** ehem. Prio 1 *UX-Test-Rollout* — komplett, alle Repos sauber (s. „Stand 2026-06-24").
+> **Erledigt 2026-07-02 (Session 2):** ehem. Prio 3 *KONZ-007 REC-1/REC-2* (#91→#97, #92→#98) · klickdummy-browser-Redesign + S-01-Fix (#100/#101) · gen_e2e-RCE-Härtung (#102/#104) · Quick Wins (#99). Issue-Backlog #103/#105–#116 angelegt. Details s. „Aktueller Stand (2026-07-02, Session 2)".
+> **Erledigt 2026-06-30:** ehem. Prio 3 *F23* — via KONZ-007 (PR #89/#90, v1.29.0) + ADR-211 Rev 22.
+> **Erledigt 2026-06-24:** ehem. Prio 1 *UX-Test-Rollout* — komplett, alle Repos sauber.
 
 ## Arbeitsregeln (repo-spezifisch)
 
