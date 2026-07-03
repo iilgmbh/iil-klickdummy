@@ -1,5 +1,10 @@
 """Assert-Inferenz (KONZ-iil-klickdummy-008, Baustein A).
 
+**EXPERIMENTAL** — das Kill-Kriterium dieser Komponente (Mensch-Bestätigungsquote
+der Kandidaten <50% ⇒ verwerfen, KONZ-008 Ledger L3, `review_by: 2026-08-03`) ist
+NOCH NICHT gemessen. Bis dahin ist die Ausgabe ein Assistenz-Vorschlag, kein
+verlässlicher Generator — jeden Kandidaten prüfen, nicht blind übernehmen.
+
 Schlägt für Prosa-`check`s ohne `assert` einen Kandidaten vor — für die
 **einfache Klasse** (Präsenz/Zähl/Text) gegen das testid-Inventar der Shell.
 Verhaltens-/State-Checks werden NICHT geraten, sondern als `kind: behavioral-manual`
@@ -94,10 +99,15 @@ def infer_one(check: str, concrete: set[str], templated: set[str]) -> dict:
     tid = _match_testid(check, concrete, templated)
     if m and tid:
         if tid.endswith("*"):
-            return {"kind": "executable",
-                    "assert": {"action": "count", "selector": f"testid={tid[:-1]}", "expect": int(m.group(1))},
-                    "note": f"⚠ testid '{tid[:-1]}…' ist JS-templated (nicht exakt zählbar) — stabilen "
-                            f"Container-testid ergänzen (z.B. testid={tid[:-1]}-list) und dagegen zählen."}
+            # EF-3 (Retro 2026-07-03): templated testid (`step-${…}`) ist per exact-
+            # match NICHT zählbar — `get_by_test_id("step")` trifft `step-1..N` nie.
+            # KEIN executable-Assert emittieren (der wäre funktional tot und würde als
+            # `kind:executable` das Gate täuschen); stattdessen behavioral-manual +
+            # konkreter Hinweis, wie es executable würde (stabiler Container-testid).
+            return {"kind": "behavioral-manual",
+                    "note": f"testid '{tid[:-1]}…' ist JS-templated → nicht per exact-match zählbar. "
+                            f"Executable machen: einen stabilen Container-testid ergänzen "
+                            f"(z.B. testid={tid[:-1]}-list) und `count` dagegen setzen — dann `kind:executable`."}
         return {"kind": "executable",
                 "assert": {"action": "count", "selector": f"testid={tid}", "expect": int(m.group(1))},
                 "note": "Zähl-Kandidat aus Zahl + testid-Match."}
@@ -153,6 +163,9 @@ def main(argv: list[str]) -> int:
     n_exec = sum(1 for r in recs if r["kind"] == "executable")
     n_behav = sum(1 for r in recs if r["kind"] == "behavioral-manual")
 
+    print("⚗ EXPERIMENTAL: Kill-Gate (Bestätigungsquote) noch nicht gemessen "
+          "(KONZ-008, review_by 2026-08-03) — Kandidaten prüfen, nicht blind übernehmen.",
+          file=sys.stderr)
     print(f"== Assert-Inferenz ==  Spec: {spec_path.name}  Shell: {shell_path.name}")
     print(f"  testids: {len(concrete)} konkret · {len(templated)} templated (Präfixe: {sorted(templated)[:6]})")
     print(f"  Checks ohne assert: {len(recs)}  →  {n_exec} assert-Kandidat · {n_behav} behavioral-manual")

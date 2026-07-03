@@ -62,6 +62,23 @@ def test_should_still_reject_screen_that_is_neither_class():
     assert any("orphan" in e or "screens/1" in e for e in errs)
 
 
+def test_should_reject_parity_acceptance_screen_masquerading_as_flow_node():
+    """EF-2 (Retro 2026-07-03): ein Screen, der `parity_acceptance` TRÄGT, aber
+    `purpose`/`off_ramp_status` vergessen hat und nebenbei `next_screens` hat, darf
+    NICHT als Flow-Knoten durchrutschen (sonst würde seine parity_acceptance vom
+    Gate still ignoriert). Das `not: {required: [parity_acceptance]}` auf beiden
+    Flow-Branches erzwingt: wer parity_acceptance hat, MUSS Assertions-Screen sein
+    (purpose + off_ramp_status Pflicht) — sonst invalid."""
+    masquerader = {
+        "id": "sneaky", "title": "S", "personas": ["u"],
+        "next_screens": ["phase2"],   # sähe wie Flow-Knoten aus …
+        "parity_acceptance": [{"id": "s.v", "check": "visible c"}],  # … trägt aber Asserts
+        # purpose + off_ramp_status FEHLEN → Assertions-Branch scheitert auch
+    }
+    errs = gen_e2e.validate_spec(_base([_ASSERT_SCREEN, masquerader]))
+    assert any("sneaky" in e or "screens/1" in e for e in errs)
+
+
 def test_should_pass_i3_for_flow_node_without_off_ramp_status(tmp_path):
     """I3 nimmt Flow-Knoten vom off_ramp_status-Zwang aus."""
     import yaml

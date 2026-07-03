@@ -77,15 +77,17 @@ def test_should_tag_behavioral_check_manual_not_guess_assert():
     assert rec["kind"] == "behavioral-manual" and "assert" not in rec
 
 
-def test_should_infer_count_from_number_plus_testid_family():
+def test_should_tag_templated_count_behavioral_manual_not_executable():
+    """EF-3 (Retro 2026-07-03): ein templated testid (`step-${…}`) ist per exact-match
+    NICHT zählbar → KEIN toter executable-Assert. behavioral-manual + Container-Hinweis,
+    kein Selbstwiderspruch (Warnung + `executable` gleichzeitig)."""
     from iil_klickdummy import infer_asserts
     rec = infer_asserts.infer_one(
         "Alle 10 Phasen-Stepper-Einträge (step-1 … step-10) sichtbar.",
         concrete=set(), templated={"step"})
-    assert rec["kind"] == "executable"
-    assert rec["assert"]["action"] == "count" and rec["assert"]["expect"] == 10
-    assert rec["assert"]["selector"] == "testid=step"
-    assert "Container" in rec["note"]     # templated → ehrlich geflaggt
+    assert rec["kind"] == "behavioral-manual"     # NICHT executable
+    assert "assert" not in rec                     # kein funktional toter Kandidat
+    assert "Container" in rec["note"] and "step-list" in rec["note"]  # wie es executable würde
 
 
 def test_should_not_match_bar_inside_sichtbar_word_boundary():
