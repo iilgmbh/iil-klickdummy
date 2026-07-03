@@ -5,6 +5,73 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.30.0] — 2026-07-02
+
+Erstes Release seit **1.28.4** — 1.29.0 (F23-Selektor-Kontrakt) wurde nie getaggt/
+publiziert; dessen Inhalt ist in diesem Release enthalten (s. [1.29.0] unten). Kern
+dieses Release: der **klickdummy-browser-Redesign** (spec-first, ADR-002) und eine
+**Security-Serie** (S-01 XSS + gen_e2e-RCE), beide mit dem Prinzip *Spec/Daten sind
+eine Vertrauensgrenze*.
+
+### Added — klickdummy-browser Redesign (spec-first, iil-klickdummy:ADR-002)
+
+- Neuaufbau des `klickdummy-browser` strikt gegen eine abgenommene Klickdummy-Spec
+  (PR #100 UCs/Mock, PR #101 Renderer). `--pui-*`-Design-Tokens statt Hex (ADR-048/049),
+  `addEventListener`/Event-Delegation statt inline `onclick`, `data-testid` an jedem
+  interaktiven Element (ADR-040), definierte Fehlerzustände. Verhalten erhalten
+  (shell-Laden mit `?feedback=on`, Versions-Switcher read-only, Story-Walk, cross-repo).
+- `strict_selectors` als Spec-Attribut zusätzlich zum CLI-Flag `--strict-selectors`
+  (REC-1, PR #91). `role=`-Präfix-Parser mit definiertem Fehlerverhalten + Roundtrip-Tests
+  (REC-2, PR #92).
+
+### Security
+
+- **S-01 (XSS im klickdummy-browser geschlossen, PR #101):** Daten werden als
+  `<script type="application/json">`-Insel + `JSON.parse` eingebettet und via
+  `textContent`/`<template>` ins DOM gebaut (nie `innerHTML`-Concat). `registry`
+  escaped beim Einbetten jedes `</` zu `<\/` — der HTML-Parser beendet sonst *jedes*
+  `<script>` (auch `application/json`) an einem literalen `</script>`.
+- **gen_e2e Input-Injection/RCE gehärtet (PR #102):** die Spec ist eine Vertrauensgrenze.
+  `load_spec` validiert jetzt fatal gegen `screens-spec.schema.json` (exit 1 bei
+  Verstoß), *bevor* ein Wert in generierten Code fließt; zusätzlich Runtime-Escaping
+  (`_comment_safe`/`_doc_safe`/`ident`) als zweite, unabhängige Linie. Schloss den
+  Vektor „`\n` im `title` bricht aus der Kommentarzeile aus und läuft bei pytest-collect".
+- **Folge-Härtungen (PR #104):** `_doc_safe` gegen trailing `"` (Docstring-Bruch);
+  `title`-Schema-Pattern lehnt trailing `\n` symmetrisch zu `\r` ab; `login_fixture`
+  fail-closed als Python-Bezeichner; `_load_schema` gecacht.
+
+### Fixed
+
+- `is_fragile_selector` `role=`-Validierung + `load_spec` YAML-Fehlerbehandlung
+  (KONZ-007/R01/R03, PR #93).
+- `generate_uc_skeletons` liest `personas` (Schema-Plural) statt `persona` (war
+  stiller No-Op); `discover_klickdummies` nutzt Ein-Ebenen-Glob statt `rglob`
+  (verschachtelte Fixture-Specs nicht mehr als KDs) (PR #102).
+- README-Git-Fallback-URL auf korrekte Org (`iilgmbh`); `datetime.utcnow()`-Deprecation;
+  CHANGELOG-/Doku-Stale-Verweise (PR #99).
+
+### Added — KONZ-008 KD-Co-Creation-Loop (greenfield + brownfield)
+
+Macht das gen_e2e-Manifest zum objektiven Parity-Gate und schließt die Prosa→assert-Lücke
+halb-automatisch. Konzept: `docs/konzepte/KONZ-iil-klickdummy-008.md`.
+
+- **`kind`-Feld** (`parity_acceptance.kind ∈ executable | behavioral-manual | nfr-out-of-band`,
+  Default `executable`) — klassifiziert, was das Gate fordert; Verhaltens-/NFR-Checks sind
+  sichtbar getaggt statt still übersprungen (kein Schein-Grün). (PR #121)
+- **`klickdummy-parity-gate`** — Phase A rot, wenn ein `executable`-Check skipped ist ODER
+  `fragile_selectors>0`; `behavioral-manual`/`nfr-out-of-band` ausgenommen. Nutzt das
+  vorhandene Manifest, kein neues Wahrheitsfeld. (PR #121)
+- **`klickdummy-infer-asserts`** — schlägt für die einfache Check-Klasse (Präsenz/Zähl/Text)
+  aus dem testid-Inventar einen `assert`-Kandidaten vor (`--emit-diff`, nie Auto-Commit);
+  Verhaltens-Checks werden getaggt statt geraten. (PR #121)
+- **Flow-Knoten-Screen-Klasse** — `screens[].items` ist jetzt `anyOf(Assertions-Screen |
+  Flow-Knoten weiterführend/terminal)`. Ein Navigations-Graph-Knoten (`next_screens`/
+  `back_screen`, ohne `parity_acceptance`) muss keine Assertions-Pflichtfelder tragen.
+  **Behebt einen Regressions-Blocker:** die fatale Spec-Validierung hätte sonst bestehende
+  Multi-Screen-Flow-KDs abgelehnt. `check_i3` nimmt Flow-Knoten entsprechend aus. (PR #122)
+- **`from_django`** parst alle URL-Module (`html_urls.py`, `*_urls.py`, `urls/`-Package)
+  statt nur `urls.py` — Brownfield-Capture verfehlt keine Screens mehr (Closes #82, PR #120).
+
 ## [1.29.0] — 2026-06-30
 
 ### Added — F23 Selektor-Kontrakt: semantischer Fallback + Off-Ramp-Gate (KONZ-007)
