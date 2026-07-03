@@ -50,6 +50,28 @@ eine Vertrauensgrenze*.
 - README-Git-Fallback-URL auf korrekte Org (`iilgmbh`); `datetime.utcnow()`-Deprecation;
   CHANGELOG-/Doku-Stale-Verweise (PR #99).
 
+### Added — KONZ-008 KD-Co-Creation-Loop (greenfield + brownfield)
+
+Macht das gen_e2e-Manifest zum objektiven Parity-Gate und schließt die Prosa→assert-Lücke
+halb-automatisch. Konzept: `docs/konzepte/KONZ-iil-klickdummy-008.md`.
+
+- **`kind`-Feld** (`parity_acceptance.kind ∈ executable | behavioral-manual | nfr-out-of-band`,
+  Default `executable`) — klassifiziert, was das Gate fordert; Verhaltens-/NFR-Checks sind
+  sichtbar getaggt statt still übersprungen (kein Schein-Grün). (PR #121)
+- **`klickdummy-parity-gate`** — Phase A rot, wenn ein `executable`-Check skipped ist ODER
+  `fragile_selectors>0`; `behavioral-manual`/`nfr-out-of-band` ausgenommen. Nutzt das
+  vorhandene Manifest, kein neues Wahrheitsfeld. (PR #121)
+- **`klickdummy-infer-asserts`** — schlägt für die einfache Check-Klasse (Präsenz/Zähl/Text)
+  aus dem testid-Inventar einen `assert`-Kandidaten vor (`--emit-diff`, nie Auto-Commit);
+  Verhaltens-Checks werden getaggt statt geraten. (PR #121)
+- **Flow-Knoten-Screen-Klasse** — `screens[].items` ist jetzt `anyOf(Assertions-Screen |
+  Flow-Knoten weiterführend/terminal)`. Ein Navigations-Graph-Knoten (`next_screens`/
+  `back_screen`, ohne `parity_acceptance`) muss keine Assertions-Pflichtfelder tragen.
+  **Behebt einen Regressions-Blocker:** die fatale Spec-Validierung hätte sonst bestehende
+  Multi-Screen-Flow-KDs abgelehnt. `check_i3` nimmt Flow-Knoten entsprechend aus. (PR #122)
+- **`from_django`** parst alle URL-Module (`html_urls.py`, `*_urls.py`, `urls/`-Package)
+  statt nur `urls.py` — Brownfield-Capture verfehlt keine Screens mehr (Closes #82, PR #120).
+
 ## [1.29.0] — 2026-06-30
 
 ### Added — F23 Selektor-Kontrakt: semantischer Fallback + Off-Ramp-Gate (KONZ-007)
