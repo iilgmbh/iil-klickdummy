@@ -29,8 +29,20 @@ iil-klickdummy verlagert (cross-cutting Tooling, vgl. meiki:ADR-035).
 from __future__ import annotations
 
 import argparse
+import string
 import sys
 from pathlib import Path
+
+# S-03 (Issue #106): Screen-`id` aus fremden Repo-Specs geht in Output-Dateinamen —
+# auf eine Datei-sichere Zeichenklasse whitelisten, sonst schreibt `id: "../../x"`
+# aus `genesor_out` heraus (Path-Traversal). Der genesor-Scan validiert die Spec
+# NICHT gegen das id-Schema-Pattern, deshalb ist die Sanitisierung hier Pflicht.
+_FILE_SAFE = set(string.ascii_letters + string.digits + "_-")
+
+
+def _safe_seg(value) -> str:
+    """Ein Dateinamen-Segment: nur [A-Za-z0-9_-], Rest → '_'; leer → 'x'."""
+    return "".join(c if c in _FILE_SAFE else "_" for c in str(value or "")) or "x"
 
 
 
@@ -463,13 +475,17 @@ def main() -> int:
                 if not brief_md:
                     continue
                 impl_briefs_dir.mkdir(parents=True, exist_ok=True)
-                out_file = impl_briefs_dir / f"{rec['repo']}-{rec['kd']}-{sid}.md"
+                # S-03: sid/repo/kd file-sicher machen (Path-Traversal-Schutz).
+                # sid bleibt für den Render (build_impl_brief*) unverändert — dort
+                # wird es via html.escape ausgegeben (S-02-Pfad).
+                fseg = f"{_safe_seg(rec['repo'])}-{_safe_seg(rec['kd'])}-{_safe_seg(sid)}"
+                out_file = impl_briefs_dir / f"{fseg}.md"
                 out_file.write_text(brief_md, encoding="utf-8")
                 # HTML-Render daneben (CD aus doc-profile)
                 profile_ib = read_doc_profile(_cfg.repos_root / rec["repo"])
                 style_ib = _DOMAIN_STYLES.get(profile_ib, _DOMAIN_STYLES["default"])
                 html_out_ib = build_impl_brief_html(brief_md, rec["repo"], rec["kd"], sid, profile_ib, style_ib)
-                (_cfg.genesor_out / f"impl-brief-{rec['repo']}-{rec['kd']}-{sid}.html").write_text(html_out_ib, encoding="utf-8")
+                (_cfg.genesor_out / f"impl-brief-{fseg}.html").write_text(html_out_ib, encoding="utf-8")
                 n_briefs += 1
         if n_briefs:
             print(f"✓ {n_briefs} Implementation-Brief(s) in {impl_briefs_dir}/")

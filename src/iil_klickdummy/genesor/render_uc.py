@@ -468,7 +468,13 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
         edef = entities_all.get(ename)
         if not isinstance(edef, dict):
             return f"### {ename}\n\n*Entity nicht im Spec deklariert.*\n"
-        desc = edef.get("description", "")
+        # S-02 (Issue #105): `description` ist Spec-Freitext und fließt via
+        # `markdown.markdown(...)` (build_impl_brief_html) roh ins HTML — Python-
+        # Markdown lässt eingebettetes Raw-HTML durch (kein Safe-Mode). Ein
+        # `<script>` in der description wäre sonst aktiv. html.escape neutralisiert
+        # das (beabsichtigtes Markdown in einer Entity-Description ist nicht erwartet;
+        # der genesor-Pfad validiert die Spec nicht, daher hier escapen).
+        desc = html.escape(str(edef.get("description", "")))
         typed = edef.get("fields_typed")
         treat = edef.get("consumers_must_treat_as", "—")
         out = [f"### {ename}\n", f"**Description:** {desc}", f"**Consumer-Vertrag:** `{treat}`\n"]
