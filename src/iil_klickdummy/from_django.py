@@ -57,14 +57,31 @@ def _is_action(name: str, view: str) -> bool:
     return bool(toks & _ACTION_VERBS)
 
 
-def parse_urls(app_dir: pathlib.Path) -> tuple[str, list[dict]]:
-    """(app_name, [{name, route, view, action}]) aus urls.py (zeilenweise robust)."""
-    urls = app_dir / "urls.py"
-    if not urls.exists():
-        return (app_dir.name, [])
-    text = urls.read_text(encoding="utf-8", errors="ignore")
-    m = re.search(r"""app_name\s*=\s*['"]([^'"]+)['"]""", text)
-    app_name = m.group(1) if m else app_dir.name
+def _url_modules(app_dir: pathlib.Path) -> list[pathlib.Path]:
+    """Alle URL-Module einer App — nicht nur `urls.py` (Issue #82).
+
+    Django-Apps splitten Routen oft über mehrere Module (`html_urls.py`,
+    `api_urls.py`) und binden sie per `include()` in `urls.py`. `urls.py` allein
+    zu parsen verfehlt die dort nicht direkt deklarierten Screens. Wir sammeln
+    daher jedes `*urls*.py` der App-Ebene plus die Dateien eines `urls/`-Package.
+    `urls.py` steht zuerst (liefert bevorzugt `app_name`)."""
+    mods: list[pathlib.Path] = []
+    primary = app_dir / "urls.py"
+    if primary.exists():
+        mods.append(primary)
+    for p in sorted(app_dir.glob("*urls*.py")):
+        if p != primary and p.is_file():
+            mods.append(p)
+    pkg = app_dir / "urls"
+    if pkg.is_dir():
+        for p in sorted(pkg.glob("*.py")):
+            if p.name != "__init__.py" and p.is_file():
+                mods.append(p)
+    return mods
+
+
+def _parse_url_module(text: str) -> list[dict]:
+    """Route-Einträge aus dem Text EINES URL-Moduls (zeilenweise robust)."""
     entries: list[dict] = []
     # path(...) kann mehrzeilig sein → pro logischer path(-Stelle den Folgetext bis ')' scannen
     for pm in re.finditer(r"path\(", text):
@@ -83,7 +100,27 @@ def parse_urls(app_dir: pathlib.Path) -> tuple[str, list[dict]]:
             "view": view,
             "action": _is_action(name, view),
         })
-    # Dedup nach name (erste Definition gewinnt)
+    return entries
+
+
+def parse_urls(app_dir: pathlib.Path) -> tuple[str, list[dict]]:
+    """(app_name, [{name, route, view, action}]) aus ALLEN URL-Modulen der App.
+
+    Fix #82: früher wurde nur `urls.py` gelesen — Screens in separaten Modulen
+    (`html_urls.py`) fehlten im Skelett. Jetzt über `_url_modules` gesammelt.
+    """
+    mods = _url_modules(app_dir)
+    if not mods:
+        return (app_dir.name, [])
+    app_name = app_dir.name
+    entries: list[dict] = []
+    for mod in mods:
+        text = mod.read_text(encoding="utf-8", errors="ignore")
+        m = re.search(r"""app_name\s*=\s*['"]([^'"]+)['"]""", text)
+        if m and app_name == app_dir.name:   # erste app_name-Deklaration gewinnt
+            app_name = m.group(1)
+        entries.extend(_parse_url_module(text))
+    # Dedup nach name (erste Definition gewinnt — urls.py vor *_urls.py)
     seen, uniq = set(), []
     for e in entries:
         if e["name"] not in seen:
@@ -195,7 +232,12 @@ def main(argv: list[str] | None = None) -> int:
     repo_name = repo_root.name
     # App-Verzeichnis finden: apps/<app> oder <app> direkt
     candidates = [repo_root / "apps" / args.app, repo_root / args.app, pathlib.Path(args.app)]
-    app_dir = next((c for c in candidates if (c / "urls.py").exists() or (c / "models.py").exists()), None)
+    # #82: eine App kann Routen ausschließlich in `*_urls.py` führen (kein urls.py).
+    app_dir = next(
+        (c for c in candidates
+         if (c / "models.py").exists() or _url_modules(c)),
+        None,
+    )
     if not app_dir:
         print(f"✗ App nicht gefunden (urls.py/models.py): {args.app}", file=sys.stderr)
         return 2

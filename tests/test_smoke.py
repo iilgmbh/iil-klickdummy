@@ -905,3 +905,54 @@ def test_v122_examples_short_row_padded_by_synth():
     html = lineage._synth_entity_table("e", ent, n_rows=3)
     assert ">x<" in html, "vorhandener Wert übernommen"
     assert html.count("<td>") == 3, "fehlende Spalten per Synth aufgefüllt"
+
+
+def test_should_parse_urls_from_separate_url_modules(tmp_path):
+    """#82: Screens in `html_urls.py` (neben `urls.py`) dürfen nicht verfehlt werden.
+    Vor dem Fix las parse_urls nur `urls.py` → HTML-Screens in separaten Modulen fehlten."""
+    from iil_klickdummy import from_django
+    app = tmp_path / "ex"
+    app.mkdir()
+    (app / "urls.py").write_text(
+        'app_name = "ex"\n'
+        'urlpatterns = [\n'
+        '  path("api/list/", views.ApiList.as_view(), name="api-list"),\n'
+        '  path("", include("ex.html_urls")),\n'
+        ']\n', encoding="utf-8")
+    (app / "html_urls.py").write_text(
+        'urlpatterns = [\n'
+        '  path("concepts/", views.ConceptList.as_view(), name="concept-list"),\n'
+        '  path("concepts/new/", views.ConceptCreate.as_view(), name="concept-new"),\n'
+        ']\n', encoding="utf-8")
+    name, entries = from_django.parse_urls(app)
+    names = {e["name"] for e in entries}
+    assert name == "ex"
+    # Screens aus BEIDEN Modulen erfasst (vorher fehlten concept-*)
+    assert {"api-list", "concept-list", "concept-new"} <= names
+
+
+def test_should_discover_app_with_only_separate_url_module(tmp_path):
+    """#82: eine App, die Routen NUR in `html_urls.py` führt (kein `urls.py`),
+    wird trotzdem als App gefunden und geparst."""
+    from iil_klickdummy import from_django
+    app = tmp_path / "onlyhtml"
+    app.mkdir()
+    (app / "html_urls.py").write_text(
+        'urlpatterns = [path("start/", views.Start.as_view(), name="start")]\n',
+        encoding="utf-8")
+    assert from_django._url_modules(app)                # gefunden
+    _, entries = from_django.parse_urls(app)
+    assert {e["name"] for e in entries} == {"start"}
+
+
+def test_should_parse_urls_from_urls_package(tmp_path):
+    """#82: `urls/`-Package (statt urls.py) mit mehreren Modulen wird gesammelt."""
+    from iil_klickdummy import from_django
+    app = tmp_path / "pkgapp"
+    (app / "urls").mkdir(parents=True)
+    (app / "urls" / "__init__.py").write_text("", encoding="utf-8")
+    (app / "urls" / "pages.py").write_text(
+        'urlpatterns = [path("dash/", views.Dash.as_view(), name="dash")]\n',
+        encoding="utf-8")
+    _, entries = from_django.parse_urls(app)
+    assert {e["name"] for e in entries} == {"dash"}
