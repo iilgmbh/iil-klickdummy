@@ -139,6 +139,12 @@
               "properties": {
                 "id":    { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*$" },
                 "check": { "type": "string", "minLength": 8 },
+                "kind": {
+                  "type": "string",
+                  "enum": ["executable", "behavioral-manual", "nfr-out-of-band"],
+                  "default": "executable",
+                  "description": "Klassifiziert, was das Parity-Gate (KONZ-008 C) fordert. executable (Default): MUSS in Phase A einen ausführbaren assert haben, sonst Gate rot — verhindert erschlichenes Schein-Gruen. behavioral-manual: State-/Interaktions-Aussage, die das assert-DSL (heute visible/text/clickable/url/count) NICHT ausdruecken kann (z.B. Gate blockiert bis Vorbedingung) — vom Gate ausgenommen, aber SICHTBAR getaggt, nicht still uebersprungen. nfr-out-of-band: NFR/Security/A11y/Performance, separat gefuehrt (Requirements-Bridge-Asymmetrie). B (Roadmap): ein State-DSL schrumpft die behavioral-manual-Menge."
+                },
                 "assert": {
                   "type": "object",
                   "description": "Optional, ausführbare Form (platform:ADR-211 §Parity-Off-Ramp). `klickdummy-gen-e2e` macht hieraus einen Playwright-Testfall, der Klickdummy UND echte App validiert. Fehlt der Block, bleibt der Check als skip sichtbar (kein vacuous pass).",
