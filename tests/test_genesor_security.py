@@ -56,7 +56,11 @@ def test_build_impl_brief_escapes_description_freetext():
 
 def test_impl_brief_html_has_no_raw_script_from_description():
     """End-to-End: description → build_impl_brief → build_impl_brief_html (markdown)
-    darf kein aktives <script> im HTML erzeugen."""
+    darf kein aktives <script> im HTML erzeugen. `markdown` ist Paket-Runtime-Dep,
+    aber der CI-Test-Job installiert es nicht separat → importorskip (wie T-01 bei
+    playwright). Der Escape selbst ist markdown-frei via dem Unit-Test oben belegt."""
+    import pytest
+    pytest.importorskip("markdown")
     from iil_klickdummy.genesor.config import _DOMAIN_STYLES
     from iil_klickdummy.genesor.render_uc import build_impl_brief, build_impl_brief_html
     md = build_impl_brief(_rec("<script>alert(document.domain)</script>"), "s1")
