@@ -5,6 +5,18 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.30.1] — 2026-07-03
+
+### Added — KONZ-008 M3: Zwei-Kanal-Input (Struktur-Kanal)
+
+- **`klickdummy-mermaid-readback`** — liest den vom Menschen im GitHub-Web-Editor
+  editierten Mermaid-Screen-Flow zurück (`-->` = `next_screens`, `-.zurück.->` =
+  `back_screen`, Verkettung `A --> B --> C`) und **difft** gegen die Spec. Read-only:
+  schlägt die Delta vor, schreibt nie die Spec (Spec bleibt SoR; kein mmd→spec-Parser).
+- **`docs/reference/cookbook-cocreation.md`** — die Zwei-Kanal-Konvention: Mermaid =
+  Struktur (GitHub-Roundtrip), Feedback-Widget = Inhalt (GitHub-Issue), Spec = Wahrheit.
+  Austausch über GitHub, nicht iil.pet (Cloudflare-Read-back blockiert).
+
 ## [1.30.0] — 2026-07-02
 
 Erstes Release seit **1.28.4** — 1.29.0 (F23-Selektor-Kontrakt) wurde nie getaggt/
