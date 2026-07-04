@@ -17,6 +17,7 @@ Aufruf:
 
 Exit: 0 ok, 1 Schema-Fehler, 2 Setup-Fehler.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -33,6 +34,7 @@ except ImportError:
 
 # -- Helpers ------------------------------------------------------------------
 
+
 def slug(s: str) -> str:
     return re.sub(r"[^a-z0-9-]+", "-", s.lower()).strip("-")
 
@@ -44,7 +46,9 @@ def load_spec(path: pathlib.Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def write(out_root: pathlib.Path, rel: str, content: str, dry_run: bool = False) -> None:
+def write(
+    out_root: pathlib.Path, rel: str, content: str, dry_run: bool = False
+) -> None:
     if dry_run:
         print(f"  ○ {rel} (dry-run, nicht geschrieben)")
         return
@@ -55,6 +59,7 @@ def write(out_root: pathlib.Path, rel: str, content: str, dry_run: bool = False)
 
 
 # -- Generators ---------------------------------------------------------------
+
 
 def gen_uc(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     """1 UseCase pro Screen — als RUP/UML-Skelett.
@@ -73,10 +78,14 @@ def gen_uc(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
         for i, sc in enumerate(screens, start=1)
     }
     if uc_dir.exists():
-        stale_files = sorted(p for p in uc_dir.glob("UC-*.md") if p.name not in expected)
+        stale_files = sorted(
+            p for p in uc_dir.glob("UC-*.md") if p.name not in expected
+        )
         if stale_files:
             verb = "würde gelöscht (dry-run)" if dry_run else "gelöscht"
-            print(f"  ⚠ {len(stale_files)} UC-Datei(en) nicht mehr im Screen-Set — {verb}:")
+            print(
+                f"  ⚠ {len(stale_files)} UC-Datei(en) nicht mehr im Screen-Set — {verb}:"
+            )
             for p in stale_files:
                 print(f"      - {p.relative_to(out)}")
                 if not dry_run:
@@ -114,7 +123,7 @@ status: draft   # draft | reviewed | approved
 - _(weitere Vorbedingungen ergänzen — z. B. vorheriger Screen)_
 
 ## Hauptablauf
-{chr(10).join(f"{j+1}. {p.get('check','')}" for j, p in enumerate(pa)) or "1. _(noch nicht spezifiziert)_"}
+{chr(10).join(f"{j + 1}. {p.get('check', '')}" for j, p in enumerate(pa)) or "1. _(noch nicht spezifiziert)_"}
 
 ## Nachbedingung
 - _(z. B. Folge-Screen erreicht, Zustand geändert, Audit-Eintrag erzeugt)_
@@ -123,13 +132,13 @@ status: draft   # draft | reviewed | approved
 {chr(10).join(f"- {t}" for t in targets) or "- _(keine externen Systeme deklariert)_"}
 
 ## Datenfelder
-{chr(10).join(f"- `{d.get('name','?')}` ({d.get('type','?')}) — Quelle: {d.get('source','?')}" for d in datafields) or "- _(keine Datenfelder im Spec deklariert)_"}
+{chr(10).join(f"- `{d.get('name', '?')}` ({d.get('type', '?')}) — Quelle: {d.get('source', '?')}" for d in datafields) or "- _(keine Datenfelder im Spec deklariert)_"}
 
 ## Konzept-Bezug
 {chr(10).join(f"- {k}" for k in konzept) or "- _(kein Konzept-Bezug)_"}
 
 ## Abgeleitete FRs
-{chr(10).join(f"- FR-{slug(sid)}-{j+1:02d}: {p.get('check','')}" for j, p in enumerate(pa)) or "- _(keine)_"}
+{chr(10).join(f"- FR-{slug(sid)}-{j + 1:02d}: {p.get('check', '')}" for j, p in enumerate(pa)) or "- _(keine)_"}
 """
         write(out, f"requirements/use-cases/UC-{i:02d}-{slug(sid)}.md", body, dry_run)
 
@@ -140,18 +149,18 @@ def gen_fr(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
         sid = sc.get("id", "?")
         for j, p in enumerate(sc.get("parity_acceptance", []) or [], start=1):
             rows.append(
-                f"| FR-{slug(sid)}-{j:02d} | {sid} | {p.get('id','')} | {p.get('check','')} |"
+                f"| FR-{slug(sid)}-{j:02d} | {sid} | {p.get('id', '')} | {p.get('check', '')} |"
             )
     body = f"""---
 type: functional-requirements
-source_spec: {spec.get('spec_id','spec')}
+source_spec: {spec.get("spec_id", "spec")}
 extracted_at: {date.today().isoformat()}
 status: draft
 ---
 
 # Funktionale Requirements (FR)
 
-> Aus Klickdummy-Spec `{spec.get('spec_id','?')}` v{spec.get('spec_version','?')} abgeleitet.
+> Aus Klickdummy-Spec `{spec.get("spec_id", "?")}` v{spec.get("spec_version", "?")} abgeleitet.
 > Jede Zeile entspricht einem `parity_acceptance`-Eintrag eines Screens (= platform:ADR-211 I1-Acceptance).
 > Drift-Check: Re-Extract gegen committeten Stand → `git diff`.
 
@@ -172,38 +181,107 @@ def gen_nfr(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None:
     # Security / Prod-Sicherheit (I2)
     if cls == "mock":
         if ev.get("no_backend"):
-            nfrs.append(("NFR-Sec-01", "Security", "Klickdummy darf keinen echten Backend-Code-Pfad enthalten (`class: mock`, `class_evidence.no_backend: true`)."))
+            nfrs.append(
+                (
+                    "NFR-Sec-01",
+                    "Security",
+                    "Klickdummy darf keinen echten Backend-Code-Pfad enthalten (`class: mock`, `class_evidence.no_backend: true`).",
+                )
+            )
         if ev.get("no_demo_param"):
-            nfrs.append(("NFR-Sec-02", "Security", "Kein `?demo=`-Render in der echten App (`class_evidence.no_demo_param: true`)."))
+            nfrs.append(
+                (
+                    "NFR-Sec-02",
+                    "Security",
+                    "Kein `?demo=`-Render in der echten App (`class_evidence.no_demo_param: true`).",
+                )
+            )
         if ev.get("target_mocks_visible"):
-            nfrs.append(("NFR-Sec-03", "Security", "Alle Systemgrenzen müssen als anklickbare Target-Mocks sichtbar sein (kein toter Link)."))
+            nfrs.append(
+                (
+                    "NFR-Sec-03",
+                    "Security",
+                    "Alle Systemgrenzen müssen als anklickbare Target-Mocks sichtbar sein (kein toter Link).",
+                )
+            )
     elif cls == "spec-demo":
         pg = ev.get("prod_guard", {}) or {}
-        nfrs.append(("NFR-Sec-01", "Security", f"`?demo=`-Render ist in Produktion nicht erreichbar (Guard: {pg.get('setting','?')} + DEBUG/TESTING; Response: {pg.get('response_in_prod','?')})."))
-        nfrs.append(("NFR-Sec-02", "Security", "Guard ist durch automatisierten Test bewiesen (Demo-Tour-Tests mit `KLICKDUMMY_TOUR_ENABLED=False`)."))
+        nfrs.append(
+            (
+                "NFR-Sec-01",
+                "Security",
+                f"`?demo=`-Render ist in Produktion nicht erreichbar (Guard: {pg.get('setting', '?')} + DEBUG/TESTING; Response: {pg.get('response_in_prod', '?')}).",
+            )
+        )
+        nfrs.append(
+            (
+                "NFR-Sec-02",
+                "Security",
+                "Guard ist durch automatisierten Test bewiesen (Demo-Tour-Tests mit `KLICKDUMMY_TOUR_ENABLED=False`).",
+            )
+        )
     elif cls == "stub-demo":
-        nfrs.append(("NFR-Sec-01", "Security", "Dedizierte Demo-Route ist in Produktion nicht erreichbar (404)."))
+        nfrs.append(
+            (
+                "NFR-Sec-01",
+                "Security",
+                "Dedizierte Demo-Route ist in Produktion nicht erreichbar (404).",
+            )
+        )
     elif cls == "story":
-        nfrs.append(("NFR-Sec-01", "Security", "Component-Catalog (Storybook o. ä.) ist in Produktion nicht erreichbar (404)."))
+        nfrs.append(
+            (
+                "NFR-Sec-01",
+                "Security",
+                "Component-Catalog (Storybook o. ä.) ist in Produktion nicht erreichbar (404).",
+            )
+        )
 
     # Lifecycle (I3)
     if off.get("doppelquell_grenze"):
-        nfrs.append(("NFR-Lifecycle-01", "Lifecycle", f"Doppelquellen-Pflege endet bei `{off['doppelquell_grenze']}`."))
+        nfrs.append(
+            (
+                "NFR-Lifecycle-01",
+                "Lifecycle",
+                f"Doppelquellen-Pflege endet bei `{off['doppelquell_grenze']}`.",
+            )
+        )
     if off.get("ttl_days"):
-        nfrs.append(("NFR-Lifecycle-02", "Lifecycle", f"Off-Ramp-TTL: max. {off['ttl_days']} Tage nach Parity-grün."))
+        nfrs.append(
+            (
+                "NFR-Lifecycle-02",
+                "Lifecycle",
+                f"Off-Ramp-TTL: max. {off['ttl_days']} Tage nach Parity-grün.",
+            )
+        )
 
     # Integration (Systemgrenzen)
     for i, s in enumerate(ev.get("systemgrenzen", []) or [], start=1):
-        nfrs.append((f"NFR-Integ-{i:02d}", "Integration", f"Schnittstelle: `{s}` (generisch, mandantenkonfigurierbar)."))
+        nfrs.append(
+            (
+                f"NFR-Integ-{i:02d}",
+                "Integration",
+                f"Schnittstelle: `{s}` (generisch, mandantenkonfigurierbar).",
+            )
+        )
 
     # Namensraum (I4)
     if adr.get("conforms_to"):
-        nfrs.append(("NFR-Gov-01", "Governance", f"ADR-Konformität: `{adr['conforms_to']}` (Klickdummy-Cross-Repo-Rahmen)."))
+        nfrs.append(
+            (
+                "NFR-Gov-01",
+                "Governance",
+                f"ADR-Konformität: `{adr['conforms_to']}` (Klickdummy-Cross-Repo-Rahmen).",
+            )
+        )
 
-    rows = "\n".join(f"| {n[0]} | {n[1]} | {n[2]} |" for n in nfrs) or "| — | — | _(keine NFRs ableitbar)_ |"
+    rows = (
+        "\n".join(f"| {n[0]} | {n[1]} | {n[2]} |" for n in nfrs)
+        or "| — | — | _(keine NFRs ableitbar)_ |"
+    )
     body = f"""---
 type: non-functional-requirements
-source_spec: {spec.get('spec_id','spec')}
+source_spec: {spec.get("spec_id", "spec")}
 extracted_at: {date.today().isoformat()}
 status: draft
 ---
@@ -240,7 +318,7 @@ def gen_schnittstellen(spec: dict, out: pathlib.Path, dry_run: bool = False) -> 
             mocks.add(t)
     body = f"""---
 type: interfaces
-source_spec: {spec.get('spec_id','spec')}
+source_spec: {spec.get("spec_id", "spec")}
 extracted_at: {date.today().isoformat()}
 status: draft
 ---
@@ -277,7 +355,7 @@ def gen_lastenheft(spec: dict, out: pathlib.Path, dry_run: bool = False) -> None
     main_goals = [sc.get("title", "?") for sc in spec.get("screens", []) or []]
     body = f"""---
 type: lastenheft
-source_spec: {spec.get('spec_id','spec')}
+source_spec: {spec.get("spec_id", "spec")}
 extracted_at: {date.today().isoformat()}
 status: skeleton
 audience: auftraggeber
@@ -298,7 +376,7 @@ _(Manuell: Warum dieses Vorhaben? Welcher Schmerz wird beseitigt? Welche Strateg
 
 ## 3. Hauptziele (aus Screens abgeleitet)
 
-{chr(10).join(f"{i+1}. {g}" for i, g in enumerate(main_goals)) or "1. _(keine)_"}
+{chr(10).join(f"{i + 1}. {g}" for i, g in enumerate(main_goals)) or "1. _(keine)_"}
 
 ## 4. Funktionale Anforderungen (Übersicht)
 
@@ -323,9 +401,9 @@ _(Manuell)_
 
 ## 9. Bezug
 
-- Spec: `{spec.get('spec_id','?')}` v{spec.get('spec_version','?')}
+- Spec: `{spec.get("spec_id", "?")}` v{spec.get("spec_version", "?")}
 - Klickdummy-Pfad: _(Repo-Pfad der Klickdummy-Implementierung)_
-- ADR-Verankerung: {spec.get('adr',{}).get('local','?')} (`conforms_to: {spec.get('adr',{}).get('conforms_to','?')}`)
+- ADR-Verankerung: {spec.get("adr", {}).get("local", "?")} (`conforms_to: {spec.get("adr", {}).get("conforms_to", "?")}`)
 """
     write(out, "requirements/lastenheft-skeleton.md", body, dry_run)
 
@@ -334,7 +412,7 @@ def gen_pflichtenheft(spec: dict, out: pathlib.Path, dry_run: bool = False) -> N
     title = spec.get("title", spec.get("spec_id", "Klickdummy"))
     body = f"""---
 type: pflichtenheft
-source_spec: {spec.get('spec_id','spec')}
+source_spec: {spec.get("spec_id", "spec")}
 extracted_at: {date.today().isoformat()}
 status: skeleton
 audience: auftragnehmer
@@ -353,8 +431,8 @@ Siehe [`lastenheft-skeleton.md`](lastenheft-skeleton.md). Diese Datei konkretisi
 
 _(Manuell: Container-/Component-Diagramm; Ports & Adapter; Datenflüsse.)_
 
-Klickdummy-Klasse: `{spec.get('class','?')}` (platform:ADR-211 I2)
-Off-Ramp-Strategie: `{spec.get('off_ramp',{}).get('doppelquell_grenze','?')}` (TTL {spec.get('off_ramp',{}).get('ttl_days','?')} d)
+Klickdummy-Klasse: `{spec.get("class", "?")}` (platform:ADR-211 I2)
+Off-Ramp-Strategie: `{spec.get("off_ramp", {}).get("doppelquell_grenze", "?")}` (TTL {spec.get("off_ramp", {}).get("ttl_days", "?")} d)
 
 ## 3. UseCases (Verzeichnis)
 
@@ -384,15 +462,16 @@ Siehe [`nfr.md`](nfr.md). Mapping je NFR-ID → technische Maßnahme.
 
 ## 8. Bezug
 
-- Spec: `{spec.get('spec_id','?')}` v{spec.get('spec_version','?')}
-- ADR (lokal): {spec.get('adr',{}).get('local','?')}
-- ADR (Rahmen): {spec.get('adr',{}).get('conforms_to','?')}
-- Schwester-Implementierungen: {', '.join(spec.get('adr',{}).get('sister_of',[]) or []) or '(keine)'}
+- Spec: `{spec.get("spec_id", "?")}` v{spec.get("spec_version", "?")}
+- ADR (lokal): {spec.get("adr", {}).get("local", "?")}
+- ADR (Rahmen): {spec.get("adr", {}).get("conforms_to", "?")}
+- Schwester-Implementierungen: {", ".join(spec.get("adr", {}).get("sister_of", []) or []) or "(keine)"}
 """
     write(out, "requirements/pflichtenheft-skeleton.md", body, dry_run)
 
 
 # -- Main ---------------------------------------------------------------------
+
 
 def main(argv: list[str]) -> int:
     flags = [a for a in argv if a.startswith("--")]
@@ -422,7 +501,9 @@ def main(argv: list[str]) -> int:
         print("  Dry-Run: nichts geschrieben, nichts gelöscht.")
     else:
         print("  Hinweis: alle generierten Dateien tragen `status: draft|skeleton` —")
-        print("  manuell editieren, dann committen. Drift gegen Spec via Re-Extract + git diff.")
+        print(
+            "  manuell editieren, dann committen. Drift gegen Spec via Re-Extract + git diff."
+        )
     return 0
 
 
@@ -433,4 +514,5 @@ if __name__ == "__main__":
 def main_cli() -> int:
     """Console-Script entry (pyproject.toml [project.scripts])."""
     import sys
+
     return main(sys.argv[1:])

@@ -14,6 +14,7 @@ Aufruf-Pfade:
 
 Pro platform:ADR-211 Rev 14 §Browser. Cross-Repo-Modus folgt in v1.2.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,23 +35,23 @@ except ImportError:
 @dataclass
 class KlickdummyMeta:
     name: str
-    path: str                  # relative Pfad zur Spec
-    shell_path: str | None     # relative Pfad zur shell.html (oder None)
+    path: str  # relative Pfad zur Spec
+    shell_path: str | None  # relative Pfad zur shell.html (oder None)
     spec_id: str
     spec_version: str
     klickdummy_class: str
     title: str
     adr_local: str | None
     sister_of: list[str] = field(default_factory=list)
-    status: str = "active"     # aus ADR-Frontmatter, falls erreichbar
+    status: str = "active"  # aus ADR-Frontmatter, falls erreichbar
     sunset_after: str | None = None
 
 
 @dataclass
 class VersionInfo:
-    spec_version: str          # aus Spec-File auf dem Commit
+    spec_version: str  # aus Spec-File auf dem Commit
     commit_sha: str
-    commit_date: str           # ISO
+    commit_date: str  # ISO
 
 
 def _load_spec(path: pathlib.Path) -> dict:
@@ -76,7 +77,7 @@ def discover_klickdummies(repo_root: pathlib.Path) -> list[KlickdummyMeta]:
             # eigenständige KDs und verschmutzte die Registry (B-5, analog
             # scan.py `glob("klickdummy/*/screens-spec.yaml")`).
             candidates.extend(d.glob("*/screens-spec.yaml"))
-            candidates.extend(d.glob("*/spec.yaml"))   # alt: writing-hub-Variante
+            candidates.extend(d.glob("*/spec.yaml"))  # alt: writing-hub-Variante
     seen: set[pathlib.Path] = set()
     for spec_path in candidates:
         if spec_path in seen:
@@ -91,24 +92,29 @@ def discover_klickdummies(repo_root: pathlib.Path) -> list[KlickdummyMeta]:
         shell_candidate = spec_path.parent / "shell.html"
         shell_rel = (
             str(shell_candidate.relative_to(repo_root))
-            if shell_candidate.exists() else None
+            if shell_candidate.exists()
+            else None
         )
         adr = spec.get("adr", {}) or {}
-        out.append(KlickdummyMeta(
-            name=name,
-            path=str(rel),
-            shell_path=shell_rel,
-            spec_id=spec.get("spec_id", "?"),
-            spec_version=str(spec.get("spec_version", "0.0")),
-            klickdummy_class=spec.get("class", spec.get("klickdummy_class", "?")),
-            title=spec.get("title", name),
-            adr_local=adr.get("local"),
-            sister_of=adr.get("sister_of", []) or [],
-        ))
+        out.append(
+            KlickdummyMeta(
+                name=name,
+                path=str(rel),
+                shell_path=shell_rel,
+                spec_id=spec.get("spec_id", "?"),
+                spec_version=str(spec.get("spec_version", "0.0")),
+                klickdummy_class=spec.get("class", spec.get("klickdummy_class", "?")),
+                title=spec.get("title", name),
+                adr_local=adr.get("local"),
+                sister_of=adr.get("sister_of", []) or [],
+            )
+        )
     return sorted(out, key=lambda k: k.name)
 
 
-def discover_versions(spec_path: pathlib.Path, repo_root: pathlib.Path) -> list[VersionInfo]:
+def discover_versions(
+    spec_path: pathlib.Path, repo_root: pathlib.Path
+) -> list[VersionInfo]:
     """Liest Git-History der Spec-Datei und extrahiert spec_version pro Commit.
 
     Nur Commits, die spec_version GEÄNDERT haben, kommen in die Liste.
@@ -120,7 +126,9 @@ def discover_versions(spec_path: pathlib.Path, repo_root: pathlib.Path) -> list[
         rel = spec_path.relative_to(repo_root)
         result = subprocess.run(
             ["git", "-C", str(repo_root), "log", "--pretty=%H|%cI", "--", str(rel)],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
     except (OSError, subprocess.SubprocessError):
         return []
@@ -136,7 +144,9 @@ def discover_versions(spec_path: pathlib.Path, repo_root: pathlib.Path) -> list[
         try:
             blob = subprocess.run(
                 ["git", "-C", str(repo_root), "show", f"{sha}:{rel}"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if blob.returncode != 0:
                 continue
@@ -145,7 +155,9 @@ def discover_versions(spec_path: pathlib.Path, repo_root: pathlib.Path) -> list[
             continue
         v = str(data.get("spec_version", ""))
         if v and v not in seen_versions:
-            versions.append(VersionInfo(spec_version=v, commit_sha=sha, commit_date=date))
+            versions.append(
+                VersionInfo(spec_version=v, commit_sha=sha, commit_date=date)
+            )
             seen_versions.add(v)
     return versions
 
@@ -173,24 +185,38 @@ def collect_versions_with_snapshots(
             if k.shell_path:
                 try:
                     blob = subprocess.run(
-                        ["git", "-C", str(repo_root), "show",
-                         f"{v.commit_sha}:{pathlib.PurePosixPath(k.shell_path)}"],
-                        capture_output=True, text=True, timeout=5,
+                        [
+                            "git",
+                            "-C",
+                            str(repo_root),
+                            "show",
+                            f"{v.commit_sha}:{pathlib.PurePosixPath(k.shell_path)}",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
                     )
                 except (OSError, subprocess.SubprocessError):
                     blob = None
                 if blob is not None and blob.returncode == 0 and blob.stdout:
-                    snap = (output_dir / "klickdummy-versions" / k.name
-                            / v.spec_version / "shell.html")
+                    snap = (
+                        output_dir
+                        / "klickdummy-versions"
+                        / k.name
+                        / v.spec_version
+                        / "shell.html"
+                    )
                     snap.parent.mkdir(parents=True, exist_ok=True)
                     snap.write_text(blob.stdout, encoding="utf-8")
                     shell_rel = snap.relative_to(output_dir).as_posix()
-            entries.append({
-                "spec_version": v.spec_version,
-                "commit_sha": v.commit_sha[:10],
-                "commit_date": v.commit_date[:10],
-                "shell_path": shell_rel,
-            })
+            entries.append(
+                {
+                    "spec_version": v.spec_version,
+                    "commit_sha": v.commit_sha[:10],
+                    "commit_date": v.commit_date[:10],
+                    "shell_path": shell_rel,
+                }
+            )
         if entries:
             out[k.name] = entries
     return out
@@ -207,6 +233,7 @@ def discover_cross_repo(
     """
     import re as _re
     import subprocess as _sp
+
     out: list[tuple[str, str, KlickdummyMeta]] = []
     for repo in repos:
         repo_root = base / repo
@@ -217,7 +244,9 @@ def discover_cross_repo(
         try:
             res = _sp.run(
                 ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if res.returncode == 0:
                 m = _re.search(r"github\.com[:/]([^/]+)/", res.stdout)
@@ -273,26 +302,43 @@ def discover_stories(
         except Exception:
             continue
         if not raw or not raw.get("id") or not raw.get("title") or not raw.get("steps"):
-            print(f"  ⚠ story {p.name}: id/title/steps fehlen — übersprungen", file=sys.stderr)
+            print(
+                f"  ⚠ story {p.name}: id/title/steps fehlen — übersprungen",
+                file=sys.stderr,
+            )
             continue
         resolved_steps: list[dict] = []
         for step in raw.get("steps") or []:
             kd_name = step.get("kd", "")
             idx = kd_index.get(kd_name)
             if idx is None:
-                print(f"  ⚠ story {raw['id']}: kd={kd_name!r} nicht gefunden — Step übersprungen", file=sys.stderr)
+                print(
+                    f"  ⚠ story {raw['id']}: kd={kd_name!r} nicht gefunden — Step übersprungen",
+                    file=sys.stderr,
+                )
                 continue
-            resolved_steps.append({"kd_name": kd_name, "label": step.get("label", kd_name), "kd_index": idx})
+            resolved_steps.append(
+                {
+                    "kd_name": kd_name,
+                    "label": step.get("label", kd_name),
+                    "kd_index": idx,
+                }
+            )
         if not resolved_steps:
-            print(f"  ⚠ story {raw['id']}: keine gültigen Steps — übersprungen", file=sys.stderr)
+            print(
+                f"  ⚠ story {raw['id']}: keine gültigen Steps — übersprungen",
+                file=sys.stderr,
+            )
             continue
-        out.append({
-            "id": raw["id"],
-            "title": raw["title"],
-            "description": raw.get("description", ""),
-            "persona": raw.get("persona", ""),
-            "steps": resolved_steps,
-        })
+        out.append(
+            {
+                "id": raw["id"],
+                "title": raw["title"],
+                "description": raw.get("description", ""),
+                "persona": raw.get("persona", ""),
+                "steps": resolved_steps,
+            }
+        )
     return out
 
 
@@ -322,7 +368,7 @@ def write_stories_manifest(
             entry = {
                 "story_id": story["id"],
                 "story_title": story["title"],
-                "step_index": idx,       # 0-basiert
+                "step_index": idx,  # 0-basiert
                 "step_total": total,
                 "step_label": step["label"],
                 "prev_kd": prev_step["kd_name"] if prev_step else None,
@@ -416,7 +462,9 @@ def render_cross_repo_browser_html(
             # shell_path bleibt relative zum repo — iframe braucht ggf. file://-Präfix
             # bei Cross-Repo: kein direkter iframe-Link, stattdessen GitHub-Link
             "shell_path": k.shell_path,
-            "github_shell_url": f"https://github.com/{org}/{repo}/blob/main/{k.shell_path}" if k.shell_path else None,
+            "github_shell_url": f"https://github.com/{org}/{repo}/blob/main/{k.shell_path}"
+            if k.shell_path
+            else None,
             "github_spec_url": f"https://github.com/{org}/{repo}/blob/main/{k.path}",
             "spec_id": k.spec_id,
             "spec_version": k.spec_version,
@@ -429,14 +477,23 @@ def render_cross_repo_browser_html(
     ]
     html = tmpl_text.replace("__KLICKDUMMIES_JSON__", _embed_json(data))
     html = html.replace("__STORIES_JSON__", _embed_json(stories or []))
-    html = html.replace("__REPO_LABEL__", f"cross-repo · {base_label} · {len(data)} Klickdummies")
+    html = html.replace(
+        "__REPO_LABEL__", f"cross-repo · {base_label} · {len(data)} Klickdummies"
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")
 
 
 # -- CLI ---------------------------------------------------------------------
 
-DEFAULT_CROSS_REPOS = ["meiki-hub", "writing-hub", "risk-hub", "ttz-hub", "pptx-hub", "dev-hub"]
+DEFAULT_CROSS_REPOS = [
+    "meiki-hub",
+    "writing-hub",
+    "risk-hub",
+    "ttz-hub",
+    "pptx-hub",
+    "dev-hub",
+]
 
 
 def _serve(html_path: pathlib.Path, port: int) -> int:
@@ -445,6 +502,7 @@ def _serve(html_path: pathlib.Path, port: int) -> int:
     import socketserver
     import os
     import sys
+
     os.chdir(html_path.parent)
     handler = http.server.SimpleHTTPRequestHandler
     with socketserver.TCPServer(("", port), handler) as httpd:
@@ -462,18 +520,34 @@ def _serve(html_path: pathlib.Path, port: int) -> int:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repo-Root (single-repo modus)")
-    parser.add_argument("--output", default="./klickdummy-browser.html",
-                        help="Output-Pfad für Browser-HTML")
-    parser.add_argument("--cross-repo", action="store_true",
-                        help="v1.3: aggregiere mehrere Repos unter --base")
-    parser.add_argument("--base", default="~/github",
-                        help="Cross-Repo Base (default ~/github)")
-    parser.add_argument("--repos", default=",".join(DEFAULT_CROSS_REPOS),
-                        help="Komma-Liste der Repo-Namen für --cross-repo")
-    parser.add_argument("--json", action="store_true",
-                        help="Statt HTML JSON-Inventory auf stdout")
-    parser.add_argument("--serve", type=int, default=None, metavar="PORT",
-                        help="v1.3: HTML schreiben und HTTP-Server auf PORT starten")
+    parser.add_argument(
+        "--output",
+        default="./klickdummy-browser.html",
+        help="Output-Pfad für Browser-HTML",
+    )
+    parser.add_argument(
+        "--cross-repo",
+        action="store_true",
+        help="v1.3: aggregiere mehrere Repos unter --base",
+    )
+    parser.add_argument(
+        "--base", default="~/github", help="Cross-Repo Base (default ~/github)"
+    )
+    parser.add_argument(
+        "--repos",
+        default=",".join(DEFAULT_CROSS_REPOS),
+        help="Komma-Liste der Repo-Namen für --cross-repo",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Statt HTML JSON-Inventory auf stdout"
+    )
+    parser.add_argument(
+        "--serve",
+        type=int,
+        default=None,
+        metavar="PORT",
+        help="v1.3: HTML schreiben und HTTP-Server auf PORT starten",
+    )
     args = parser.parse_args(argv)
 
     if args.cross_repo:
@@ -482,7 +556,10 @@ def main(argv: list[str]) -> int:
         triples = discover_cross_repo(base, repos)
         print("== Klickdummy-Registry Cross-Repo (v1.3) ==", file=sys.stderr)
         print(f"  Base : {base}", file=sys.stderr)
-        print(f"  Repos: {len(repos)} configured · {len({r for _,r,_ in triples})} found Klickdummies", file=sys.stderr)
+        print(
+            f"  Repos: {len(repos)} configured · {len({r for _, r, _ in triples})} found Klickdummies",
+            file=sys.stderr,
+        )
         # Gruppierung nach Repo für Output
         by_repo: dict = {}
         for org, repo, km in triples:
@@ -491,30 +568,46 @@ def main(argv: list[str]) -> int:
             print(f"  · {org}/{repo} ({len(kms)} KD)", file=sys.stderr)
             if not args.json:
                 for k in kms:
-                    print(f"      - {k.name:30s}  v{k.spec_version}  [{k.klickdummy_class}]",
-                          file=sys.stderr)
+                    print(
+                        f"      - {k.name:30s}  v{k.spec_version}  [{k.klickdummy_class}]",
+                        file=sys.stderr,
+                    )
         print(f"  Total: {len(triples)} Klickdummies cross-repo", file=sys.stderr)
 
         if args.json:
-            out = [{"org": o, "repo": r, "name": k.name, "spec_id": k.spec_id,
-                    "spec_version": k.spec_version, "class": k.klickdummy_class,
-                    "title": k.title, "adr_local": k.adr_local,
+            out = [
+                {
+                    "org": o,
+                    "repo": r,
+                    "name": k.name,
+                    "spec_id": k.spec_id,
+                    "spec_version": k.spec_version,
+                    "class": k.klickdummy_class,
+                    "title": k.title,
+                    "adr_local": k.adr_local,
                     "sister_of": k.sister_of,
-                    "shell_path": k.shell_path, "path": k.path}
-                   for o, r, k in triples]
+                    "shell_path": k.shell_path,
+                    "path": k.path,
+                }
+                for o, r, k in triples
+            ]
             print(json.dumps(out, ensure_ascii=False, indent=2))
             return 0
 
         if not triples:
-            print("  → keine Klickdummies — keine Browser-HTML generiert.", file=sys.stderr)
+            print(
+                "  → keine Klickdummies — keine Browser-HTML generiert.",
+                file=sys.stderr,
+            )
             return 0
 
         out_path = pathlib.Path(args.output).expanduser().resolve()
         cr_stories = discover_cross_repo_stories(base, triples)
         if cr_stories:
             print(f"  Stories: {len(cr_stories)} gefunden cross-repo", file=sys.stderr)
-        render_cross_repo_browser_html(triples, out_path, base_label=base.name,
-                                       stories=cr_stories)
+        render_cross_repo_browser_html(
+            triples, out_path, base_label=base.name, stories=cr_stories
+        )
         print(f"  → Cross-Repo-Browser: {out_path}", file=sys.stderr)
         if args.serve is not None:
             return _serve(out_path, args.serve)
@@ -532,14 +625,24 @@ def main(argv: list[str]) -> int:
     print(f"  Gefunden: {len(klickdummies)} Klickdummy(ies)", file=sys.stderr)
     for k in klickdummies:
         if not args.json:
-            print(f"    · {k.name:35s}  v{k.spec_version}  [{k.klickdummy_class}]  ({k.adr_local or 'kein ADR-Ref'})", file=sys.stderr)
+            print(
+                f"    · {k.name:35s}  v{k.spec_version}  [{k.klickdummy_class}]  ({k.adr_local or 'kein ADR-Ref'})",
+                file=sys.stderr,
+            )
 
     if args.json:
         out = [
-            {"name": k.name, "path": k.path, "shell_path": k.shell_path,
-             "spec_id": k.spec_id, "spec_version": k.spec_version,
-             "class": k.klickdummy_class, "title": k.title,
-             "adr_local": k.adr_local, "sister_of": k.sister_of}
+            {
+                "name": k.name,
+                "path": k.path,
+                "shell_path": k.shell_path,
+                "spec_id": k.spec_id,
+                "spec_version": k.spec_version,
+                "class": k.klickdummy_class,
+                "title": k.title,
+                "adr_local": k.adr_local,
+                "sister_of": k.sister_of,
+            }
             for k in klickdummies
         ]
         print(json.dumps(out, ensure_ascii=False, indent=2))
@@ -551,10 +654,18 @@ def main(argv: list[str]) -> int:
 
     stories = discover_stories(repo_root, klickdummies)
     if stories:
-        print(f"  Stories: {len(stories)} gefunden ({', '.join(s['id'] for s in stories)})", file=sys.stderr)
+        print(
+            f"  Stories: {len(stories)} gefunden ({', '.join(s['id'] for s in stories)})",
+            file=sys.stderr,
+        )
     out_path = pathlib.Path(args.output).expanduser().resolve()
-    render_browser_html(klickdummies, out_path, repo_label=repo_root.name,
-                        stories=stories, repo_root=repo_root)
+    render_browser_html(
+        klickdummies,
+        out_path,
+        repo_label=repo_root.name,
+        stories=stories,
+        repo_root=repo_root,
+    )
     print(f"  → Browser geschrieben: {out_path}", file=sys.stderr)
     if args.serve is not None:
         return _serve(out_path, args.serve)

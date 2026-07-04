@@ -4,24 +4,28 @@ Der genesor-Scan validiert Specs NICHT gegen das Schema (anders als der gen_e2e-
 darum werden die zwei konkreten Sinks direkt gehärtet: `description`-Freitext (→ Markdown → HTML)
 und `screens[].id` (→ Output-Dateiname).
 """
+
 from __future__ import annotations
 
 
 # -- S-03: Path-Traversal via Screen-id im Dateinamen (Issue #106) ------------
 
+
 def test_safe_seg_strips_path_traversal_chars():
     from iil_klickdummy import lineage
+
     assert "/" not in lineage._safe_seg("../../etc/passwd")
     assert "." not in lineage._safe_seg("../../etc/passwd")
-    assert lineage._safe_seg("../../evil") == "______evil"   # '..','/' → '_'
+    assert lineage._safe_seg("../../evil") == "______evil"  # '..','/' → '_'
     assert lineage._safe_seg("normal-id_1") == "normal-id_1"  # legit id unverändert
-    assert lineage._safe_seg("") == "x"                        # leer → sicherer Default
+    assert lineage._safe_seg("") == "x"  # leer → sicherer Default
 
 
 def test_safe_seg_prevents_directory_escape():
     """Ein bösartiger sid darf keinen Pfad-Separator ins Dateinamen-Segment bringen."""
     import pathlib
     from iil_klickdummy import lineage
+
     malicious = "../../../tmp/pwned"
     seg = f"repo-kd-{lineage._safe_seg(malicious)}"
     # Das Segment bleibt EIN Dateiname (kein Verzeichniswechsel).
@@ -31,15 +35,20 @@ def test_safe_seg_prevents_directory_escape():
 
 # -- S-02: raw-HTML-Passthrough aus description (Issue #105) -------------------
 
+
 def _rec(desc: str) -> dict:
     return {
-        "repo": "demo", "kd": "x",
+        "repo": "demo",
+        "kd": "x",
         "data": {
-            "screens": [{
-                "id": "s1", "title": "S1",
-                "implementation_brief": {"summary": "x"},
-                "konsumiert_entities": ["Evil"],
-            }],
+            "screens": [
+                {
+                    "id": "s1",
+                    "title": "S1",
+                    "implementation_brief": {"summary": "x"},
+                    "konsumiert_entities": ["Evil"],
+                }
+            ],
             "local_entities": {"Evil": {"description": desc}},
         },
     }
@@ -47,6 +56,7 @@ def _rec(desc: str) -> dict:
 
 def test_build_impl_brief_escapes_description_freetext():
     from iil_klickdummy.genesor.render_uc import build_impl_brief
+
     md = build_impl_brief(_rec("<script>window.__X__=1</script>"), "s1")
     assert md is not None
     # Der rohe Script-Tag darf NICHT im Markdown stehen — escaped als &lt;script&gt;.
@@ -60,10 +70,14 @@ def test_impl_brief_html_has_no_raw_script_from_description():
     aber der CI-Test-Job installiert es nicht separat → importorskip (wie T-01 bei
     playwright). Der Escape selbst ist markdown-frei via dem Unit-Test oben belegt."""
     import pytest
+
     pytest.importorskip("markdown")
     from iil_klickdummy.genesor.config import _DOMAIN_STYLES
     from iil_klickdummy.genesor.render_uc import build_impl_brief, build_impl_brief_html
+
     md = build_impl_brief(_rec("<script>alert(document.domain)</script>"), "s1")
-    html_out = build_impl_brief_html(md, "demo", "x", "s1", "default", _DOMAIN_STYLES["default"])
+    html_out = build_impl_brief_html(
+        md, "demo", "x", "s1", "default", _DOMAIN_STYLES["default"]
+    )
     assert "<script>alert" not in html_out
     assert "&lt;script&gt;" in html_out

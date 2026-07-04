@@ -27,6 +27,7 @@ CLI:
     klickdummy-sync --cross-repo --base ~/github
     klickdummy-sync --repo . --dry-run      # nur Listen, kein NDJSON
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,17 +42,27 @@ from .registry import discover_klickdummies, discover_versions
 
 # Gov-Orgs — extra Tag 'gov-data' für Search-Filter
 GOV_ORGS = {"ttz-lif", "meiki-lra"}
-DEFAULT_REPOS = ["meiki-hub", "writing-hub", "risk-hub", "pptx-hub", "dev-hub",
-                 "ttz-hub", "iil-klickdummy"]
+DEFAULT_REPOS = [
+    "meiki-hub",
+    "writing-hub",
+    "risk-hub",
+    "pptx-hub",
+    "dev-hub",
+    "ttz-hub",
+    "iil-klickdummy",
+]
 
 
 def _detect_org(repo_root: pathlib.Path) -> str:
     """Versucht Org aus git remote URL zu lesen, sonst Repo-Name als Fallback."""
     try:
         import subprocess
+
         result = subprocess.run(
             ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             # match owner/repo aus URL: github.com:OWNER/REPO oder github.com/OWNER/REPO
@@ -73,10 +84,13 @@ def klickdummy_entry(km, org: str, repo: str, repo_root: pathlib.Path) -> dict:
     Returns: {entry_key, entry_type, title, content, tags, agent}
     """
     versions = discover_versions(repo_root / km.path, repo_root)
-    versions_block = "\n".join(
-        f"- {v.spec_version} ({v.commit_date[:10]} {v.commit_sha[:8]})"
-        for v in versions
-    ) or "- (keine Versions-History gefunden)"
+    versions_block = (
+        "\n".join(
+            f"- {v.spec_version} ({v.commit_date[:10]} {v.commit_sha[:8]})"
+            for v in versions
+        )
+        or "- (keine Versions-History gefunden)"
+    )
     content = (
         f"# {km.title}\n\n"
         f"**Spec ID:** `{km.spec_id}`  \n"
@@ -131,16 +145,22 @@ def iteration_entries_from_feedback_log(
             if not iter_n.isdigit():
                 continue
             entry_key = f"klickdummy-iter:{org}:{repo}:{klickdummy_name}:{iter_n}"
-            out.append(dict(
-                entry_key=entry_key,
-                entry_type="lesson_learned",
-                title=f"{repo}:{klickdummy_name} Iter.{iter_n} ({screen})",
-                content=line,
-                tags=["klickdummy", "klickdummy-iter",
-                      f"klickdummy:org:{org}", f"klickdummy:repo:{repo}",
-                      f"klickdummy:iter:{iter_n}"],
-                agent="iil-klickdummy-sync",
-            ))
+            out.append(
+                dict(
+                    entry_key=entry_key,
+                    entry_type="lesson_learned",
+                    title=f"{repo}:{klickdummy_name} Iter.{iter_n} ({screen})",
+                    content=line,
+                    tags=[
+                        "klickdummy",
+                        "klickdummy-iter",
+                        f"klickdummy:org:{org}",
+                        f"klickdummy:repo:{repo}",
+                        f"klickdummy:iter:{iter_n}",
+                    ],
+                    agent="iil-klickdummy-sync",
+                )
+            )
     return out
 
 
@@ -162,16 +182,22 @@ def adr_entries(repo_root: pathlib.Path, org: str, repo: str) -> list[dict]:
         adr_num = m.group(1)
         title_match = re.search(r"^title:\s*\"?([^\"\n]+)\"?", text, re.MULTILINE)
         title = title_match.group(1).strip() if title_match else candidate.stem
-        out.append(dict(
-            entry_key=f"klickdummy-adr:{org}:{repo}:ADR-{adr_num}",
-            entry_type="decision",
-            title=f"{repo}:ADR-{adr_num} — {title}",
-            content=text[:8000],   # Body-Vorschau (Embeddings haben Token-Limit)
-            tags=["klickdummy", "klickdummy-adr",
-                  f"klickdummy:org:{org}", f"klickdummy:repo:{repo}",
-                  f"klickdummy:adr:ADR-{adr_num}"],
-            agent="iil-klickdummy-sync",
-        ))
+        out.append(
+            dict(
+                entry_key=f"klickdummy-adr:{org}:{repo}:ADR-{adr_num}",
+                entry_type="decision",
+                title=f"{repo}:ADR-{adr_num} — {title}",
+                content=text[:8000],  # Body-Vorschau (Embeddings haben Token-Limit)
+                tags=[
+                    "klickdummy",
+                    "klickdummy-adr",
+                    f"klickdummy:org:{org}",
+                    f"klickdummy:repo:{repo}",
+                    f"klickdummy:adr:ADR-{adr_num}",
+                ],
+                agent="iil-klickdummy-sync",
+            )
+        )
     return out
 
 
@@ -189,15 +215,19 @@ def sync_repo(repo_root: pathlib.Path) -> list[dict]:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repo-Root (Default: .)")
-    parser.add_argument("--cross-repo", action="store_true",
-                        help="Alle Repos unter --base scannen")
+    parser.add_argument(
+        "--cross-repo", action="store_true", help="Alle Repos unter --base scannen"
+    )
     parser.add_argument("--base", default=os.path.expanduser("~/github"))
-    parser.add_argument("--repos", default=",".join(DEFAULT_REPOS),
-                        help="Komma-Liste der Repo-Namen für --cross-repo")
-    parser.add_argument("--output", default="-",
-                        help="NDJSON-Output (- = stdout)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Nur Listen, kein NDJSON")
+    parser.add_argument(
+        "--repos",
+        default=",".join(DEFAULT_REPOS),
+        help="Komma-Liste der Repo-Namen für --cross-repo",
+    )
+    parser.add_argument("--output", default="-", help="NDJSON-Output (- = stdout)")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Nur Listen, kein NDJSON"
+    )
     args = parser.parse_args(argv)
 
     if args.cross_repo:
@@ -216,14 +246,18 @@ def main(argv: list[str]) -> int:
             kdm = sum(1 for e in entries if e["entry_type"] == "repo_context")
             itr = sum(1 for e in entries if e["entry_type"] == "lesson_learned")
             adr = sum(1 for e in entries if e["entry_type"] == "decision")
-            print(f"    Klickdummies: {kdm} · Iterationen: {itr} · ADRs: {adr}",
-                  file=sys.stderr)
+            print(
+                f"    Klickdummies: {kdm} · Iterationen: {itr} · ADRs: {adr}",
+                file=sys.stderr,
+            )
 
     print(f"  Total: {len(all_entries)} Entries", file=sys.stderr)
     if args.dry_run:
         return 0
 
-    output = sys.stdout if args.output == "-" else open(args.output, "w", encoding="utf-8")
+    output = (
+        sys.stdout if args.output == "-" else open(args.output, "w", encoding="utf-8")
+    )
     try:
         for e in all_entries:
             output.write(json.dumps(e, ensure_ascii=False) + "\n")

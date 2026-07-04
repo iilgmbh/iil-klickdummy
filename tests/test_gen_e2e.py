@@ -3,6 +3,7 @@
 Beweist die These: *eine* Assertion-Menge validiert Renderer #1 (Klickdummy)
 und Renderer #2 (echte App), und sie überlebt den I3-Off-Ramp.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -21,8 +22,11 @@ def _conform(spec: dict) -> dict:
     spec = dict(spec)
     spec["grounding"] = {"konzept": "-", "pilot": "-"}
     spec["off_ramp"] = {
-        "policy": "-", "unit": "per-screen", "rule": "-",
-        "doppelquell_grenze": "prod-release", "parity_runner": "-",
+        "policy": "-",
+        "unit": "per-screen",
+        "rule": "-",
+        "doppelquell_grenze": "prod-release",
+        "parity_runner": "-",
     }
     spec["personas"] = {"user": {"label": "User", "rolle": "user", "sieht": []}}
     screens = []
@@ -46,26 +50,38 @@ def _conform(spec: dict) -> dict:
 
 def test_gen_e2e_module_present():
     from iil_klickdummy import gen_e2e
+
     assert callable(getattr(gen_e2e, "main_cli", None))
     assert callable(getattr(gen_e2e, "render_assertion", None))
 
 
 def test_render_assertion_vocabulary():
     from iil_klickdummy import gen_e2e as g
+
     # Double-Quotes (ruff-format-konform), nicht repr/Single-Quotes.
     # Einzelelement-State-Asserts nutzen `.first` (Strict-Mode-robust gegen
     # legitim mehrfach matchende Kontrakt-Selektoren, z.B. data-testid pro Zeile).
-    assert g.render_assertion({"action": "text", "selector": "h1", "expect": "Anmelden"}) \
+    assert (
+        g.render_assertion({"action": "text", "selector": "h1", "expect": "Anmelden"})
         == 'expect(page.locator("h1").first).to_contain_text("Anmelden")'
-    assert g.render_assertion({"action": "clickable", "selector": "button"}) \
+    )
+    assert (
+        g.render_assertion({"action": "clickable", "selector": "button"})
         == 'expect(page.locator("button").first).to_be_enabled()'
-    assert g.render_assertion({"action": "visible", "selector": "#x"}) \
+    )
+    assert (
+        g.render_assertion({"action": "visible", "selector": "#x"})
         == 'expect(page.locator("#x").first).to_be_visible()'
-    assert g.render_assertion({"action": "url", "expect": "/dashboard"}) \
+    )
+    assert (
+        g.render_assertion({"action": "url", "expect": "/dashboard"})
         == 'assert "/dashboard" in page.url, page.url'
+    )
     # `count` prüft Kardinalität explizit — KEIN `.first`
-    assert g.render_assertion({"action": "count", "selector": "li", "expect": 3}) \
+    assert (
+        g.render_assertion({"action": "count", "selector": "li", "expect": 3})
         == 'expect(page.locator("li")).to_have_count(3)'
+    )
     # nur-Prosa / unbekannt ⇒ None (nicht ausführbar)
     assert g.render_assertion(None) is None
     assert g.render_assertion({"action": "frobnicate"}) is None
@@ -73,18 +89,31 @@ def test_render_assertion_vocabulary():
 
 def test_screen_route_convention():
     from iil_klickdummy import gen_e2e as g
-    assert g.screen_route({"id": "login", "route": "/auth/login"}) == ("/auth/login", False)
+
+    assert g.screen_route({"id": "login", "route": "/auth/login"}) == (
+        "/auth/login",
+        False,
+    )
     assert g.screen_route({"id": "login"}) == ("/login", False)
     assert g.screen_route({"id": "x", "route": "bare"}) == ("/bare", False)
     # route_example bevorzugt
-    assert g.screen_route({"id": "x", "route": "/items/<uuid:pk>/", "route_example": "/items/abc-123/"}) == ("/items/abc-123/", False)
+    assert g.screen_route(
+        {"id": "x", "route": "/items/<uuid:pk>/", "route_example": "/items/abc-123/"}
+    ) == ("/items/abc-123/", False)
     # parametrisierte Route ohne route_example → is_parametrised=True
-    assert g.screen_route({"id": "x", "route": "/items/<uuid:pk>/"}) == ("/items/<uuid:pk>/", True)
-    assert g.screen_route({"id": "x", "route": "/items/<int:pk>/detail/"}) == ("/items/<int:pk>/detail/", True)
+    assert g.screen_route({"id": "x", "route": "/items/<uuid:pk>/"}) == (
+        "/items/<uuid:pk>/",
+        True,
+    )
+    assert g.screen_route({"id": "x", "route": "/items/<int:pk>/detail/"}) == (
+        "/items/<int:pk>/detail/",
+        True,
+    )
 
 
 def test_gen_e2e_generates_runnable_suite(tmp_path):
     from iil_klickdummy import gen_e2e
+
     out = tmp_path / "test_parity_login.py"
     rc = gen_e2e.main([str(FIXTURE), str(out)])
     assert rc == 0
@@ -92,7 +121,9 @@ def test_gen_e2e_generates_runnable_suite(tmp_path):
 
     # Dual-Renderer: BASE per renderer-neutralem Env umschaltbar (Renderer #1 ↔ #2)
     assert "SPEC_RENDERER_BASE_URL" in text
-    assert "KLICKDUMMY_BASE_URL" not in text   # umbenannt (REC-10) — kein Sunset-Klebstoff
+    assert (
+        "KLICKDUMMY_BASE_URL" not in text
+    )  # umbenannt (REC-10) — kein Sunset-Klebstoff
     assert "from playwright.sync_api import Page, expect" in text
 
     # ausführbare Checks → echte Assertions, an die Screen-route gebunden
@@ -110,11 +141,12 @@ def test_gen_e2e_emits_manifest(tmp_path):
     """Manifest = reproduzierbarer Beleg + Coverage/Skip-Transparenz (REC-12/REC-4/REC-14)."""
     import json
     from iil_klickdummy import gen_e2e
+
     out = tmp_path / "test_parity_login.py"
     gen_e2e.main([str(FIXTURE), str(out)])
     manifest = json.loads((tmp_path / "test_parity_login.manifest.json").read_text())
     assert manifest["spec_id"] == "example:klickdummy-spec-login"
-    assert len(manifest["spec_sha256"]) == 64          # Reproduzierbarkeit (M28-2)
+    assert len(manifest["spec_sha256"]) == 64  # Reproduzierbarkeit (M28-2)
     assert manifest["base_url_env"] == "SPEC_RENDERER_BASE_URL"
     assert manifest["parity_checks"] == 3
     assert manifest["executable"] == 2
@@ -129,6 +161,7 @@ def test_gen_e2e_flags_fragile_selectors(tmp_path):
     """Selektoren ohne data-* Anker werden als fragil markiert (REC-6/AD-7)."""
     import json
     from iil_klickdummy import gen_e2e
+
     out = tmp_path / "s.py"
     gen_e2e.main([str(FIXTURE), str(out)])
     manifest = json.loads((tmp_path / "s.manifest.json").read_text())
@@ -143,6 +176,7 @@ def test_gen_e2e_flags_fragile_selectors(tmp_path):
 def test_generated_suite_is_valid_python(tmp_path):
     """Erzeugte Datei muss kompilieren (Syntax-Garantie der Generierung)."""
     from iil_klickdummy import gen_e2e
+
     out = tmp_path / "gen.py"
     gen_e2e.main([str(FIXTURE), str(out)])
     compile(out.read_text(encoding="utf-8"), str(out), "exec")
@@ -153,6 +187,7 @@ def test_generated_suite_skips_without_playwright(tmp_path):
     Adopter ohne playwright überspringen, statt beim Sammeln zu brechen (T-01;
     risk-hub #146 entging dem nur per testpaths-Zufall)."""
     from iil_klickdummy import gen_e2e
+
     out = tmp_path / "test_parity_login.py"
     gen_e2e.main([str(FIXTURE), str(out)])
     text = out.read_text(encoding="utf-8")
@@ -167,15 +202,19 @@ def test_generated_suite_passes_ruff_check_e402(tmp_path):
     sonst bricht jeder Adopter mit `ruff check` (Linter, nicht nur Formatter)."""
     import shutil
     import subprocess
+
     ruff = shutil.which("ruff")
     if not ruff:
         import pytest
+
         pytest.skip("ruff nicht verfügbar")
     from iil_klickdummy import gen_e2e
+
     out = tmp_path / "test_parity.py"
     gen_e2e.main([str(FIXTURE), str(out)])
-    r = subprocess.run([ruff, "check", "--select", "E402", str(out)],
-                       capture_output=True, text=True)
+    r = subprocess.run(
+        [ruff, "check", "--select", "E402", str(out)], capture_output=True, text=True
+    )
     assert r.returncode == 0, f"E402 im generierten Output:\n{r.stdout}\n{r.stderr}"
 
 
@@ -184,22 +223,29 @@ def test_generated_suite_is_ruff_format_clean(tmp_path):
     Adopter mit Format-CI (real aufgetreten: risk-hub PR #146)."""
     import shutil
     import subprocess
+
     ruff = shutil.which("ruff")
     if not ruff:
         import pytest
+
         pytest.skip("ruff nicht verfügbar")
     from iil_klickdummy import gen_e2e
+
     out = tmp_path / "test_parity.py"
     gen_e2e.main([str(FIXTURE), str(out)])
-    r = subprocess.run([ruff, "format", "--check", str(out)],
-                       capture_output=True, text=True)
-    assert r.returncode == 0, f"ruff format würde reformatieren:\n{r.stdout}\n{r.stderr}"
+    r = subprocess.run(
+        [ruff, "format", "--check", str(out)], capture_output=True, text=True
+    )
+    assert r.returncode == 0, (
+        f"ruff format würde reformatieren:\n{r.stdout}\n{r.stderr}"
+    )
 
 
 def test_generated_suite_is_deterministic(tmp_path):
     """Zwei Läufe ⇒ byte-identisches .py (kein Zeitstempel im File) — sonst
     rauscht der Drift-Check `klickdummy-parity-drift` (REC-1/REC-13/AD-14)."""
     from iil_klickdummy import gen_e2e
+
     # gleicher Output-Pfad (Basename) in zwei Läufen — wie der reale Drift-Check,
     # der immer auf dieselbe Zieldatei re-generiert.
     a = tmp_path / "run1" / "test_parity.py"
@@ -214,18 +260,24 @@ def test_generated_suite_is_deterministic(tmp_path):
 
 def test_schema_allows_assert_and_route():
     import json
+
     schema = json.loads(
         files("iil_klickdummy.schemas").joinpath("screens-spec.schema.json").read_text()
     )
     screen_props = schema["properties"]["screens"]["items"]["properties"]
     assert "route" in screen_props
-    assert "route_example" in screen_props          # Issue #28
-    assert "login_required" in screen_props         # Issue #28
-    assert "auth" in schema["properties"]           # Issue #28: Top-Level-Auth-Block
+    assert "route_example" in screen_props  # Issue #28
+    assert "login_required" in screen_props  # Issue #28
+    assert "auth" in schema["properties"]  # Issue #28: Top-Level-Auth-Block
     pa_props = screen_props["parity_acceptance"]["items"]["properties"]
     assert "assert" in pa_props
-    assert pa_props["assert"]["properties"]["action"]["enum"] == \
-        ["visible", "text", "clickable", "url", "count"]
+    assert pa_props["assert"]["properties"]["action"]["enum"] == [
+        "visible",
+        "text",
+        "clickable",
+        "url",
+        "count",
+    ]
     # `check` bleibt Pflicht — Rückwärtskompatibilität
     assert screen_props["parity_acceptance"]["items"]["required"] == ["id", "check"]
 
@@ -234,45 +286,72 @@ def test_gen_e2e_route_example_used(tmp_path):
     """route_example ersetzt parametrisierte route in page.goto (Issue #28)."""
     import yaml
     from iil_klickdummy import gen_e2e
+
     spec = {
-        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:spec-test",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
-        "class": "mock", "grounding": "test", "off_ramp": {},
-        "personas": {"user": {}}, "screens": [
-            {"id": "detail", "title": "Detail",
-             "route": "/items/<uuid:pk>/",
-             "route_example": "/items/abc-123-def/",
-             "parity_acceptance": [
-                 {"id": "d.visible", "check": "visible",
-                  "assert": {"action": "visible", "selector": "[data-testid=item]"}}
-             ]},
-        ]
+        "class": "mock",
+        "grounding": "test",
+        "off_ramp": {},
+        "personas": {"user": {}},
+        "screens": [
+            {
+                "id": "detail",
+                "title": "Detail",
+                "route": "/items/<uuid:pk>/",
+                "route_example": "/items/abc-123-def/",
+                "parity_acceptance": [
+                    {
+                        "id": "d.visible",
+                        "check": "visible",
+                        "assert": {
+                            "action": "visible",
+                            "selector": "[data-testid=item]",
+                        },
+                    }
+                ],
+            },
+        ],
     }
     spec_file = tmp_path / "spec.yaml"
     spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
     out = tmp_path / "test_parity.py"
     gen_e2e.main([str(spec_file), str(out)])
     code = out.read_text(encoding="utf-8")
-    assert "/items/abc-123-def/" in code     # route_example genutzt
-    assert "<uuid:pk>" not in code           # Platzhalter NICHT im Output
+    assert "/items/abc-123-def/" in code  # route_example genutzt
+    assert "<uuid:pk>" not in code  # Platzhalter NICHT im Output
 
 
 def test_gen_e2e_parametrised_route_skipped(tmp_path):
     """Parametrisierte route ohne route_example → skip mit klarem Grund (Issue #28)."""
     import yaml
     from iil_klickdummy import gen_e2e
+
     spec = {
-        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:spec-test",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
-        "class": "mock", "grounding": "test", "off_ramp": {},
-        "personas": {"user": {}}, "screens": [
-            {"id": "detail", "title": "Detail",
-             "route": "/items/<uuid:pk>/",
-             "parity_acceptance": [
-                 {"id": "d.vis", "check": "visible",
-                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}
-             ]},
-        ]
+        "class": "mock",
+        "grounding": "test",
+        "off_ramp": {},
+        "personas": {"user": {}},
+        "screens": [
+            {
+                "id": "detail",
+                "title": "Detail",
+                "route": "/items/<uuid:pk>/",
+                "parity_acceptance": [
+                    {
+                        "id": "d.vis",
+                        "check": "visible",
+                        "assert": {"action": "visible", "selector": "[data-testid=x]"},
+                    }
+                ],
+            },
+        ],
     }
     spec_file = tmp_path / "spec.yaml"
     spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
@@ -280,8 +359,8 @@ def test_gen_e2e_parametrised_route_skipped(tmp_path):
     gen_e2e.main([str(spec_file), str(out)])
     code = out.read_text(encoding="utf-8")
     assert "pytest.mark.skip" in code
-    assert "route_example" in code          # Hinweis im skip-reason
-    assert "page.goto" not in code          # kein goto gegen 404
+    assert "route_example" in code  # Hinweis im skip-reason
+    assert "page.goto" not in code  # kein goto gegen 404
     # Regression: der parametrisierte skip-reason MUSS valides Python sein. Der unquoted
     # `reason={skip_reason}` brach mit SyntaxError (U+2014 em-dash); Text-Marker allein
     # fingen das nicht (vgl. ADR-211 Rev 21: „gebaut, nie ausgeführt").
@@ -292,17 +371,33 @@ def test_gen_e2e_login_required_skip(tmp_path):
     """login_required ohne auth-Block → skip mit klarem Grund (Issue #28)."""
     import yaml
     from iil_klickdummy import gen_e2e
+
     spec = {
-        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:spec-test",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
-        "class": "mock", "grounding": "test", "off_ramp": {},
-        "personas": {"user": {}}, "screens": [
-            {"id": "dashboard", "title": "Dashboard", "login_required": True,
-             "parity_acceptance": [
-                 {"id": "d.vis", "check": "title visible",
-                  "assert": {"action": "visible", "selector": "[data-testid=dash]"}}
-             ]},
-        ]
+        "class": "mock",
+        "grounding": "test",
+        "off_ramp": {},
+        "personas": {"user": {}},
+        "screens": [
+            {
+                "id": "dashboard",
+                "title": "Dashboard",
+                "login_required": True,
+                "parity_acceptance": [
+                    {
+                        "id": "d.vis",
+                        "check": "title visible",
+                        "assert": {
+                            "action": "visible",
+                            "selector": "[data-testid=dash]",
+                        },
+                    }
+                ],
+            },
+        ],
     }
     spec_file = tmp_path / "spec.yaml"
     spec_file.write_text(yaml.dump(_conform(spec)), encoding="utf-8")
@@ -321,19 +416,35 @@ def test_gen_e2e_auth_storage_state_uses_real_playwright_api(tmp_path):
     TypeError. Der Bug überlebte nur, weil die Suite nie gegen Renderer #2 lief."""
     import yaml
     from iil_klickdummy import gen_e2e
+
     spec = {
-        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:spec-test",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
-        "class": "mock", "grounding": "test", "off_ramp": {},
+        "class": "mock",
+        "grounding": "test",
+        "off_ramp": {},
         "personas": {"user": {}},
         "auth": {"storage_state": "/tmp/auth/storage.json"},
         "screens": [
-            {"id": "dash", "title": "Dashboard", "login_required": True,
-             "route": "/dashboard/", "route_example": "/dashboard/",
-             "parity_acceptance": [
-                 {"id": "d.vis", "check": "visible",
-                  "assert": {"action": "visible", "selector": "[data-testid=dash]"}}
-             ]},
+            {
+                "id": "dash",
+                "title": "Dashboard",
+                "login_required": True,
+                "route": "/dashboard/",
+                "route_example": "/dashboard/",
+                "parity_acceptance": [
+                    {
+                        "id": "d.vis",
+                        "check": "visible",
+                        "assert": {
+                            "action": "visible",
+                            "selector": "[data-testid=dash]",
+                        },
+                    }
+                ],
+            },
         ],
     }
     spec_file = tmp_path / "spec.yaml"
@@ -355,16 +466,23 @@ def test_gen_e2e_auth_storage_state_uses_real_playwright_api(tmp_path):
 
 # -- F23/D2: semantischer Selektor-Fallback (KONZ-iil-klickdummy-007) ----------
 
+
 def test_locator_expr_prefix_dispatch():
     """`selector`-Präfixe wählen die passende Playwright-Locator-API; ohne
     Präfix bleibt es CSS via page.locator (F23/D2)."""
     from iil_klickdummy import gen_e2e as g
-    assert g._locator_expr("testid=sds-review-row") == 'page.get_by_test_id("sds-review-row")'
+
+    assert (
+        g._locator_expr("testid=sds-review-row")
+        == 'page.get_by_test_id("sds-review-row")'
+    )
     assert g._locator_expr("label=E-Mail") == 'page.get_by_label("E-Mail")'
     assert g._locator_expr("text=Speichern") == 'page.get_by_text("Speichern")'
     assert g._locator_expr("role=button") == 'page.get_by_role("button")'
-    assert g._locator_expr("role=button[name=Verify]") \
+    assert (
+        g._locator_expr("role=button[name=Verify]")
         == 'page.get_by_role("button", name="Verify")'
+    )
     # Bare String bleibt CSS — unveränderte Bestandsbehandlung.
     assert g._locator_expr("button.submit") == 'page.locator("button.submit")'
     # Unvollständiges role= (kein Match) fällt sicher auf CSS zurück.
@@ -375,20 +493,32 @@ def test_render_assertion_uses_prefix_dispatch():
     """render_assertion routet Präfix-Selektoren durch _locator_expr; CSS-Form
     bleibt bit-identisch zur Bestandsausgabe (Regressionsschutz)."""
     from iil_klickdummy import gen_e2e as g
-    assert g.render_assertion({"action": "visible", "selector": "testid=queue"}) \
+
+    assert (
+        g.render_assertion({"action": "visible", "selector": "testid=queue"})
         == 'expect(page.get_by_test_id("queue").first).to_be_visible()'
-    assert g.render_assertion({"action": "clickable", "selector": "role=button[name=Prüfen]"}) \
+    )
+    assert (
+        g.render_assertion(
+            {"action": "clickable", "selector": "role=button[name=Prüfen]"}
+        )
         == 'expect(page.get_by_role("button", name="Prüfen").first).to_be_enabled()'
-    assert g.render_assertion({"action": "count", "selector": "testid=row", "expect": 2}) \
+    )
+    assert (
+        g.render_assertion({"action": "count", "selector": "testid=row", "expect": 2})
         == 'expect(page.get_by_test_id("row")).to_have_count(2)'
+    )
     # Bestands-CSS-Form unverändert.
-    assert g.render_assertion({"action": "visible", "selector": "#x"}) \
+    assert (
+        g.render_assertion({"action": "visible", "selector": "#x"})
         == 'expect(page.locator("#x").first).to_be_visible()'
+    )
 
 
 def test_is_fragile_selector_prefixes():
     """testid=/role=/label= sind stabile Anker; text= und bare CSS bleiben fragil (F23/D2)."""
     from iil_klickdummy import gen_e2e as g
+
     assert g.is_fragile_selector("testid=row") is False
     assert g.is_fragile_selector("role=button[name=OK]") is False
     assert g.is_fragile_selector("label=E-Mail") is False
@@ -401,19 +531,27 @@ def test_is_fragile_selector_prefixes():
 
 # -- REC-2/AD-2: role=-Parser-Grenzfälle + definiertes Fehlerverhalten ---------
 
+
 def test_role_prefix_roundtrip_edge_cases():
     """REC-2: die role=-Mini-DSL ist ein Parser mit definiertem Verhalten —
     Leerzeichen und Sonderzeichen im name-Wert sind gültig (Quoting via
     json.dumps), ohne [name=…] entsteht kein name-Argument."""
     from iil_klickdummy import gen_e2e as g
-    assert g._locator_expr("role=button[name=Speichern]") \
+
+    assert (
+        g._locator_expr("role=button[name=Speichern]")
         == 'page.get_by_role("button", name="Speichern")'
+    )
     # Leerzeichen im name-Wert → gültig, korrekt gequotet.
-    assert g._locator_expr("role=button[name=Bitte klicken]") \
+    assert (
+        g._locator_expr("role=button[name=Bitte klicken]")
         == 'page.get_by_role("button", name="Bitte klicken")'
+    )
     # Sonderzeichen (Unicode) im name-Wert → gültig, korrekt gequotet.
-    assert g._locator_expr("role=link[name=Zum nächsten Schritt →]") \
+    assert (
+        g._locator_expr("role=link[name=Zum nächsten Schritt →]")
         == 'page.get_by_role("link", name="Zum nächsten Schritt →")'
+    )
     assert g._locator_expr("role=button") == 'page.get_by_role("button")'
 
 
@@ -422,6 +560,7 @@ def test_role_prefix_fallthrough_edge_cases():
     (leerer Wert, fehlende `]`) fallen definiert auf CSS zurück — fragil
     markiert, mit benanntem Hint, nie Exception."""
     from iil_klickdummy import gen_e2e as g
+
     # Tippfehler-Präfix → CSS-Fallthrough + fragil + Hint.
     assert g._locator_expr("rol=button") == 'page.locator("rol=button")'
     assert g.is_fragile_selector("rol=button") is True
@@ -431,10 +570,14 @@ def test_role_prefix_fallthrough_edge_cases():
     assert g.is_fragile_selector("role=") is True
     assert "role=-Syntax ungültig" in g.selector_fallthrough_hint("role=")
     # Fehlende schließende `]` → Fallthrough + Hint.
-    assert g._locator_expr("role=button[name=Verify") \
+    assert (
+        g._locator_expr("role=button[name=Verify")
         == 'page.locator("role=button[name=Verify")'
+    )
     assert g.is_fragile_selector("role=button[name=Verify") is True
-    assert "role=-Syntax ungültig" in g.selector_fallthrough_hint("role=button[name=Verify")
+    assert "role=-Syntax ungültig" in g.selector_fallthrough_hint(
+        "role=button[name=Verify"
+    )
     # Kein Hint für gültige Präfixe, bare CSS und text= (bekannt-fragil ≠ Tippfehler).
     assert g.selector_fallthrough_hint("role=button") is None
     assert g.selector_fallthrough_hint("testid=row") is None
@@ -449,9 +592,12 @@ def test_fallthrough_hint_lands_in_manifest(tmp_path):
     import json
     import yaml
     from iil_klickdummy import gen_e2e
+
     spec_file = tmp_path / "spec.yaml"
     out = tmp_path / "t.py"
-    spec_file.write_text(yaml.dump(_conform(_strict_spec("rol=button"))), encoding="utf-8")
+    spec_file.write_text(
+        yaml.dump(_conform(_strict_spec("rol=button"))), encoding="utf-8"
+    )
     assert gen_e2e.main([str(spec_file), str(out)]) == 0
     manifest = json.loads(out.with_suffix(".manifest.json").read_text())
     (entry,) = manifest["fragile_selectors"]
@@ -461,15 +607,28 @@ def test_fallthrough_hint_lands_in_manifest(tmp_path):
 
 def _strict_spec(selector: str) -> dict:
     return {
-        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:spec-test",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
-        "class": "mock", "grounding": "test", "off_ramp": {},
-        "personas": {"user": {}}, "screens": [
-            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
-             "parity_acceptance": [
-                 {"id": "s.vis", "check": "visible",
-                  "assert": {"action": "visible", "selector": selector}}
-             ]},
+        "class": "mock",
+        "grounding": "test",
+        "off_ramp": {},
+        "personas": {"user": {}},
+        "screens": [
+            {
+                "id": "s",
+                "title": "S",
+                "route": "/s/",
+                "route_example": "/s/",
+                "parity_acceptance": [
+                    {
+                        "id": "s.vis",
+                        "check": "visible",
+                        "assert": {"action": "visible", "selector": selector},
+                    }
+                ],
+            },
         ],
     }
 
@@ -481,18 +640,23 @@ def test_strict_selectors_gate_blocks_fragile(tmp_path):
     import json
     import yaml
     from iil_klickdummy import gen_e2e
+
     spec_file = tmp_path / "spec.yaml"
     out = tmp_path / "t.py"
 
     # bare CSS = fragil → Default 0 (nur Warnung), strict 3 (Gate rot)
-    spec_file.write_text(yaml.dump(_conform(_strict_spec("button.submit"))), encoding="utf-8")
+    spec_file.write_text(
+        yaml.dump(_conform(_strict_spec("button.submit"))), encoding="utf-8"
+    )
     assert gen_e2e.main([str(spec_file), str(out)]) == 0
     assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 3
     manifest = json.loads(out.with_suffix(".manifest.json").read_text())
     assert manifest["strict_selectors"] is True
 
     # stabiler Präfix-Anker → auch strict grün
-    spec_file.write_text(yaml.dump(_conform(_strict_spec("testid=submit"))), encoding="utf-8")
+    spec_file.write_text(
+        yaml.dump(_conform(_strict_spec("testid=submit"))), encoding="utf-8"
+    )
     assert gen_e2e.main([str(spec_file), str(out), "--strict-selectors"]) == 0
 
 
@@ -504,6 +668,7 @@ def test_strict_selectors_spec_attribute_without_cli_flag(tmp_path):
     import json
     import yaml
     from iil_klickdummy import gen_e2e
+
     spec_file = tmp_path / "spec.yaml"
     out = tmp_path / "t.py"
 
@@ -532,6 +697,7 @@ def test_strict_selectors_spec_attribute_without_cli_flag(tmp_path):
 
 # -- B-1/B-2: Input-Injection/RCE-Härtung (Spec = Vertrauensgrenze) ------------
 
+
 def test_should_reject_newline_in_title_via_schema_validation(tmp_path):
     """B-1: ein `\\n` in screens[].title bräche sonst aus der `#`-Kommentarzeile
     der generierten Datei aus (aktive Python-Zeile bei pytest-collect, VOR
@@ -540,18 +706,34 @@ def test_should_reject_newline_in_title_via_schema_validation(tmp_path):
     import pytest
     import yaml
     from iil_klickdummy import gen_e2e
-    spec = _conform({
-        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
-        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
-        "class": "mock",
-        "screens": [
-            {"id": "login", "title": "Login\nimport os", "route": "/login/",
-             "route_example": "/login/",
-             "parity_acceptance": [
-                 {"id": "l.vis", "check": "visible check",
-                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
-        ],
-    })
+
+    spec = _conform(
+        {
+            "spec_id": "repo:spec-test",
+            "spec_version": "0.1",
+            "spec_date": "2026-06-01",
+            "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+            "class": "mock",
+            "screens": [
+                {
+                    "id": "login",
+                    "title": "Login\nimport os",
+                    "route": "/login/",
+                    "route_example": "/login/",
+                    "parity_acceptance": [
+                        {
+                            "id": "l.vis",
+                            "check": "visible check",
+                            "assert": {
+                                "action": "visible",
+                                "selector": "[data-testid=x]",
+                            },
+                        }
+                    ],
+                },
+            ],
+        }
+    )
     spec_file = tmp_path / "spec.yaml"
     spec_file.write_text(yaml.dump(spec), encoding="utf-8")
     with pytest.raises(SystemExit) as ei:
@@ -565,13 +747,14 @@ def test_should_reject_schema_invalid_spec_in_load_spec(tmp_path):
     import pytest
     import yaml
     from iil_klickdummy import gen_e2e
-    spec = {"spec_id": "repo:x", "screens": []}   # viele Pflichtfelder fehlen
+
+    spec = {"spec_id": "repo:x", "screens": []}  # viele Pflichtfelder fehlen
     spec_file = tmp_path / "spec.yaml"
     spec_file.write_text(yaml.dump(spec), encoding="utf-8")
     with pytest.raises(SystemExit) as ei:
         gen_e2e.load_spec(spec_file)
     assert ei.value.code == 1
-    assert gen_e2e.validate_spec(spec)   # nicht-leere Fehlerliste
+    assert gen_e2e.validate_spec(spec)  # nicht-leere Fehlerliste
 
 
 def test_should_escape_malicious_title_in_generated_comment(tmp_path):
@@ -579,26 +762,36 @@ def test_should_escape_malicious_title_in_generated_comment(tmp_path):
     darf gen_suite daraus KEINE aktive Codezeile machen — der Wert wird in der
     `#`-Kommentarzeile zu einem Space kollabiert; die Datei bleibt harmlos."""
     from iil_klickdummy import gen_e2e
+
     payload = "PWNED = __import__('os').system('touch /tmp/pwned')"
     spec = {
-        "spec_id": "repo:x", "spec_version": "0.1",
+        "spec_id": "repo:x",
+        "spec_version": "0.1",
         "screens": [
-            {"id": "login", "title": f"Login\n{payload}",
-             "route": "/login/", "route_example": "/login/",
-             "parity_acceptance": [
-                 {"id": "l.vis", "check": "visible check",
-                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+            {
+                "id": "login",
+                "title": f"Login\n{payload}",
+                "route": "/login/",
+                "route_example": "/login/",
+                "parity_acceptance": [
+                    {
+                        "id": "l.vis",
+                        "check": "visible check",
+                        "assert": {"action": "visible", "selector": "[data-testid=x]"},
+                    }
+                ],
+            },
         ],
     }
     spec_file = tmp_path / "spec.yaml"
-    spec_file.write_text("sha-source", encoding="utf-8")   # nur für die SHA
+    spec_file.write_text("sha-source", encoding="utf-8")  # nur für die SHA
     code, _ = gen_e2e.gen_suite(spec, spec_file, "test_parity.py")
     # Der Payload darf NUR innerhalb einer Kommentarzeile stehen, nie als Codezeile
     for ln in code.splitlines():
         if payload in ln:
             assert ln.lstrip().startswith("#"), f"Payload als aktive Zeile: {ln!r}"
     assert not any(ln.startswith("PWNED") for ln in code.splitlines())
-    compile(code, "gen.py", "exec")   # muss valides, harmloses Python sein
+    compile(code, "gen.py", "exec")  # muss valides, harmloses Python sein
 
 
 def test_should_neutralise_docstring_backslash_and_triple_quote(tmp_path):
@@ -606,23 +799,34 @@ def test_should_neutralise_docstring_backslash_and_triple_quote(tmp_path):
     Docstring nicht schließen/escapen und die Folgezeile ausführbar machen.
     Härtung gegen `\"\"\"` UND trailing Backslash → die Datei kompiliert sauber."""
     from iil_klickdummy import gen_e2e
+
     payload = 'evil """ + __import__("os").system("id") + """ tail\\'
     spec = {
-        "spec_id": "repo:x", "spec_version": "0.1",
+        "spec_id": "repo:x",
+        "spec_version": "0.1",
         "screens": [
-            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
-             "parity_acceptance": [
-                 {"id": "s.vis", "check": payload,
-                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+            {
+                "id": "s",
+                "title": "S",
+                "route": "/s/",
+                "route_example": "/s/",
+                "parity_acceptance": [
+                    {
+                        "id": "s.vis",
+                        "check": payload,
+                        "assert": {"action": "visible", "selector": "[data-testid=x]"},
+                    }
+                ],
+            },
         ],
     }
     spec_file = tmp_path / "spec.yaml"
     spec_file.write_text("sha-source", encoding="utf-8")
     code, _ = gen_e2e.gen_suite(spec, spec_file, "t.py")
-    compile(code, "gen.py", "exec")           # kaputter Docstring → SyntaxError, hier nicht
-    assert "evil ''' +" in code               # `"""` im check → `'''` neutralisiert
-    assert 'tail"""' in code                   # Docstring schließt sauber
-    assert "tail\\" not in code                # trailing `\` entfernt (escaped Quote nicht)
+    compile(code, "gen.py", "exec")  # kaputter Docstring → SyntaxError, hier nicht
+    assert "evil ''' +" in code  # `"""` im check → `'''` neutralisiert
+    assert 'tail"""' in code  # Docstring schließt sauber
+    assert "tail\\" not in code  # trailing `\` entfernt (escaped Quote nicht)
 
 
 def test_should_sanitize_login_fixture_into_safe_identifier(tmp_path):
@@ -630,15 +834,26 @@ def test_should_sanitize_login_fixture_into_safe_identifier(tmp_path):
     bösartiger Wert muss zu einem sicheren Python-Bezeichner gezwungen werden,
     sonst injiziert er ausführbaren Code in die Fixture-Signatur."""
     from iil_klickdummy import gen_e2e
+
     spec = {
-        "spec_id": "repo:x", "spec_version": "0.1",
+        "spec_id": "repo:x",
+        "spec_version": "0.1",
         "auth": {"login_fixture": "x): pass\nimport os  # evil"},
         "screens": [
-            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
-             "login_required": True,
-             "parity_acceptance": [
-                 {"id": "s.vis", "check": "visible check",
-                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+            {
+                "id": "s",
+                "title": "S",
+                "route": "/s/",
+                "route_example": "/s/",
+                "login_required": True,
+                "parity_acceptance": [
+                    {
+                        "id": "s.vis",
+                        "check": "visible check",
+                        "assert": {"action": "visible", "selector": "[data-testid=x]"},
+                    }
+                ],
+            },
         ],
     }
     spec_file = tmp_path / "spec.yaml"
@@ -651,47 +866,96 @@ def test_should_sanitize_login_fixture_into_safe_identifier(tmp_path):
 
 # -- Follow-up-Härtungen zu PR #102 (externe Zweitmeinung AD-2/AD-3/AD-5/M28-3) --
 
+
 def test_should_neutralise_docstring_trailing_single_quote(tmp_path):
     """AD-2: ein `check`, der auf einem einzelnen `"` endet, stieß sonst an das
     schließende `\"\"\"` (`…\"` + `\"\"\"` = vier Quotes → unterminated string).
     _doc_safe bricht die Quote-Adjacency; die generierte Datei kompiliert."""
     from iil_klickdummy import gen_e2e
-    assert gen_e2e._doc_safe('foo"').endswith('" ')        # trailing " entschärft
+
+    assert gen_e2e._doc_safe('foo"').endswith('" ')  # trailing " entschärft
     spec = {
-        "spec_id": "repo:x", "spec_version": "0.1",
+        "spec_id": "repo:x",
+        "spec_version": "0.1",
         "screens": [
-            {"id": "s", "title": "S", "route": "/s/", "route_example": "/s/",
-             "parity_acceptance": [
-                 {"id": "s.vis", "check": 'ends with a quote "',
-                  "assert": {"action": "visible", "selector": "[data-testid=x]"}}]},
+            {
+                "id": "s",
+                "title": "S",
+                "route": "/s/",
+                "route_example": "/s/",
+                "parity_acceptance": [
+                    {
+                        "id": "s.vis",
+                        "check": 'ends with a quote "',
+                        "assert": {"action": "visible", "selector": "[data-testid=x]"},
+                    }
+                ],
+            },
         ],
     }
     spec_file = tmp_path / "spec.yaml"
     spec_file.write_text("sha-source", encoding="utf-8")
     code, _ = gen_e2e.gen_suite(spec, spec_file, "t.py")
-    compile(code, "gen.py", "exec")   # vorher: SyntaxError
+    compile(code, "gen.py", "exec")  # vorher: SyntaxError
 
 
 def test_should_reject_trailing_newline_in_title_via_schema(tmp_path):
     """AD-3: das bare `^[^\\n\\r]*$` ließ ein *trailing* `\\n` durch (`$` matcht vor
     End-`\\n`), während `\\r` fiel. Die Negative-Lookahead-Form lehnt beides ab."""
     from iil_klickdummy import gen_e2e
+
     base = {
-        "spec_id": "repo:x", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:x",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
         "class": "mock",
     }
     # trailing \n im Screen-title → jetzt schema-invalid
-    spec = _conform({**base, "screens": [
-        {"id": "s", "title": "Login\n",
-         "parity_acceptance": [{"id": "s.v", "check": "visible c",
-                                "assert": {"action": "visible", "selector": "[data-testid=x]"}}]}]})
+    spec = _conform(
+        {
+            **base,
+            "screens": [
+                {
+                    "id": "s",
+                    "title": "Login\n",
+                    "parity_acceptance": [
+                        {
+                            "id": "s.v",
+                            "check": "visible c",
+                            "assert": {
+                                "action": "visible",
+                                "selector": "[data-testid=x]",
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+    )
     assert any("title" in e for e in gen_e2e.validate_spec(spec))
     # sauberer title bleibt valide
-    ok = _conform({**base, "screens": [
-        {"id": "s", "title": "Login",
-         "parity_acceptance": [{"id": "s.v", "check": "visible c",
-                                "assert": {"action": "visible", "selector": "[data-testid=x]"}}]}]})
+    ok = _conform(
+        {
+            **base,
+            "screens": [
+                {
+                    "id": "s",
+                    "title": "Login",
+                    "parity_acceptance": [
+                        {
+                            "id": "s.v",
+                            "check": "visible c",
+                            "assert": {
+                                "action": "visible",
+                                "selector": "[data-testid=x]",
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+    )
     assert not any("title" in e for e in gen_e2e.validate_spec(ok))
 
 
@@ -699,13 +963,26 @@ def test_should_reject_non_identifier_login_fixture_via_schema(tmp_path):
     """AD-5: ein login_fixture, das kein gültiger Python-Bezeichner ist, wird
     fail-closed im Schema abgelehnt (statt still via ident() gecoerct)."""
     from iil_klickdummy import gen_e2e
+
     base = {
-        "spec_id": "repo:x", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:x",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
         "class": "mock",
-        "screens": [{"id": "s", "title": "S",
-                     "parity_acceptance": [{"id": "s.v", "check": "visible c",
-                                            "assert": {"action": "visible", "selector": "[data-testid=x]"}}]}],
+        "screens": [
+            {
+                "id": "s",
+                "title": "S",
+                "parity_acceptance": [
+                    {
+                        "id": "s.v",
+                        "check": "visible c",
+                        "assert": {"action": "visible", "selector": "[data-testid=x]"},
+                    }
+                ],
+            }
+        ],
     }
     bad = _conform({**base, "auth": {"login_fixture": "x): pass\nimport os"}})
     assert any("login_fixture" in e for e in gen_e2e.validate_spec(bad))
@@ -717,4 +994,5 @@ def test_should_cache_loaded_schema(tmp_path):
     """M28-3: _load_schema ist gecacht (unveränderliches Paket-Asset) — zwei
     Aufrufe liefern dasselbe Objekt statt zweimal von Disk zu lesen."""
     from iil_klickdummy import gen_e2e
+
     assert gen_e2e._load_schema() is gen_e2e._load_schema()

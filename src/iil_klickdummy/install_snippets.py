@@ -6,6 +6,7 @@ Default target: `./platform-snippets/klickdummy/`. Creates dir if missing.
 Default mode: copy (cross-platform-safe). `--symlink` creates symlinks for
 live-updates during pip-upgrade.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,12 +18,19 @@ from pathlib import Path
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--target", default="./platform-snippets/klickdummy",
-                        help="Target directory in the consuming repo")
-    parser.add_argument("--symlink", action="store_true",
-                        help="Symlink instead of copy (live-updates on pip-upgrade)")
-    parser.add_argument("--force", action="store_true",
-                        help="Overwrite existing target without backup")
+    parser.add_argument(
+        "--target",
+        default="./platform-snippets/klickdummy",
+        help="Target directory in the consuming repo",
+    )
+    parser.add_argument(
+        "--symlink",
+        action="store_true",
+        help="Symlink instead of copy (live-updates on pip-upgrade)",
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="Overwrite existing target without backup"
+    )
     args = parser.parse_args(argv)
 
     src_root = files("iil_klickdummy") / "snippets"

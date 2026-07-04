@@ -9,6 +9,7 @@ Scope:   <repo_root>/klickdummy/stories/*.yaml|*.yml
 Exit:    0 = PASS (oder kein stories/-Verzeichnis), 1 = FAIL, 2 = Setup-Fehler
 Policy:  ~/.claude/policies/klickdummy.md · platform:ADR-211 §Story-Navigation
 """
+
 from __future__ import annotations
 
 import json
@@ -30,7 +31,9 @@ except ImportError:
 
 
 def _load_schema() -> dict:
-    text = (files("iil_klickdummy") / "schemas" / "story.schema.json").read_text(encoding="utf-8")
+    text = (files("iil_klickdummy") / "schemas" / "story.schema.json").read_text(
+        encoding="utf-8"
+    )
     return json.loads(text)
 
 
@@ -64,14 +67,18 @@ def validate_stories(repo_root: pathlib.Path) -> list[str]:
             errors.append(f"{rel}: Top-Level ist kein Mapping")
             continue
         # Schema
-        for e in sorted(jsonschema.Draft7Validator(schema).iter_errors(raw),
-                        key=lambda x: list(x.absolute_path)):
+        for e in sorted(
+            jsonschema.Draft7Validator(schema).iter_errors(raw),
+            key=lambda x: list(x.absolute_path),
+        ):
             loc = "/".join(str(x) for x in e.absolute_path) or "(root)"
             errors.append(f"{rel} @ {loc}: {e.message}")
         # step.kd-Auflösung (nur wenn steps strukturell ok sind)
         for i, step in enumerate(raw.get("steps") or []):
             if isinstance(step, dict) and step.get("kd") and step["kd"] not in kd_names:
-                errors.append(f"{rel} @ steps/{i}: kd={step['kd']!r} ist kein bekannter Klickdummy")
+                errors.append(
+                    f"{rel} @ steps/{i}: kd={step['kd']!r} ist kein bekannter Klickdummy"
+                )
     return errors
 
 

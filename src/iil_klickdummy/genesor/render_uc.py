@@ -3,11 +3,18 @@
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR4) — Code-Motion;
 einzige Anpassungen: _cfg→get_cfg() (Importbindung) und __file__-Pfadtiefe.
 """
+
 from __future__ import annotations
 
 import html
 from .config import get_cfg
-from .introspect_django import _detect_auth_user_model, _detect_tenant_pattern, _inspect_dev_run, _inspect_django_models, _inspect_infra_context
+from .introspect_django import (
+    _detect_auth_user_model,
+    _detect_tenant_pattern,
+    _inspect_dev_run,
+    _inspect_django_models,
+    _inspect_infra_context,
+)
 from .publish import _github_delete_url, _github_edit_url
 from .scan import find_mockup_html, url_for_path
 from .ucs import _resolve_screen_ref, _uc_kd_targets
@@ -24,22 +31,32 @@ def _render_screen_ref(ref: str, adr_to_kd: dict, kd_mockup_url: dict) -> str:
     """
     resolved = _resolve_screen_ref(ref, adr_to_kd)
     if not resolved:
-        return (f'<code>{html.escape(ref)}</code>'
-                f'<span title="Screen nicht auflösbar" style="color:#b91c1c">&nbsp;⚠</span>')
+        return (
+            f"<code>{html.escape(ref)}</code>"
+            f'<span title="Screen nicht auflösbar" style="color:#b91c1c">&nbsp;⚠</span>'
+        )
     rp, kd, sid = resolved
     kd_url = f"./screen-lineage-{html.escape(rp)}-{html.escape(kd)}.html"
-    out = (f'<span class="rs"><code>{html.escape(sid)}</code> '
-           f'<a href="{kd_url}" title="Screen-Lineage / Spec">🕸 KD</a>')
+    out = (
+        f'<span class="rs"><code>{html.escape(sid)}</code> '
+        f'<a href="{kd_url}" title="Screen-Lineage / Spec">🕸 KD</a>'
+    )
     mock = kd_mockup_url.get((rp, kd))
     if mock:
-        out += (f' <a href="{html.escape(mock)}#screen-{html.escape(sid)}" target="_blank" '
-                f'title="Klickdummy-Screen (Mockup, Deep-Link)">🖼 Mockup</a>')
-    return out + '</span>'
+        out += (
+            f' <a href="{html.escape(mock)}#screen-{html.escape(sid)}" target="_blank" '
+            f'title="Klickdummy-Screen (Mockup, Deep-Link)">🖼 Mockup</a>'
+        )
+    return out + "</span>"
 
 
-def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict,
-                            kds: list[dict] | None = None,
-                            validation: dict[str, list[dict]] | None = None) -> str:
+def build_repo_uc_index_html(
+    repo: str,
+    ucs_for_repo: list[dict],
+    coverage: dict,
+    kds: list[dict] | None = None,
+    validation: dict[str, list[dict]] | None = None,
+) -> str:
     """Pro-Repo UC-Index — Tabelle aller UCs des Repos mit Persona/Status/Coverage.
 
     Workshop-Feedback 2026-05-26: UCs sollten auf Repo-Ebene erreichbar sein,
@@ -47,6 +64,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
     UND lineage-<repo>.html aus verlinkt.
     """
     from datetime import date
+
     ucs_sorted = sorted(ucs_for_repo, key=lambda u: u["uc_id"])
     real_count = coverage["uc_realized_count"]
     unres = coverage["uc_unresolved"]
@@ -54,7 +72,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
     # ADR-Ref → KD-Name Lookup (cross-repo), damit data-kds saubere KD-Namen
     # enthält und der ?kd=-Filter matched (Bugfix Workshop 2026-05-26).
     adr_to_kd: dict[tuple[str, str], str] = {}
-    for k in (kds or []):
+    for k in kds or []:
         if k.get("kind", "spec") != "spec":
             continue
         adr_local = (k.get("data", {}).get("adr", {}) or {}).get("local") or ""
@@ -66,7 +84,7 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
     # (repo, kd) → Mockup-Einstiegs-URL (für related_screens-[Mockup]-Deep-Links).
     # Identisch zur genesor-Index-Verlinkung; None, wenn der KD keinen eigenen Render hat.
     kd_mockup_url: dict[tuple[str, str], str] = {}
-    for k in (kds or []):
+    for k in kds or []:
         if k.get("kind", "spec") != "spec" or not k.get("path"):
             continue
         try:
@@ -81,11 +99,14 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
     # in generate_per_repo_lineages NUR bei >=2 Spec-KDs (F12). Bei 1-KD-Repos
     # (z. B. apo-hub) sonst toter Nav-Link (404).
     n_repo_specs = sum(
-        1 for k in (kds or []) if k.get("kind", "spec") == "spec" and k.get("repo") == repo
+        1
+        for k in (kds or [])
+        if k.get("kind", "spec") == "spec" and k.get("repo") == repo
     )
     lineage_link = (
         f' ·\n  <a href="./lineage-{html.escape(repo)}.html">🌳 Lineage</a>'
-        if n_repo_specs >= 2 else ""
+        if n_repo_specs >= 2
+        else ""
     )
 
     validation = validation or {}
@@ -98,13 +119,23 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
         n_err = sum(1 for f in findings if f["severity"] == "error")
         n_warn = sum(1 for f in findings if f["severity"] == "warning")
         if n_err:
-            health_chip = f'<details class="hf hf-err"><summary>❌ {n_err}e{(" " + str(n_warn) + "w") if n_warn else ""}</summary><ul>' + "".join(
-                f'<li><b>{html.escape(f["code"])}</b>: {html.escape(f["msg"])}</li>' for f in findings
-            ) + '</ul></details>'
+            health_chip = (
+                f'<details class="hf hf-err"><summary>❌ {n_err}e{(" " + str(n_warn) + "w") if n_warn else ""}</summary><ul>'
+                + "".join(
+                    f"<li><b>{html.escape(f['code'])}</b>: {html.escape(f['msg'])}</li>"
+                    for f in findings
+                )
+                + "</ul></details>"
+            )
         elif n_warn:
-            health_chip = f'<details class="hf hf-warn"><summary>⚠ {n_warn}w</summary><ul>' + "".join(
-                f'<li><b>{html.escape(f["code"])}</b>: {html.escape(f["msg"])}</li>' for f in findings
-            ) + '</ul></details>'
+            health_chip = (
+                f'<details class="hf hf-warn"><summary>⚠ {n_warn}w</summary><ul>'
+                + "".join(
+                    f"<li><b>{html.escape(f['code'])}</b>: {html.escape(f['msg'])}</li>"
+                    for f in findings
+                )
+                + "</ul></details>"
+            )
         else:
             health_chip = '<span class="hf hf-ok" title="Validator-Layer A: alle Checks grün">✓</span>'
         status_chip = ""
@@ -117,24 +148,30 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
             status_chip = '<span class="st st-draft">draft</span>'
         cov_chip = (
             f'<span class="cov-{("high" if r >= 3 else "mid" if r == 2 else "low" if r == 1 else "none")}">'
-            f'{r} Screen(s)</span>'
+            f"{r} Screen(s)</span>"
         )
         sek = uc.get("sekundaer") or []
         sek_str = ", ".join(sek) if isinstance(sek, list) else str(sek)
         # Frontmatter-Details collapsible
         details_inner = (
-            f'<dt>FV-Bezug</dt><dd>{html.escape(uc.get("fv_bezug") or "—")}</dd>'
-            f'<dt>Prio</dt><dd>{html.escape(uc.get("prio") or "—")}</dd>'
-            f'<dt>Sekundäre Akteure</dt><dd>{html.escape(sek_str or "—")}</dd>'
-            f'<dt>realisiert von</dt><dd><code>{html.escape(uc.get("realisiert_von") or "—")}</code></dd>'
-            f'<dt>related_screens</dt><dd>'
-            + (" · ".join(_render_screen_ref(str(s), adr_to_kd, kd_mockup_url) for s in (uc.get("related_screens") or [])) or "—")
-            + '</dd>'
+            f"<dt>FV-Bezug</dt><dd>{html.escape(uc.get('fv_bezug') or '—')}</dd>"
+            f"<dt>Prio</dt><dd>{html.escape(uc.get('prio') or '—')}</dd>"
+            f"<dt>Sekundäre Akteure</dt><dd>{html.escape(sek_str or '—')}</dd>"
+            f"<dt>realisiert von</dt><dd><code>{html.escape(uc.get('realisiert_von') or '—')}</code></dd>"
+            f"<dt>related_screens</dt><dd>"
+            + (
+                " · ".join(
+                    _render_screen_ref(str(s), adr_to_kd, kd_mockup_url)
+                    for s in (uc.get("related_screens") or [])
+                )
+                or "—"
+            )
+            + "</dd>"
         )
         if u_refs:
             details_inner += (
                 '<dt style="color:#b91c1c;">⚠ unresolved</dt><dd style="color:#b91c1c;">'
-                + ", ".join(f'<code>{html.escape(x)}</code>' for x in u_refs)
+                + ", ".join(f"<code>{html.escape(x)}</code>" for x in u_refs)
                 + "</dd>"
             )
         try:
@@ -147,7 +184,8 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
                 edit_link = f'<a href="{html.escape(gh_edit)}" target="_blank" class="edit-link" title="In GitHub-Web-Editor öffnen">✏️ edit</a>'
                 del_link = (
                     f'<a href="{html.escape(gh_delete)}" target="_blank" class="del-link" title="In GitHub löschen (Web-UI)">🗑️ delete</a>'
-                    if gh_delete else ""
+                    if gh_delete
+                    else ""
                 )
                 status_extra = '<span class="rem-ok" title="Datei ist in main getrackt">●&nbsp;remote</span>'
             else:
@@ -161,17 +199,19 @@ def build_repo_uc_index_html(repo: str, ucs_for_repo: list[dict], coverage: dict
             status_extra = ""
         rows.append(
             f'<tr data-kds="{html.escape(",".join(_uc_kd_targets(uc, repo, adr_to_kd)))}">'
-            f'<td><code>{html.escape(gid)}</code></td>'
-            f'<td>{html.escape(uc["name"])}</td>'
-            f'<td>{html.escape(str(uc.get("akteur") or "—"))}</td>'
-            f'<td>{health_chip}</td>'
-            f'<td>{status_chip} {status_extra}</td>'
-            f'<td>{cov_chip}</td>'
-            f'<td><details><summary>Details</summary><dl>{details_inner}</dl></details> {src_link} {edit_link} {del_link}</td>'
-            f'</tr>'
+            f"<td><code>{html.escape(gid)}</code></td>"
+            f"<td>{html.escape(uc['name'])}</td>"
+            f"<td>{html.escape(str(uc.get('akteur') or '—'))}</td>"
+            f"<td>{health_chip}</td>"
+            f"<td>{status_chip} {status_extra}</td>"
+            f"<td>{cov_chip}</td>"
+            f"<td><details><summary>Details</summary><dl>{details_inner}</dl></details> {src_link} {edit_link} {del_link}</td>"
+            f"</tr>"
         )
 
-    n_realized = sum(1 for u in ucs_sorted if real_count.get(f"{u['repo']}:{u['uc_id']}", 0) > 0)
+    n_realized = sum(
+        1 for u in ucs_sorted if real_count.get(f"{u['repo']}:{u['uc_id']}", 0) > 0
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -283,15 +323,21 @@ def build_coverage_html(ucs: list[dict], kds: list[dict], coverage: dict) -> str
         cols_by_repo.setdefault(k["repo"], []).append(k)
 
     # Header-Rows (2 Reihen: repo, kd)
-    repo_th = ['<th rowspan="2" class="uc-th">UC-ID</th>',
-               '<th rowspan="2" class="uc-th">Name</th>',
-               '<th rowspan="2" class="uc-th">Akteur</th>']
+    repo_th = [
+        '<th rowspan="2" class="uc-th">UC-ID</th>',
+        '<th rowspan="2" class="uc-th">Name</th>',
+        '<th rowspan="2" class="uc-th">Akteur</th>',
+    ]
     for repo, kds_list in cols_by_repo.items():
-        repo_th.append(f'<th colspan="{len(kds_list)}" class="repo-th">{html.escape(repo)}</th>')
+        repo_th.append(
+            f'<th colspan="{len(kds_list)}" class="repo-th">{html.escape(repo)}</th>'
+        )
     kd_th = []
     for repo, kds_list in cols_by_repo.items():
         for k in kds_list:
-            kd_th.append(f'<th class="kd-th" title="{html.escape(k["kd"])}">{html.escape(k["kd"][:14])}</th>')
+            kd_th.append(
+                f'<th class="kd-th" title="{html.escape(k["kd"])}">{html.escape(k["kd"][:14])}</th>'
+            )
 
     # Body-Rows
     body_rows = []
@@ -309,24 +355,34 @@ def build_coverage_html(ucs: list[dict], kds: list[dict], coverage: dict) -> str
                     cells.append('<td class="cell cell-empty">·</td>')
                 else:
                     n = len(screens)
-                    cls = "cell-low" if n == 1 else ("cell-mid" if n == 2 else "cell-high")
+                    cls = (
+                        "cell-low"
+                        if n == 1
+                        else ("cell-mid" if n == 2 else "cell-high")
+                    )
                     sids = ", ".join(screens)
                     cells.append(
                         f'<td class="cell {cls}" title="Screens: {html.escape(sids)}">{n}</td>'
                     )
-        body_rows.append(f'<tr>{"".join(cells)}</tr>')
+        body_rows.append(f"<tr>{''.join(cells)}</tr>")
 
     # Footer-Listen
-    no_realized = [f"{uc['repo']}:{uc['uc_id']} — {uc['name']}"
-                   for uc in ucs_sorted if uc_real_count.get(f"{uc['repo']}:{uc['uc_id']}", 0) == 0]
+    no_realized = [
+        f"{uc['repo']}:{uc['uc_id']} — {uc['name']}"
+        for uc in ucs_sorted
+        if uc_real_count.get(f"{uc['repo']}:{uc['uc_id']}", 0) == 0
+    ]
     unres_lines = []
     for gid, refs in sorted(uc_unresolved.items()):
-        unres_lines.append(f"<li><code>{html.escape(gid)}</code>: {html.escape(', '.join(refs[:3]))}</li>")
+        unres_lines.append(
+            f"<li><code>{html.escape(gid)}</code>: {html.escape(', '.join(refs[:3]))}</li>"
+        )
 
     n_realized = sum(1 for v in uc_real_count.values() if v > 0)
     n_cells = sum(len(v) for v in matrix.values())
 
     from datetime import date
+
     return f"""<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UC ↔ KD Coverage · Genesor</title>
@@ -438,11 +494,14 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
     """
     import yaml as _yaml
     from datetime import date
+
     repo = record["repo"]
     kd_name = record["kd"]
     d = record.get("data") or {}
     screens = d.get("screens") or []
-    screen = next((s for s in screens if isinstance(s, dict) and s.get("id") == screen_id), None)
+    screen = next(
+        (s for s in screens if isinstance(s, dict) and s.get("id") == screen_id), None
+    )
     if not screen:
         return None
     brief = screen.get("implementation_brief")
@@ -460,8 +519,8 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
     voraussetzung = screen.get("voraussetzung_screen") or "—"
 
     # Entity-Definitions für konsumierte Entities (typisiert wenn vorhanden)
-    entities_local = (d.get("local_entities") or {})
-    entities_root = (d.get("root_entities") or {})
+    entities_local = d.get("local_entities") or {}
+    entities_root = d.get("root_entities") or {}
     entities_all = {**entities_root, **entities_local}
 
     def _entity_block(ename: str) -> str:
@@ -477,10 +536,21 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
         desc = html.escape(str(edef.get("description", "")))
         typed = edef.get("fields_typed")
         treat = edef.get("consumers_must_treat_as", "—")
-        out = [f"### {ename}\n", f"**Description:** {desc}", f"**Consumer-Vertrag:** `{treat}`\n"]
+        out = [
+            f"### {ename}\n",
+            f"**Description:** {desc}",
+            f"**Consumer-Vertrag:** `{treat}`\n",
+        ]
         if typed and isinstance(typed, dict):
             out.append("**Django-Field-Types:**\n```yaml")
-            out.append(_yaml.dump({ename: typed}, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip())
+            out.append(
+                _yaml.dump(
+                    {ename: typed},
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                ).rstrip()
+            )
             out.append("```")
         else:
             fields = edef.get("fields") or []
@@ -493,11 +563,36 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
         return "\n".join(out) + "\n"
 
     # API-Block formatieren
-    api_block_yaml = _yaml.dump({"api": brief.get("api", {})}, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip()
-    tests_block_yaml = _yaml.dump({"tests": brief.get("tests", [])}, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip()
-    nfrs_block_yaml = _yaml.dump({"nfrs": brief.get("nfrs", {})}, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip()
-    ui_block_yaml = _yaml.dump({"ui": brief.get("ui", {})}, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip()
-    audit_block_yaml = _yaml.dump({"audit_log": brief.get("audit_log", {})}, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip()
+    api_block_yaml = _yaml.dump(
+        {"api": brief.get("api", {})},
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+    ).rstrip()
+    tests_block_yaml = _yaml.dump(
+        {"tests": brief.get("tests", [])},
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+    ).rstrip()
+    nfrs_block_yaml = _yaml.dump(
+        {"nfrs": brief.get("nfrs", {})},
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+    ).rstrip()
+    ui_block_yaml = _yaml.dump(
+        {"ui": brief.get("ui", {})},
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+    ).rstrip()
+    audit_block_yaml = _yaml.dump(
+        {"audit_log": brief.get("audit_log", {})},
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+    ).rstrip()
 
     tech = brief.get("tech_stack", {})
     existing_models_declared = brief.get("existing_models", [])
@@ -525,18 +620,26 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
         existing_models_lines.append(f"\n**Relation:** {decl.get('relation', '—')}\n")
         live = inspected.get(key)
         if live:
-            existing_models_lines.append(f"**Auto-introspectiert aus** `{live['source_path']}`:")
+            existing_models_lines.append(
+                f"**Auto-introspectiert aus** `{live['source_path']}`:"
+            )
             existing_models_lines.append("\n| Field | Type | Args/Kwargs |")
             existing_models_lines.append("|---|---|---|")
             for fname, fdef in live["fields"].items():
                 ftype = fdef["type"]
                 args_str = ", ".join(fdef["args"][:3])
-                kw_str = ", ".join(f"{k}={v}" for k, v in list(fdef["kwargs"].items())[:4])
+                kw_str = ", ".join(
+                    f"{k}={v}" for k, v in list(fdef["kwargs"].items())[:4]
+                )
                 detail = " | ".join([s for s in [args_str, kw_str] if s])
-                existing_models_lines.append(f"| `{fname}` | `{ftype}` | {detail or '—'} |")
+                existing_models_lines.append(
+                    f"| `{fname}` | `{ftype}` | {detail or '—'} |"
+                )
             existing_models_lines.append("")
         else:
-            existing_models_lines.append("⚠ **Im Repo NICHT gefunden** — Brief-Declaration ist möglicherweise falsch (Spec-Drift)\n")
+            existing_models_lines.append(
+                "⚠ **Im Repo NICHT gefunden** — Brief-Declaration ist möglicherweise falsch (Spec-Drift)\n"
+            )
     existing_models_section = "\n".join(existing_models_lines) or "*Keine.*"
 
     # Drift-Sektion: KD-Spec ↔ echtes Model — immer Output (auch wenn fields_typed fehlt)
@@ -545,47 +648,79 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
         edef = entities_all.get(ename) or {}
         spec_fields_typed = edef.get("fields_typed", {}) or {}
         spec_fields_untyped = [
-            (f if isinstance(f, str) else (f.get("name", "?") if isinstance(f, dict) else str(f)))
+            (
+                f
+                if isinstance(f, str)
+                else (f.get("name", "?") if isinstance(f, dict) else str(f))
+            )
             for f in (edef.get("fields") or [])
         ]
         # Match-Heuristik: snake_case → CamelCase
-        candidates = [k for k in inspected.keys() if k.split(".", 1)[1].lower() == ename.lower()]
+        candidates = [
+            k for k in inspected.keys() if k.split(".", 1)[1].lower() == ename.lower()
+        ]
         if not candidates:
-            candidates = [k for k in inspected.keys() if k.split(".", 1)[1].lower().rstrip("e") == ename.lower().rstrip("e")]
+            candidates = [
+                k
+                for k in inspected.keys()
+                if k.split(".", 1)[1].lower().rstrip("e") == ename.lower().rstrip("e")
+            ]
         if not candidates:
-            drift_lines.append(f"### `{ename}` — KD-lokale Entity (kein passendes Real-Model)")
+            drift_lines.append(
+                f"### `{ename}` — KD-lokale Entity (kein passendes Real-Model)"
+            )
             if spec_fields_typed:
-                drift_lines.append(f"\n*Spec hat `fields_typed` ({len(spec_fields_typed)} Felder) — Implementierung erzeugt Model neu in §3.*\n")
+                drift_lines.append(
+                    f"\n*Spec hat `fields_typed` ({len(spec_fields_typed)} Felder) — Implementierung erzeugt Model neu in §3.*\n"
+                )
             else:
-                drift_lines.append(f"\n*Spec hat nur `fields`-Liste ({len(spec_fields_untyped)} Felder) ohne Typen — Implementation muss Field-Types selbst wählen.*\n")
+                drift_lines.append(
+                    f"\n*Spec hat nur `fields`-Liste ({len(spec_fields_untyped)} Felder) ohne Typen — Implementation muss Field-Types selbst wählen.*\n"
+                )
             continue
         real_key = candidates[0]
         real_fields = inspected[real_key]["fields"]
         real_keys = set(real_fields.keys())
         drift_lines.append(f"### `{ename}` ↔ `{real_key}`")
-        drift_lines.append(f"\n**Real-Model-Pfad:** `{inspected[real_key]['source_path']}`")
+        drift_lines.append(
+            f"\n**Real-Model-Pfad:** `{inspected[real_key]['source_path']}`"
+        )
         if spec_fields_typed:
             spec_keys = set(spec_fields_typed.keys())
             only_in_spec = spec_keys - real_keys
             only_in_real = real_keys - spec_keys
             common = spec_keys & real_keys
-            drift_lines.append(f"\n**Gemeinsame Felder:** {', '.join(f'`{f}`' for f in sorted(common)) or '—'}")
+            drift_lines.append(
+                f"\n**Gemeinsame Felder:** {', '.join(f'`{f}`' for f in sorted(common)) or '—'}"
+            )
             if only_in_spec:
-                drift_lines.append(f"\n**Nur im KD-Spec (Spec-Drift, Real fehlt):** {', '.join(f'`{f}`' for f in sorted(only_in_spec))}")
+                drift_lines.append(
+                    f"\n**Nur im KD-Spec (Spec-Drift, Real fehlt):** {', '.join(f'`{f}`' for f in sorted(only_in_spec))}"
+                )
             if only_in_real:
-                drift_lines.append(f"\n**Nur im Real-Model (KD vereinfacht):** {', '.join(f'`{f}`' for f in sorted(only_in_real))}")
+                drift_lines.append(
+                    f"\n**Nur im Real-Model (KD vereinfacht):** {', '.join(f'`{f}`' for f in sorted(only_in_real))}"
+                )
         else:
             # KD untyped — zeige Match + Real-Surplus
             spec_keys = set(spec_fields_untyped)
             only_in_spec = spec_keys - real_keys
             only_in_real = real_keys - spec_keys
             common = spec_keys & real_keys
-            drift_lines.append("\n⚠ **KD-Spec hat keine `fields_typed`** (nur Field-Namen-Liste) — Drift-Check Field-Name-only.")
-            drift_lines.append(f"\n**Match Spec ↔ Real (Name-only):** {', '.join(f'`{f}`' for f in sorted(common)) or '—'}")
+            drift_lines.append(
+                "\n⚠ **KD-Spec hat keine `fields_typed`** (nur Field-Namen-Liste) — Drift-Check Field-Name-only."
+            )
+            drift_lines.append(
+                f"\n**Match Spec ↔ Real (Name-only):** {', '.join(f'`{f}`' for f in sorted(common)) or '—'}"
+            )
             if only_in_spec:
-                drift_lines.append(f"\n**KD nennt Felder die Real-Model NICHT hat:** {', '.join(f'`{f}`' for f in sorted(only_in_spec))} — Spec-Drift, ggf. Cleanup oder Mapping nötig")
+                drift_lines.append(
+                    f"\n**KD nennt Felder die Real-Model NICHT hat:** {', '.join(f'`{f}`' for f in sorted(only_in_spec))} — Spec-Drift, ggf. Cleanup oder Mapping nötig"
+                )
             if only_in_real:
-                drift_lines.append(f"\n**Real-Model hat {len(only_in_real)} Felder die KD-Spec NICHT erwähnt** (KD vereinfacht; Engineering ergänzt aus Real-Stand):")
+                drift_lines.append(
+                    f"\n**Real-Model hat {len(only_in_real)} Felder die KD-Spec NICHT erwähnt** (KD vereinfacht; Engineering ergänzt aus Real-Stand):"
+                )
                 # Top-10 Felder zeigen
                 for rfield in sorted(only_in_real)[:10]:
                     rtype = real_fields[rfield]["type"]
@@ -593,7 +728,10 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
                 if len(only_in_real) > 10:
                     drift_lines.append(f"  - … +{len(only_in_real) - 10} weitere")
         drift_lines.append("")
-    drift_section = "\n".join(drift_lines) or "*Keine konsumierten Entities deklariert — kein Drift-Check möglich.*"
+    drift_section = (
+        "\n".join(drift_lines)
+        or "*Keine konsumierten Entities deklariert — kein Drift-Check möglich.*"
+    )
 
     # Tenant-Hint
     tenant_hint = ""
@@ -737,11 +875,13 @@ Pro Datei ein Code-Block mit Pfad im Header (`# apps/{tech.get("django_app", "su
 """
 
 
-def build_impl_brief_html(brief_md: str, repo: str, kd_name: str, screen_id: str,
-                          profile: str, style: dict) -> str:
+def build_impl_brief_html(
+    brief_md: str, repo: str, kd_name: str, screen_id: str, profile: str, style: dict
+) -> str:
     """Implementation-Brief Markdown → HTML mit CD + Genesor-Topbar + Side-Nav."""
     import markdown as _md
     from datetime import date
+
     body_html = _md.markdown(
         brief_md,
         extensions=["tables", "fenced_code", "attr_list", "sane_lists", "toc"],

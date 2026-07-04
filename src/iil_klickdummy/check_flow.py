@@ -12,6 +12,7 @@ Scope:   <repo_root>/klickdummy/*/screens-spec.yaml
 Exit:    0 = PASS (nur warnings/infos), 1 = FAIL (≥1 error), 2 = Setup-Fehler
 Policy:  ~/.claude/policies/klickdummy.md · platform:ADR-211
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -32,7 +33,9 @@ def _finding(sev: str, spec: str, code: str, msg: str) -> dict:
 
 def _check_spec(spec_name: str, data: dict) -> list[dict]:
     out: list[dict] = []
-    screens = [s for s in (data.get("screens") or []) if isinstance(s, dict) and s.get("id")]
+    screens = [
+        s for s in (data.get("screens") or []) if isinstance(s, dict) and s.get("id")
+    ]
     if not screens:
         return out
     ids = {s["id"] for s in screens}
@@ -45,23 +48,51 @@ def _check_spec(spec_name: str, data: dict) -> list[dict]:
     for sid in ids:
         for n in nexts[sid]:
             if n not in ids:
-                out.append(_finding(ERROR, spec_name, "dangling-next",
-                                    f"{sid}.next_screens → {n!r} ist kein Screen dieser Spec"))
+                out.append(
+                    _finding(
+                        ERROR,
+                        spec_name,
+                        "dangling-next",
+                        f"{sid}.next_screens → {n!r} ist kein Screen dieser Spec",
+                    )
+                )
         v = voraus[sid]
         if v and v not in ids:
-            out.append(_finding(ERROR, spec_name, "dangling-voraus",
-                                f"{sid}.voraussetzung_screen → {v!r} ist kein Screen dieser Spec"))
+            out.append(
+                _finding(
+                    ERROR,
+                    spec_name,
+                    "dangling-voraus",
+                    f"{sid}.voraussetzung_screen → {v!r} ist kein Screen dieser Spec",
+                )
+            )
 
     # 2. Vorwärts/Rückwärts-Asymmetrie (warning)
     for sid in ids:
         for n in nexts[sid]:
-            if n in ids and voraus.get(n) not in (sid, None) and sid not in nexts.get(n, []):
-                out.append(_finding(WARNING, spec_name, "edge-asymmetry",
-                                    f"{sid}.next_screens enthält {n!r}, aber {n}.voraussetzung_screen ≠ {sid}"))
+            if (
+                n in ids
+                and voraus.get(n) not in (sid, None)
+                and sid not in nexts.get(n, [])
+            ):
+                out.append(
+                    _finding(
+                        WARNING,
+                        spec_name,
+                        "edge-asymmetry",
+                        f"{sid}.next_screens enthält {n!r}, aber {n}.voraussetzung_screen ≠ {sid}",
+                    )
+                )
         v = voraus[sid]
         if v in ids and sid not in nexts.get(v, []):
-            out.append(_finding(WARNING, spec_name, "edge-asymmetry",
-                                f"{sid}.voraussetzung_screen={v!r}, aber {v}.next_screens enthält {sid!r} nicht"))
+            out.append(
+                _finding(
+                    WARNING,
+                    spec_name,
+                    "edge-asymmetry",
+                    f"{sid}.voraussetzung_screen={v!r}, aber {v}.next_screens enthält {sid!r} nicht",
+                )
+            )
 
     # 3. Zyklus (warning) — DFS über next_screens
     WHITE, GREY, BLACK = 0, 1, 2
@@ -80,7 +111,9 @@ def _check_spec(spec_name: str, data: dict) -> list[dict]:
         return False
 
     if has_flow and any(color[sid] == WHITE and dfs(sid) for sid in ids):
-        out.append(_finding(WARNING, spec_name, "cycle", "next_screens enthält einen Zyklus"))
+        out.append(
+            _finding(WARNING, spec_name, "cycle", "next_screens enthält einen Zyklus")
+        )
 
     # 4. nur wenn ein Flow deklariert ist:
     if has_flow:
@@ -88,15 +121,33 @@ def _check_spec(spec_name: str, data: dict) -> list[dict]:
         for sid in ids:
             # unerreichbar: kein eingehender next + keine Vorbedingung, aber andere zeigen weg
             if sid not in targets and not voraus.get(sid) and not nexts.get(sid):
-                out.append(_finding(INFO, spec_name, "isolated-screen",
-                                    f"{sid}: weder Ziel noch Quelle einer Flow-Kante (isoliert)"))
+                out.append(
+                    _finding(
+                        INFO,
+                        spec_name,
+                        "isolated-screen",
+                        f"{sid}: weder Ziel noch Quelle einer Flow-Kante (isoliert)",
+                    )
+                )
             # Flow-Schritt ohne Use-Case
             if (sid in targets or nexts.get(sid)) and not use_cases.get(sid):
-                out.append(_finding(WARNING, spec_name, "step-without-uc",
-                                    f"{sid}: im Flow, aber ohne use_cases (Stringenz-Lücke)"))
+                out.append(
+                    _finding(
+                        WARNING,
+                        spec_name,
+                        "step-without-uc",
+                        f"{sid}: im Flow, aber ohne use_cases (Stringenz-Lücke)",
+                    )
+                )
     elif len(screens) >= 2:
-        out.append(_finding(INFO, spec_name, "no-flow",
-                            f"{len(screens)} Screens, aber kein next_screens/voraussetzung_screen deklariert"))
+        out.append(
+            _finding(
+                INFO,
+                spec_name,
+                "no-flow",
+                f"{len(screens)} Screens, aber kein next_screens/voraussetzung_screen deklariert",
+            )
+        )
     return out
 
 
@@ -110,8 +161,14 @@ def validate_flow(repo_root: pathlib.Path) -> list[dict]:
         try:
             data = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001
-            out.append(_finding(ERROR, spec_path.parent.name, "unloadable",
-                                f"{type(e).__name__}: {e}"))
+            out.append(
+                _finding(
+                    ERROR,
+                    spec_path.parent.name,
+                    "unloadable",
+                    f"{type(e).__name__}: {e}",
+                )
+            )
             continue
         if isinstance(data, dict):
             out.extend(_check_spec(spec_path.parent.name, data))
@@ -127,8 +184,10 @@ def main(argv: list[str]) -> int:
         print(f"  {icon[f['severity']]} [{f['spec']}] {f['code']}: {f['msg']}")
     errors = sum(1 for f in findings if f["severity"] == ERROR)
     warns = sum(1 for f in findings if f["severity"] == WARNING)
-    print(f"Flow → {'PASS' if errors == 0 else f'FAIL ({errors} error)'}"
-          + (f" · {warns} warning" if warns else ""))
+    print(
+        f"Flow → {'PASS' if errors == 0 else f'FAIL ({errors} error)'}"
+        + (f" · {warns} warning" if warns else "")
+    )
     return 0 if errors == 0 else 1
 
 

@@ -2,6 +2,7 @@
 
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR3) — reine Code-Motion.
 """
+
 from __future__ import annotations
 
 import html
@@ -28,20 +29,44 @@ def _synth_value(field_name: str, row_idx: int, viewer_idx: int | None = None) -
     n = field_name.lower()
     suffixes = ["A", "B", "C", "D", "E"]
     s = suffixes[row_idx % len(suffixes)]
-    p = _BUERGER_POOL[viewer_idx % len(_BUERGER_POOL)] if viewer_idx is not None else _row_buerger(row_idx)
+    p = (
+        _BUERGER_POOL[viewer_idx % len(_BUERGER_POOL)]
+        if viewer_idx is not None
+        else _row_buerger(row_idx)
+    )
     a = _row_akte(row_idx)
     if ("akten" in n or "vorgang" in n) and "name" in n:
         return f"{a['typ']} – {p['nachname']}"
     if "_id" in n or n.endswith("id") or "akten" in n:
         if "akten" in n or n == "akten_id":
-            return f"{a['prefix']}-2026-{row_idx+1:04d}"
-        prefix = "".join(c for c in n.upper().replace("_ID", "").replace("_REF", "") if c.isalpha())[:3] or "ID"
-        return f"{prefix}-2026-{row_idx+1:04d}"
-    if "date" in n or "datum" in n or n.endswith("_ts") or n.endswith("_bis") or n.endswith("_ab") or "_at" in n:
+            return f"{a['prefix']}-2026-{row_idx + 1:04d}"
+        prefix = (
+            "".join(
+                c
+                for c in n.upper().replace("_ID", "").replace("_REF", "")
+                if c.isalpha()
+            )[:3]
+            or "ID"
+        )
+        return f"{prefix}-2026-{row_idx + 1:04d}"
+    if (
+        "date" in n
+        or "datum" in n
+        or n.endswith("_ts")
+        or n.endswith("_bis")
+        or n.endswith("_ab")
+        or "_at" in n
+    ):
         if "geb" in n or "geburts" in n:
             return p["gebdatum"]
-        return f"2026-{(row_idx%9)+1:02d}-{(row_idx%27)+1:02d}"
-    if n in ("namen", "name", "vorname", "nachname") or "buerger" in n and "name" in n or "person" in n and "name" in n:
+        return f"2026-{(row_idx % 9) + 1:02d}-{(row_idx % 27) + 1:02d}"
+    if (
+        n in ("namen", "name", "vorname", "nachname")
+        or "buerger" in n
+        and "name" in n
+        or "person" in n
+        and "name" in n
+    ):
         if n == "vorname":
             return p["vorname"]
         if n == "nachname":
@@ -51,7 +76,14 @@ def _synth_value(field_name: str, row_idx: int, viewer_idx: int | None = None) -
         return f"Beispiel {s}"
     if "status" in n:
         return ["aktiv", "in_pruefung", "abgeschlossen", "wartet", "offen"][row_idx % 5]
-    if "betrag" in n or "preis" in n or "summe" in n or "kosten" in n or "menge" in n and "geld" in n:
+    if (
+        "betrag" in n
+        or "preis" in n
+        or "summe" in n
+        or "kosten" in n
+        or "menge" in n
+        and "geld" in n
+    ):
         v = (row_idx + 1) * 1234.56
         return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
     if "menge" in n or "anzahl" in n or "count" in n:
@@ -59,7 +91,7 @@ def _synth_value(field_name: str, row_idx: int, viewer_idx: int | None = None) -
     if "kanal" in n or "bevorzugt" in n:
         return p["kanal"]
     if "konfidenz" in n or "score" in n:
-        return f"0.{85 - row_idx*3}"
+        return f"0.{85 - row_idx * 3}"
     if "adresse" in n or "anschrift" in n or "strasse" in n:
         return p["adresse"]
     if "typ" in n or "kategorie" in n:
@@ -89,11 +121,15 @@ _AKTEN_ID_FIELDS = {"aktenzeichen", "akten_id"}
 _AKTEN_LINK_FIELDS = _AKTEN_ID_FIELDS | {"aktenname"}
 
 
-def _synth_entity_table(entity_name: str, entity_def: Any, n_rows: int = 3,
-                       screen_id: str | None = None,
-                       known_kds: dict[str, str] | None = None,
-                       known_kd_repos: dict[str, str] | None = None,
-                       viewer_idx: int | None = None) -> str:
+def _synth_entity_table(
+    entity_name: str,
+    entity_def: Any,
+    n_rows: int = 3,
+    screen_id: str | None = None,
+    known_kds: dict[str, str] | None = None,
+    known_kd_repos: dict[str, str] | None = None,
+    viewer_idx: int | None = None,
+) -> str:
     """Render HTML-Tabelle mit synthetischen Beispiel-Zeilen.
 
     Wenn ``screen_id`` gesetzt ist UND die Entity ein Akten-ID-Feld
@@ -135,11 +171,17 @@ def _synth_entity_table(entity_name: str, entity_def: Any, n_rows: int = 3,
             vals = list(ex) if isinstance(ex, (list, tuple)) else [ex]
             cells = []
             for j, f in enumerate(fields):
-                v = vals[j] if j < len(vals) and vals[j] is not None else _synth_value(f, i, viewer_idx=viewer_idx)
-                cells.append(f'<td>{html.escape(str(v))}</td>')
+                v = (
+                    vals[j]
+                    if j < len(vals) and vals[j] is not None
+                    else _synth_value(f, i, viewer_idx=viewer_idx)
+                )
+                cells.append(f"<td>{html.escape(str(v))}</td>")
             ex_rows.append(f"<tr>{''.join(cells)}</tr>")
-        return (f'<table class="entity"><thead><tr>{head}</tr></thead>'
-                f'<tbody>{"".join(ex_rows)}</tbody></table>')
+        return (
+            f'<table class="entity"><thead><tr>{head}</tr></thead>'
+            f"<tbody>{''.join(ex_rows)}</tbody></table>"
+        )
 
     rows_html = []
     for i in range(n_rows):
@@ -177,11 +219,11 @@ def _synth_entity_table(entity_name: str, entity_def: Any, n_rows: int = 3,
                     f'data-sid="{html.escape(screen_id)}" '
                     f'data-azs="{html.escape(azs_val)}" '
                     f'data-aname="{html.escape(aname_val)}"'
-                    f'{extra}>'
-                    f'{html.escape(v)}</a></td>'
+                    f"{extra}>"
+                    f"{html.escape(v)}</a></td>"
                 )
             else:
-                cells.append(f'<td>{html.escape(v)}</td>')
+                cells.append(f"<td>{html.escape(v)}</td>")
         rows_html.append(f"<tr>{''.join(cells)}</tr>")
     return f'<table class="entity"><thead><tr>{head}</tr></thead><tbody>{"".join(rows_html)}</tbody></table>'
 
@@ -213,7 +255,10 @@ def _persona_def_from_spec(spec_data: dict, persona_id: str) -> dict:
 def _entity_def_from_spec(spec_data: dict, entity_name: str) -> dict:
     """root_entities + local_entities zusammenfassen."""
     out = {}
-    for src in (spec_data.get("root_entities") or {}, spec_data.get("local_entities") or {}):
+    for src in (
+        spec_data.get("root_entities") or {},
+        spec_data.get("local_entities") or {},
+    ):
         if isinstance(src, dict):
             out.update(src)
     return out.get(entity_name) or {}

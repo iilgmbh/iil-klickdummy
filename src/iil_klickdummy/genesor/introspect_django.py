@@ -10,6 +10,7 @@ Enthält:
 Abhängigkeiten: nur stdlib + .config (get_cfg).
 Keine Rückabhängigkeiten auf andere genesor-Module.
 """
+
 from __future__ import annotations
 
 from .config import get_cfg
@@ -23,6 +24,7 @@ def _inspect_django_models(repo: str) -> dict[str, dict]:
     User-Owner-Pattern, was zu Refactor-Aufwand führt.
     """
     import ast
+
     result: dict[str, dict] = {}
     repo_path = get_cfg().repos_root / repo
     apps_dir = repo_path / "apps"
@@ -91,7 +93,9 @@ def _inspect_django_models(repo: str) -> dict[str, dict]:
 
 def _detect_tenant_pattern(models_inspected: dict[str, dict]) -> dict:
     """Erkennt ADR-072 Multi-Tenant-Pattern (≥3 Models mit ``tenant_id``)."""
-    with_tenant = [k for k, v in models_inspected.items() if "tenant_id" in v.get("fields", {})]
+    with_tenant = [
+        k for k, v in models_inspected.items() if "tenant_id" in v.get("fields", {})
+    ]
     return {
         "active": len(with_tenant) >= 3,
         "count": len(with_tenant),
@@ -100,13 +104,16 @@ def _detect_tenant_pattern(models_inspected: dict[str, dict]) -> dict:
             "ADR-072 Multi-Tenant via BigIntegerField (kein FK). Neue Models in diesem Repo "
             "sollten `tenant_id`-Field + Index ergänzen; Views filtern via "
             "`core.TenantUser.objects.filter(tenant_id=..., user=request.user, is_active=True)`."
-        ) if len(with_tenant) >= 3 else "",
+        )
+        if len(with_tenant) >= 3
+        else "",
     }
 
 
 def _detect_auth_user_model(repo: str) -> str:
     """Liest ``AUTH_USER_MODEL`` aus ``config/settings/base.py`` (oder Fallback)."""
     import re
+
     repo_path = get_cfg().repos_root / repo
     candidates = [
         repo_path / "config" / "settings" / "base.py",
@@ -123,7 +130,7 @@ def _detect_auth_user_model(repo: str) -> str:
         m = re.search(r'AUTH_USER_MODEL\s*=\s*["\']([^"\']+)["\']', text)
         if m:
             return m.group(1)
-    return "auth.User"   # Django-Default
+    return "auth.User"  # Django-Default
 
 
 def _inspect_dev_run(repo: str) -> dict:
@@ -135,6 +142,7 @@ def _inspect_dev_run(repo: str) -> dict:
     gefunden wurde.
     """
     import re
+
     repo_path = get_cfg().repos_root / repo
     out: dict = {"repo_path": f"~/github/{repo}"}
 
@@ -192,14 +200,14 @@ def _inspect_dev_run(repo: str) -> dict:
         except OSError:
             pp_text = req_text = ""
         # Sehr einfache Heuristik: Package-Namen aus [tool.poetry.dependencies]-Section
-        m = re.search(r'\[tool\.poetry\.dependencies\](.+?)(?:\n\[|\Z)', pp_text, re.S)
+        m = re.search(r"\[tool\.poetry\.dependencies\](.+?)(?:\n\[|\Z)", pp_text, re.S)
         if m:
             pp_deps = set()
             for line in m.group(1).splitlines():
                 ln = line.strip()
                 if not ln or ln.startswith("#") or ln.startswith("python"):
                     continue
-                mm = re.match(r'([A-Za-z0-9_\-]+)\s*=', ln)
+                mm = re.match(r"([A-Za-z0-9_\-]+)\s*=", ln)
                 if mm:
                     pp_deps.add(mm.group(1).lower().replace("_", "-"))
             req_deps = set()
@@ -207,7 +215,7 @@ def _inspect_dev_run(repo: str) -> dict:
                 ln = line.strip()
                 if not ln or ln.startswith("#"):
                     continue
-                mm = re.match(r'([A-Za-z0-9_\-]+)', ln)
+                mm = re.match(r"([A-Za-z0-9_\-]+)", ln)
                 if mm:
                     req_deps.add(mm.group(1).lower().replace("_", "-"))
             missing = pp_deps - req_deps
@@ -229,7 +237,9 @@ def _inspect_dev_run(repo: str) -> dict:
     if port:
         # versuchen healthz-URL aus Spec-screen abzuleiten — Caller setzt das ggf. nach
         out["bind"] = "0.0.0.0"
-        out["test_url"] = f"http://localhost:{port}/healthz/  # ggf. <app-mount>/healthz/"
+        out["test_url"] = (
+            f"http://localhost:{port}/healthz/  # ggf. <app-mount>/healthz/"
+        )
         out["public_test_url"] = (
             f"http://88.99.38.75:{port}/healthz/  # ggf. <app-mount>/healthz/"
         )
@@ -256,24 +266,24 @@ def _inspect_infra_context(workspace_root: str = "~/github") -> dict:
         except OSError:
             text = ""
         # Public-IP + Server-Name
-        m = re.search(r'\*\*Public IPv4:\*\*\s*`([\d.]+)`', text)
+        m = re.search(r"\*\*Public IPv4:\*\*\s*`([\d.]+)`", text)
         if m:
             out["server_public_ipv4"] = m.group(1)
-        m = re.search(r'\*\*Server:\*\*\s*`?([\w\-]+)`?', text)
+        m = re.search(r"\*\*Server:\*\*\s*`?([\w\-]+)`?", text)
         if m:
             out["server_name"] = m.group(1)
         # Cloud-Provider
-        m = re.search(r'\((Hetzner|AWS|GCP|Azure)[^)]*\)', text, re.I)
+        m = re.search(r"\((Hetzner|AWS|GCP|Azure)[^)]*\)", text, re.I)
         if m:
             out["cloud_provider"] = m.group(1).lower() + "-cloud"
         # Cloud-Firewall-Block
-        m = re.search(r'firewall[-_]?\d+\s*\(id=(\d+)\)', text)
+        m = re.search(r"firewall[-_]?\d+\s*\(id=(\d+)\)", text)
         if m:
             out["cloud_firewall_id"] = int(m.group(1))
             out["cloud_firewall_name"] = "firewall-1"
-        m = re.search(r'erlauben nur\s+\*\*([\d,\s\-+]+)', text)
+        m = re.search(r"erlauben nur\s+\*\*([\d,\s\-+]+)", text)
         if m:
-            ports = re.findall(r'\d+', m.group(1))
+            ports = re.findall(r"\d+", m.group(1))
             out["cloud_firewall_default_open"] = [int(p) for p in ports]
         # Port-Tabelle parsen — Markdown-Zeilen mit | Port | Bind | Service | ...
         neighbors = []
@@ -300,7 +310,9 @@ def _inspect_infra_context(workspace_root: str = "~/github") -> dict:
         )
         live = []
         for line in ss_out.stdout.splitlines():
-            m = re.search(r'(\d+\.\d+\.\d+\.\d+):(80\d{2}|87\d{2}|85\d{2}|81\d{2})\s', line)
+            m = re.search(
+                r"(\d+\.\d+\.\d+\.\d+):(80\d{2}|87\d{2}|85\d{2}|81\d{2})\s", line
+            )
             if m:
                 bind = m.group(1)
                 p = int(m.group(2))
@@ -309,7 +321,9 @@ def _inspect_infra_context(workspace_root: str = "~/github") -> dict:
             # Dedupe nach (bind, port)
             seen = set()
             out["live_listening_ports"] = [
-                x for x in live if (x["bind"], x["port"]) not in seen
+                x
+                for x in live
+                if (x["bind"], x["port"]) not in seen
                 and not seen.add((x["bind"], x["port"]))
             ][:25]
     except (OSError, subprocess.TimeoutExpired):

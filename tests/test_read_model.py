@@ -1,4 +1,5 @@
 """Tests für read_model.py — Schema-Konstanten + TypedDict-Roundtrip (KONZ-003 Empf-3 S1, #70)."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,11 @@ def test_should_export_schema_version_constant_be_stable():
 
 
 def test_should_discovery_schema_constants_be_stable():
-    from iil_klickdummy.read_model import API_VERSION, EMBEDDING_INPUT_SCHEMA, REGISTRY_SCHEMA_VERSION
+    from iil_klickdummy.read_model import (
+        API_VERSION,
+        EMBEDDING_INPUT_SCHEMA,
+        REGISTRY_SCHEMA_VERSION,
+    )
 
     assert REGISTRY_SCHEMA_VERSION == "v1.6"
     assert API_VERSION == "v1"
@@ -21,7 +26,15 @@ def test_should_discovery_schema_constants_be_stable():
 def test_should_uc_export_envelope_typeddict_have_required_keys():
     from iil_klickdummy.read_model import UcExportEnvelope
 
-    required = {"schema_version", "generated_at", "source", "summary", "kds", "ucs", "coverage_matrix"}
+    required = {
+        "schema_version",
+        "generated_at",
+        "source",
+        "summary",
+        "kds",
+        "ucs",
+        "coverage_matrix",
+    }
     assert required == set(UcExportEnvelope.__annotations__)
 
 

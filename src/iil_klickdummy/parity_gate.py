@@ -17,6 +17,7 @@ Phasen (ADR-211 I3):
 Aufruf:  klickdummy-parity-gate <spec.yaml> <manifest.json> [--phase A|C]
 Exit:    0 = Gate grün · 1 = Verstoß · 2 = Setup-Fehler
 """
+
 from __future__ import annotations
 
 import json
@@ -93,13 +94,19 @@ def main(argv: list[str]) -> int:
     print(f"== Parity-Gate (Phase {phase}) ==")
     print(f"  Spec     : {spec_path}")
     print(f"  Manifest : {manifest_path}")
-    print(f"  executable={manifest.get('executable')} skipped={manifest.get('skipped')} "
-          f"fragile={len(manifest.get('fragile_selectors', []) or [])}")
+    print(
+        f"  executable={manifest.get('executable')} skipped={manifest.get('skipped')} "
+        f"fragile={len(manifest.get('fragile_selectors', []) or [])}"
+    )
     if ok:
-        print("  ✓ Gate GRÜN — alle executable-Checks ausführbar, keine fragilen Selektoren.")
+        print(
+            "  ✓ Gate GRÜN — alle executable-Checks ausführbar, keine fragilen Selektoren."
+        )
         if phase.upper() == "C":
-            print("  ℹ Phase C: die Live-Parität gegen Renderer #2 (echte App) belegt der "
-                  "pytest-Lauf gegen SPEC_RENDERER_BASE_URL — separat in CI, nicht hier.")
+            print(
+                "  ℹ Phase C: die Live-Parität gegen Renderer #2 (echte App) belegt der "
+                "pytest-Lauf gegen SPEC_RENDERER_BASE_URL — separat in CI, nicht hier."
+            )
         return 0
     print(f"  ✗ Gate ROT — {len(violations)} Verstoß/Verstöße:")
     for v in violations:

@@ -4,6 +4,7 @@ Vorher war #ver-select eine UI-Attrappe: discover_versions() existierte,
 wurde aber nie aufgerufen. Jetzt: render_browser_html(repo_root=...) bettet
 die Historie ein und schreibt shell.html-Snapshots früherer Versionen.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -15,7 +16,9 @@ from iil_klickdummy import registry
 def _git(repo, *args):
     subprocess.run(
         ["git", "-C", str(repo), *args],
-        check=True, capture_output=True, text=True,
+        check=True,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -87,8 +90,9 @@ def test_should_render_without_git_history(tmp_path):
 
 
 def test_template_has_version_select_handler():
-    tmpl = (registry.files("iil_klickdummy.snippets") / "browser"
-            / "browser.html.tmpl").read_text(encoding="utf-8")
+    tmpl = (
+        registry.files("iil_klickdummy.snippets") / "browser" / "browser.html.tmpl"
+    ).read_text(encoding="utf-8")
     assert "onSelectVersion" in tmpl
     assert "populateVersions" in tmpl
     # historische Snapshots laden read-only, ohne Feedback-Widget

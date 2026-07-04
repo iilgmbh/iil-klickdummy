@@ -12,6 +12,7 @@ in die Spec. Das Modul frisst KEINEN Mermaid-Text in Codegen — keine RCE-Fläc
 Aufruf:  klickdummy-mermaid-readback <mermaid.(mmd|md)> <spec.yaml>
 Exit:    0 = kein Delta (Flow == Spec) · 1 = Delta gefunden · 2 = Setup-Fehler
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -48,7 +49,12 @@ def parse_flow(mermaid: str) -> tuple[set[tuple[str, str]], dict[str, str]]:
     back_edges: dict[str, str] = {}
     for raw in mermaid.splitlines():
         line = raw.strip()
-        if not line or line.startswith("%%") or line.startswith("flowchart") or line.startswith("graph"):
+        if (
+            not line
+            or line.startswith("%%")
+            or line.startswith("flowchart")
+            or line.startswith("graph")
+        ):
             continue
         dm = _DOTTED.search(line)
         if dm:
@@ -84,8 +90,8 @@ def diff(mermaid: str, spec: dict) -> dict:
     mn, mb = parse_flow(mermaid)
     sn, sb = spec_flow(spec)
     return {
-        "next_add": sorted(mn - sn),                       # im Mermaid, nicht in Spec → ergänzen
-        "next_remove": sorted(sn - mn),                    # in Spec, nicht im Mermaid → prüfen/entfernen
+        "next_add": sorted(mn - sn),  # im Mermaid, nicht in Spec → ergänzen
+        "next_remove": sorted(sn - mn),  # in Spec, nicht im Mermaid → prüfen/entfernen
         "back_add": sorted((k, v) for k, v in mb.items() if sb.get(k) != v),
         "back_remove": sorted((k, v) for k, v in sb.items() if mb.get(k) != v),
     }
@@ -110,15 +116,25 @@ def main(argv: list[str]) -> int:
     if total == 0:
         print("  ✓ Flow == Spec — keine Delta (next_screens/back_screen decken sich).")
         return 0
-    print(f"  Δ {total} — die Spec ist SoR; diese Delta von Hand einpflegen (kein Auto-Write):")
-    for (a, b) in d["next_add"]:
-        print(f"      + next: {a} → {b}   (im Mermaid, fehlt in Spec: screens[{a}].next_screens += {b})")
-    for (a, b) in d["next_remove"]:
-        print(f"      - next: {a} → {b}   (in Spec, nicht im Mermaid: prüfen/entfernen)")
-    for (a, b) in d["back_add"]:
-        print(f"      + back: {a} ⤺ {b}   (im Mermaid, fehlt/abweichend in Spec: screens[{a}].back_screen = {b})")
-    for (a, b) in d["back_remove"]:
-        print(f"      - back: {a} ⤺ {b}   (in Spec, nicht im Mermaid: prüfen/entfernen)")
+    print(
+        f"  Δ {total} — die Spec ist SoR; diese Delta von Hand einpflegen (kein Auto-Write):"
+    )
+    for a, b in d["next_add"]:
+        print(
+            f"      + next: {a} → {b}   (im Mermaid, fehlt in Spec: screens[{a}].next_screens += {b})"
+        )
+    for a, b in d["next_remove"]:
+        print(
+            f"      - next: {a} → {b}   (in Spec, nicht im Mermaid: prüfen/entfernen)"
+        )
+    for a, b in d["back_add"]:
+        print(
+            f"      + back: {a} ⤺ {b}   (im Mermaid, fehlt/abweichend in Spec: screens[{a}].back_screen = {b})"
+        )
+    for a, b in d["back_remove"]:
+        print(
+            f"      - back: {a} ⤺ {b}   (in Spec, nicht im Mermaid: prüfen/entfernen)"
+        )
     return 1
 
 
