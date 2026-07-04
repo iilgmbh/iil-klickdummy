@@ -12,6 +12,7 @@ sobald der Produkt-Repo Staging hat.
 Aufruf:  python3 scripts/klickdummy/check_i3.py <spec>:<schema> [...]
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler
 """
+
 from __future__ import annotations
 import json
 import pathlib
@@ -64,8 +65,9 @@ def main(argv: list[str]) -> int:
                     # Flow-Knoten (next_screens, keine parity_acceptance) sind
                     # Navigations-Graph-Knoten, keine Assertions-Screens — kein
                     # off_ramp_status nötig (Schema: screens.items anyOf-Klasse).
-                    is_flow_node = (bool(sc.get("next_screens")) or bool(sc.get("back_screen"))) \
-                        and not sc.get("parity_acceptance")
+                    is_flow_node = (
+                        bool(sc.get("next_screens")) or bool(sc.get("back_screen"))
+                    ) and not sc.get("parity_acceptance")
                     st = sc.get("off_ramp_status")
                     if st is None:
                         if is_flow_node:
@@ -79,15 +81,21 @@ def main(argv: list[str]) -> int:
                         continue
                     counts[st] = counts.get(st, 0) + 1
                 for sid in missing:
-                    print(f"      ✗ screen {sid!r}: off_ramp_status fehlt (Pflichtfeld)")
+                    print(
+                        f"      ✗ screen {sid!r}: off_ramp_status fehlt (Pflichtfeld)"
+                    )
                 errs += len(missing)
                 if bad:
                     for sid, st in bad:
-                        print(f"      ✗ screen {sid!r}: off_ramp_status={st!r} unzulässig")
+                        print(
+                            f"      ✗ screen {sid!r}: off_ramp_status={st!r} unzulässig"
+                        )
                     errs += len(bad)
                 summary = ", ".join(f"{k}={v}" for k, v in counts.items() if v)
                 mark = "✓" if not (missing or bad) else "·"
-                print(f"      {mark} {len(screens)} Screen(s) — {summary or 'kein gültiger Status'}")
+                print(
+                    f"      {mark} {len(screens)} Screen(s) — {summary or 'kein gültiger Status'}"
+                )
             else:
                 print(f"      ✓ off_ramp-Policy: {off.get('policy', '(unbenannt)')}")
         except FileNotFoundError as e:
@@ -107,4 +115,5 @@ if __name__ == "__main__":
 def main_cli() -> int:
     """Console-Script entry (pyproject.toml [project.scripts])."""
     import sys
+
     return main(sys.argv[1:])

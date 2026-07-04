@@ -14,6 +14,7 @@ Whitelist lokaler ADRs wird aus docs/adr/ADR-NNN-*.md autoermittelt.
 Aufruf:  python3 scripts/klickdummy/check_i4.py <root_dir>
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler
 """
+
 from __future__ import annotations
 import pathlib
 import re
@@ -66,7 +67,9 @@ def check_file(path: pathlib.Path, local: set[str]) -> list[tuple[int, str, str]
                 continue  # repo:ADR-NNN — ok
             if adr in local:
                 continue  # lokale meiki-ADR — ok
-            findings.append((lineno, adr, "unqualifiziert (nicht in local-set, nicht repo:ADR-NNN)"))
+            findings.append(
+                (lineno, adr, "unqualifiziert (nicht in local-set, nicht repo:ADR-NNN)")
+            )
     return findings
 
 
@@ -104,4 +107,5 @@ if __name__ == "__main__":
 def main_cli() -> int:
     """Console-Script entry (pyproject.toml [project.scripts])."""
     import sys
+
     return main(sys.argv[1:])

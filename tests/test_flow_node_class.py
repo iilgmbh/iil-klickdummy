@@ -6,6 +6,7 @@ Navigations-Graph: Flow-Knoten mit `next_screens`/`back_screen`, ohne
 solche Knoten ab (purpose/parity_acceptance/off_ramp_status Pflicht auf JEDEM
 Screen) → 1.30 hätte bestehende Flow-KDs gebrochen.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,24 +24,50 @@ def _schema() -> dict:
 
 def _base(screens: list[dict]) -> dict:
     return {
-        "spec_id": "repo:spec-test", "spec_version": "0.1", "spec_date": "2026-06-01",
+        "spec_id": "repo:spec-test",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
         "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
-        "class": "mock", "grounding": {"konzept": "-", "pilot": "-"},
-        "off_ramp": {"policy": "-", "unit": "per-screen", "rule": "-",
-                     "doppelquell_grenze": "prod-release", "parity_runner": "-"},
+        "class": "mock",
+        "grounding": {"konzept": "-", "pilot": "-"},
+        "off_ramp": {
+            "policy": "-",
+            "unit": "per-screen",
+            "rule": "-",
+            "doppelquell_grenze": "prod-release",
+            "parity_runner": "-",
+        },
         "personas": {"u": {"label": "U", "rolle": "u", "sieht": []}},
         "screens": screens,
     }
 
 
 _ASSERT_SCREEN = {
-    "id": "workflow", "title": "W", "personas": ["u"], "purpose": "-",
+    "id": "workflow",
+    "title": "W",
+    "personas": ["u"],
+    "purpose": "-",
     "off_ramp_status": "static",
-    "parity_acceptance": [{"id": "w.v", "check": "visible c",
-                           "assert": {"action": "visible", "selector": "[data-testid=x]"}}],
+    "parity_acceptance": [
+        {
+            "id": "w.v",
+            "check": "visible c",
+            "assert": {"action": "visible", "selector": "[data-testid=x]"},
+        }
+    ],
 }
-_FLOW_FWD = {"id": "phase1", "title": "P1", "personas": ["u"], "next_screens": ["phase2"]}
-_FLOW_TERM = {"id": "export", "title": "Export", "personas": ["u"], "back_screen": "phase1"}
+_FLOW_FWD = {
+    "id": "phase1",
+    "title": "P1",
+    "personas": ["u"],
+    "next_screens": ["phase2"],
+}
+_FLOW_TERM = {
+    "id": "export",
+    "title": "Export",
+    "personas": ["u"],
+    "back_screen": "phase1",
+}
 
 
 def test_should_accept_forward_flow_node_without_parity_acceptance():
@@ -70,9 +97,13 @@ def test_should_reject_parity_acceptance_screen_masquerading_as_flow_node():
     Flow-Branches erzwingt: wer parity_acceptance hat, MUSS Assertions-Screen sein
     (purpose + off_ramp_status Pflicht) — sonst invalid."""
     masquerader = {
-        "id": "sneaky", "title": "S", "personas": ["u"],
-        "next_screens": ["phase2"],   # sähe wie Flow-Knoten aus …
-        "parity_acceptance": [{"id": "s.v", "check": "visible c"}],  # … trägt aber Asserts
+        "id": "sneaky",
+        "title": "S",
+        "personas": ["u"],
+        "next_screens": ["phase2"],  # sähe wie Flow-Knoten aus …
+        "parity_acceptance": [
+            {"id": "s.v", "check": "visible c"}
+        ],  # … trägt aber Asserts
         # purpose + off_ramp_status FEHLEN → Assertions-Branch scheitert auch
     }
     errs = gen_e2e.validate_spec(_base([_ASSERT_SCREEN, masquerader]))
@@ -83,7 +114,10 @@ def test_should_pass_i3_for_flow_node_without_off_ramp_status(tmp_path):
     """I3 nimmt Flow-Knoten vom off_ramp_status-Zwang aus."""
     import yaml
     from iil_klickdummy import check_i3
+
     spec_file = tmp_path / "spec.yaml"
-    spec_file.write_text(yaml.dump(_base([_ASSERT_SCREEN, _FLOW_FWD, _FLOW_TERM])), encoding="utf-8")
+    spec_file.write_text(
+        yaml.dump(_base([_ASSERT_SCREEN, _FLOW_FWD, _FLOW_TERM])), encoding="utf-8"
+    )
     rc = check_i3.main([str(spec_file)])
     assert rc == 0

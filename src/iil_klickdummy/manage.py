@@ -26,6 +26,7 @@ Datenquelle (registry.discover_cross_repo), andere Konsumenten-UX.
 
 Topic ist OPTIONAL — bestehende Specs ohne `meta.topic` bleiben gültig.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,7 +39,8 @@ from datetime import date
 import yaml
 
 from .registry import (
-    discover_cross_repo, discover_versions,
+    discover_cross_repo,
+    discover_versions,
     KlickdummyMeta,
 )
 
@@ -46,6 +48,7 @@ from .registry import (
 # ---------------------------------------------------------------------------
 # Spec-Helpers (Topic + Frontmatter-Lesen)
 # ---------------------------------------------------------------------------
+
 
 def _load_spec_yaml(spec_path: pathlib.Path) -> dict:
     try:
@@ -72,6 +75,7 @@ def _adr_sunset_after(repo_root: pathlib.Path, adr_local: str | None) -> date | 
         except (OSError, UnicodeError):
             continue
         import re
+
         m = re.search(r"^sunset_after:\s*(\d{4}-\d{2}-\d{2})", text, re.MULTILINE)
         if m:
             try:
@@ -85,7 +89,10 @@ def _adr_sunset_after(repo_root: pathlib.Path, adr_local: str | None) -> date | 
 # Filter
 # ---------------------------------------------------------------------------
 
-def _passes_filter(org: str, repo: str, km: KlickdummyMeta, topic: str | None, args) -> bool:
+
+def _passes_filter(
+    org: str, repo: str, km: KlickdummyMeta, topic: str | None, args
+) -> bool:
     if args.org and org != args.org:
         return False
     if args.repo and repo != args.repo:
@@ -101,6 +108,7 @@ def _passes_filter(org: str, repo: str, km: KlickdummyMeta, topic: str | None, a
 # Sub-Command: list
 # ---------------------------------------------------------------------------
 
+
 def cmd_list(args) -> int:
     base = pathlib.Path(args.base).expanduser().resolve()
     repos = [r.strip() for r in args.repos.split(",") if r.strip()]
@@ -114,15 +122,31 @@ def cmd_list(args) -> int:
         topic = _spec_topic(base / repo / km.path) or "—"
         if not _passes_filter(org, repo, km, topic, args):
             continue
-        rows.append((org, repo, km.name, km.spec_version, km.klickdummy_class, topic, km.adr_local or "—"))
+        rows.append(
+            (
+                org,
+                repo,
+                km.name,
+                km.spec_version,
+                km.klickdummy_class,
+                topic,
+                km.adr_local or "—",
+            )
+        )
     if not rows:
         print("Keine Klickdummies passend zum Filter.", file=sys.stderr)
         return 0
     # Tabellen-Output
     headers = ("ORG", "REPO", "NAME", "VER", "CLASS", "TOPIC", "ADR")
-    widths = [max(len(str(r[i])) for r in [headers, *rows]) for i in range(len(headers))]
+    widths = [
+        max(len(str(r[i])) for r in [headers, *rows]) for i in range(len(headers))
+    ]
     if args.json:
-        print(json.dumps([dict(zip(headers, r)) for r in rows], ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                [dict(zip(headers, r)) for r in rows], ensure_ascii=False, indent=2
+            )
+        )
         return 0
     line = "  ".join(f"{h:<{w}}" for h, w in zip(headers, widths))
     print(line)
@@ -137,6 +161,7 @@ def cmd_list(args) -> int:
 # ---------------------------------------------------------------------------
 # Sub-Command: status (Health-Check)
 # ---------------------------------------------------------------------------
+
 
 def cmd_status(args) -> int:
     base = pathlib.Path(args.base).expanduser().resolve()
@@ -156,11 +181,15 @@ def cmd_status(args) -> int:
         if sunset:
             days_left = sunset.toordinal() - today.toordinal()
             if days_left < 0:
-                msgs.append(f"⚠ sunset_after {sunset} ÜBERSCHRITTEN ({-days_left} Tage)")
+                msgs.append(
+                    f"⚠ sunset_after {sunset} ÜBERSCHRITTEN ({-days_left} Tage)"
+                )
             elif days_left < (args.sunset_due_in or 30):
                 msgs.append(f"⚠ sunset_after {sunset} fällig in {days_left} Tagen")
         else:
-            msgs.append(f"⚠ kein sunset_after in ADR ({km.adr_local}) — Rev-11-Frontmatter-Verstoß")
+            msgs.append(
+                f"⚠ kein sunset_after in ADR ({km.adr_local}) — Rev-11-Frontmatter-Verstoß"
+            )
         if km.klickdummy_class not in ("mock", "stub-demo", "story", "spec-demo"):
             msgs.append(f"⚠ class={km.klickdummy_class!r} nicht in 4-Pattern")
         if not msgs:
@@ -183,6 +212,7 @@ def cmd_status(args) -> int:
 # Sub-Command: topics
 # ---------------------------------------------------------------------------
 
+
 def cmd_topics(args) -> int:
     base = pathlib.Path(args.base).expanduser().resolve()
     repos = [r.strip() for r in args.repos.split(",") if r.strip()]
@@ -194,16 +224,27 @@ def cmd_topics(args) -> int:
     print("== klickdummy-manage topics ==", file=sys.stderr)
     print(f"  Topics: {len(by_topic)}", file=sys.stderr)
     if args.json:
-        out = {t: [{"org": o, "repo": r, "name": k.name, "spec_version": k.spec_version,
-                    "class": k.klickdummy_class}
-                   for o, r, k in items]
-               for t, items in by_topic.items()}
+        out = {
+            t: [
+                {
+                    "org": o,
+                    "repo": r,
+                    "name": k.name,
+                    "spec_version": k.spec_version,
+                    "class": k.klickdummy_class,
+                }
+                for o, r, k in items
+            ]
+            for t, items in by_topic.items()
+        }
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0
     for topic, items in sorted(by_topic.items()):
         print(f"\n## {topic} ({len(items)} Klickdummy(ies))")
         for org, repo, km in items:
-            print(f"  - {org}/{repo}:{km.name}  v{km.spec_version}  [{km.klickdummy_class}]")
+            print(
+                f"  - {org}/{repo}:{km.name}  v{km.spec_version}  [{km.klickdummy_class}]"
+            )
     print()
     return 0
 
@@ -211,6 +252,7 @@ def cmd_topics(args) -> int:
 # ---------------------------------------------------------------------------
 # Sub-Command: versions
 # ---------------------------------------------------------------------------
+
 
 def cmd_versions(args) -> int:
     base = pathlib.Path(args.base).expanduser().resolve()
@@ -238,8 +280,10 @@ def cmd_versions(args) -> int:
 # Sub-Command: diff
 # ---------------------------------------------------------------------------
 
+
 def cmd_diff(args) -> int:
     import subprocess
+
     base = pathlib.Path(args.base).expanduser().resolve()
     repos = [r.strip() for r in args.repos.split(",") if r.strip()]
     triples = discover_cross_repo(base, repos)
@@ -248,19 +292,38 @@ def cmd_diff(args) -> int:
             continue
         spec_path = base / repo / km.path
         versions = discover_versions(spec_path, base / repo)
-        v1_commit = next((v.commit_sha for v in versions if v.spec_version == args.v1), None)
-        v2_commit = next((v.commit_sha for v in versions if v.spec_version == args.v2), None)
+        v1_commit = next(
+            (v.commit_sha for v in versions if v.spec_version == args.v1), None
+        )
+        v2_commit = next(
+            (v.commit_sha for v in versions if v.spec_version == args.v2), None
+        )
         if not v1_commit or not v2_commit:
-            print(f"FAIL: Version {args.v1} oder {args.v2} nicht in History", file=sys.stderr)
+            print(
+                f"FAIL: Version {args.v1} oder {args.v2} nicht in History",
+                file=sys.stderr,
+            )
             return 1
         print(f"== Diff {km.spec_id}  v{args.v1} ↔ v{args.v2}  ({org}/{repo}) ==")
         rel = spec_path.relative_to(base / repo)
         result = subprocess.run(
-            ["git", "-C", str(base / repo), "diff",
-             f"{v1_commit}..{v2_commit}", "--", str(rel)],
-            capture_output=True, text=True, timeout=15,
+            [
+                "git",
+                "-C",
+                str(base / repo),
+                "diff",
+                f"{v1_commit}..{v2_commit}",
+                "--",
+                str(rel),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
-        print(result.stdout or "  (keine Änderungen in der Spec-Datei zwischen den Versionen)")
+        print(
+            result.stdout
+            or "  (keine Änderungen in der Spec-Datei zwischen den Versionen)"
+        )
         return 0
     print(f"FAIL: spec_id {args.spec_id!r} nicht gefunden", file=sys.stderr)
     return 1
@@ -270,17 +333,29 @@ def cmd_diff(args) -> int:
 # Main + Sub-Parser
 # ---------------------------------------------------------------------------
 
+
 def _add_common_filters(p: argparse.ArgumentParser) -> None:
     p.add_argument("--base", default=os.path.expanduser("~/github"))
-    p.add_argument("--repos", default="meiki-hub,writing-hub,risk-hub,ttz-hub,pptx-hub,dev-hub,iil-klickdummy")
+    p.add_argument(
+        "--repos",
+        default="meiki-hub,writing-hub,risk-hub,ttz-hub,pptx-hub,dev-hub,iil-klickdummy",
+    )
     p.add_argument("--org", default=None)
     p.add_argument("--repo", default=None)
-    p.add_argument("--class", dest="class_", default=None,
-                   help="Filter klickdummy-class (mock|stub-demo|story|spec-demo)")
+    p.add_argument(
+        "--class",
+        dest="class_",
+        default=None,
+        help="Filter klickdummy-class (mock|stub-demo|story|spec-demo)",
+    )
     p.add_argument("--topic", default=None)
     p.add_argument("--json", action="store_true")
-    p.add_argument("--sunset-due-in", type=int, default=None,
-                   help="Warn-Schwelle für sunset_after (Tage)")
+    p.add_argument(
+        "--sunset-due-in",
+        type=int,
+        default=None,
+        help="Warn-Schwelle für sunset_after (Tage)",
+    )
 
 
 def main(argv: list[str]) -> int:
@@ -290,7 +365,9 @@ def main(argv: list[str]) -> int:
     p_list = sub.add_parser("list", help="Aggregat-Übersicht aller Klickdummies")
     _add_common_filters(p_list)
 
-    p_status = sub.add_parser("status", help="Health-Check (sunset_after, Klassen-Compliance)")
+    p_status = sub.add_parser(
+        "status", help="Health-Check (sunset_after, Klassen-Compliance)"
+    )
     _add_common_filters(p_status)
 
     p_topics = sub.add_parser("topics", help="Topic-Cluster-Übersicht")
@@ -308,11 +385,11 @@ def main(argv: list[str]) -> int:
 
     args = parser.parse_args(argv)
     return {
-        "list":     cmd_list,
-        "status":   cmd_status,
-        "topics":   cmd_topics,
+        "list": cmd_list,
+        "status": cmd_status,
+        "topics": cmd_topics,
         "versions": cmd_versions,
-        "diff":     cmd_diff,
+        "diff": cmd_diff,
     }[args.cmd](args)
 
 

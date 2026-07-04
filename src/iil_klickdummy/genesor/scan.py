@@ -2,6 +2,7 @@
 
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR3) — reine Code-Motion.
 """
+
 from __future__ import annotations
 
 import re
@@ -33,7 +34,8 @@ def find_mockup_html(kd_dir: Path, kd_name: str) -> Path | None:
         return p
     # Erste .html-Datei (außer README, _TEMPLATE)
     htmls = sorted(
-        f for f in kd_dir.glob("*.html")
+        f
+        for f in kd_dir.glob("*.html")
         if not f.name.startswith(("README", "_TEMPLATE", "_"))
     )
     return htmls[0] if htmls else None
@@ -103,7 +105,11 @@ def read_fv_inventur(repo_dir: Path) -> dict[str, dict]:
         data = yaml.safe_load(path.read_text("utf-8")) or {}
     except yaml.YAMLError:
         return {}
-    return {fv["id"]: fv for fv in data.get("fachverfahren", []) if isinstance(fv, dict) and "id" in fv}
+    return {
+        fv["id"]: fv
+        for fv in data.get("fachverfahren", [])
+        if isinstance(fv, dict) and "id" in fv
+    }
 
 
 def find_use_cases(repo_dir: Path) -> dict[str, dict]:
@@ -170,14 +176,17 @@ def get_org_registry() -> dict | None:
         return _ORG_REGISTRY_CACHE[key]
     reg: dict | None = None
     try:
-        meta = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("meta") or {}
+        meta = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get(
+            "meta"
+        ) or {}
         rules = meta.get("owner_prefix_rules") or []
         owners = meta.get("repo_owner") or {}
         if rules:
             reg = {
                 "repo_owner": owners,
                 "owner_prefix_rules": rules,
-                "default_owner": (meta.get("server") or {}).get("github_org") or "achimdehnert",
+                "default_owner": (meta.get("server") or {}).get("github_org")
+                or "achimdehnert",
                 "app_display_names": meta.get("app_display_names") or {},
             }
     except (OSError, yaml.YAMLError):
@@ -221,7 +230,11 @@ def kunde_from(data: dict, fallback_org: str) -> str:
     """Kunden-Hint aus grounding.pilot_stakeholder / .pilot_lra / org-Fallback."""
     g = data.get("grounding", {}) or {}
     if "pilot_lra" in g:
-        return ", ".join(g["pilot_lra"]) if isinstance(g["pilot_lra"], list) else str(g["pilot_lra"])
+        return (
+            ", ".join(g["pilot_lra"])
+            if isinstance(g["pilot_lra"], list)
+            else str(g["pilot_lra"])
+        )
     if "pilot_stakeholder" in g:
         return str(g["pilot_stakeholder"])[:50]
     return fallback_org
@@ -312,12 +325,22 @@ def find_all_repos_specs() -> list[dict]:
             data = _normalize_spec_aliases(data)
             adr_local = (data.get("adr", {}) or {}).get("local")
             extra = adr_meta.get(adr_local, {}) if adr_local else {}
-            out.append({"org": org, "repo": repo_name, "kd": kd_name,
-                        "path": spec_path, "data": data, "kind": "spec",
-                        "adr_meta": extra})
+            out.append(
+                {
+                    "org": org,
+                    "repo": repo_name,
+                    "kd": kd_name,
+                    "path": spec_path,
+                    "data": data,
+                    "kind": "spec",
+                    "adr_meta": extra,
+                }
+            )
 
         # 2. meiki-Konvention: docs/01-architektur/mockups/<name>-klickdummy/screens-spec.yaml
-        for spec_path in repo_dir.glob("docs/01-architektur/mockups/*-klickdummy/screens-spec.yaml"):
+        for spec_path in repo_dir.glob(
+            "docs/01-architektur/mockups/*-klickdummy/screens-spec.yaml"
+        ):
             kd_name = spec_path.parent.name.removesuffix("-klickdummy")
             seen_kd_dirs.add(spec_path.parent)
             try:
@@ -327,37 +350,68 @@ def find_all_repos_specs() -> list[dict]:
             data = _normalize_spec_aliases(data)
             adr_local = (data.get("adr", {}) or {}).get("local")
             extra = adr_meta.get(adr_local, {}) if adr_local else {}
-            out.append({"org": org, "repo": repo_name, "kd": kd_name,
-                        "path": spec_path, "data": data, "kind": "spec",
-                        "adr_meta": extra})
+            out.append(
+                {
+                    "org": org,
+                    "repo": repo_name,
+                    "kd": kd_name,
+                    "path": spec_path,
+                    "data": data,
+                    "kind": "spec",
+                    "adr_meta": extra,
+                }
+            )
 
         # 3. F11: Render-only-KDs ohne Spec (I1-Verstoß-Kandidaten)
         kd_root = repo_dir / "klickdummy"
         if kd_root.is_dir():
             # 3a. Subdirs ohne screens-spec.yaml
             for sub in sorted(kd_root.iterdir()):
-                if not sub.is_dir() or sub in seen_kd_dirs or sub.name.startswith(("_", ".")):
+                if (
+                    not sub.is_dir()
+                    or sub in seen_kd_dirs
+                    or sub.name.startswith(("_", "."))
+                ):
                     continue
                 # Hat das Subdir eine HTML-Datei? Dann ist es ein render-only-KD.
-                htmls = [h for h in sub.glob("*.html") if not h.name.startswith(("_", "README"))]
+                htmls = [
+                    h
+                    for h in sub.glob("*.html")
+                    if not h.name.startswith(("_", "README"))
+                ]
                 if htmls:
-                    out.append({
-                        "org": org, "repo": repo_name, "kd": sub.name,
-                        "path": sub / "screens-spec.yaml",   # virtuell, existiert nicht
-                        "data": {"_render_only": True, "_html_files": [str(h.name) for h in htmls]},
-                        "kind": "render-only-subdir",
-                    })
+                    out.append(
+                        {
+                            "org": org,
+                            "repo": repo_name,
+                            "kd": sub.name,
+                            "path": sub
+                            / "screens-spec.yaml",  # virtuell, existiert nicht
+                            "data": {
+                                "_render_only": True,
+                                "_html_files": [str(h.name) for h in htmls],
+                            },
+                            "kind": "render-only-subdir",
+                        }
+                    )
             # 3b. HTML direkt in klickdummy/ (risk-hub-Pattern)
             for html_file in sorted(kd_root.glob("*.html")):
                 if html_file.name.startswith(("_", "README")):
                     continue
                 kd_name = html_file.stem
-                out.append({
-                    "org": org, "repo": repo_name, "kd": kd_name,
-                    "path": html_file,
-                    "data": {"_render_only_inline": True, "_html_file": html_file.name},
-                    "kind": "render-only-inline",
-                })
+                out.append(
+                    {
+                        "org": org,
+                        "repo": repo_name,
+                        "kd": kd_name,
+                        "path": html_file,
+                        "data": {
+                            "_render_only_inline": True,
+                            "_html_file": html_file.name,
+                        },
+                        "kind": "render-only-inline",
+                    }
+                )
 
     return out
 
@@ -369,6 +423,7 @@ def _load_iil_apps_index() -> dict[str, dict]:
     Fallback bei fehlender Datei: leeres dict (kein Crash).
     """
     import json
+
     candidates = [
         get_cfg().repos_root / "iil-relaunch" / "apps.json",
         get_cfg().repos_root / "platform" / "static-sites" / "iil.pet" / "apps.json",
@@ -430,17 +485,26 @@ def _git_repo_meta(repo: str) -> dict:
     sichtbar". Echter Remote-Check wäre per-PR-aware aber zu teuer.
     """
     import subprocess
+
     repo_path = get_cfg().repos_root / repo
     if not (repo_path / ".git").exists():
         return {}
     try:
         url = subprocess.check_output(
             ["git", "-C", str(repo_path), "remote", "get-url", "origin"],
-            stderr=subprocess.DEVNULL, text=True, timeout=2,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2,
         ).strip()
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return {}
-    m = re.match(r"(?:git@github\.com:|https://github\.com/)([^/]+)/([^/.]+?)(?:\.git)?$", url)
+    m = re.match(
+        r"(?:git@github\.com:|https://github\.com/)([^/]+)/([^/.]+?)(?:\.git)?$", url
+    )
     if not m:
         return {}
     org, gh_repo = m.group(1), m.group(2)
@@ -448,29 +512,61 @@ def _git_repo_meta(repo: str) -> dict:
     try:
         branch = subprocess.check_output(
             ["git", "-C", str(repo_path), "rev-parse", "--abbrev-ref", "HEAD"],
-            stderr=subprocess.DEVNULL, text=True, timeout=2,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2,
         ).strip()
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         branch = "main"
     if branch == "HEAD":  # detached HEAD
         branch = "main"
     # Has-Upstream-Check: prüft ob ``refs/remotes/origin/<branch>`` lokal
     # existiert (wird durch ``git push`` automatisch angelegt, auch ohne ``-u``).
     # Robuster als ``@{u}``, das die branch.<name>.remote-Config braucht.
-    has_upstream = subprocess.run(
-        ["git", "-C", str(repo_path), "rev-parse", "--verify",
-         f"refs/remotes/origin/{branch}"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2,
-    ).returncode == 0
+    has_upstream = (
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "rev-parse",
+                "--verify",
+                f"refs/remotes/origin/{branch}",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        ).returncode
+        == 0
+    )
     try:
-        tracked = set(subprocess.check_output(
-            ["git", "-C", str(repo_path), "ls-files"],
-            stderr=subprocess.DEVNULL, text=True, timeout=10,
-        ).strip().splitlines())
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        tracked = set(
+            subprocess.check_output(
+                ["git", "-C", str(repo_path), "ls-files"],
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=10,
+            )
+            .strip()
+            .splitlines()
+        )
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         tracked = set()
-    return {"org": org, "gh_repo": gh_repo, "branch": branch,
-            "has_upstream": has_upstream, "tracked_files": tracked}
+    return {
+        "org": org,
+        "gh_repo": gh_repo,
+        "branch": branch,
+        "has_upstream": has_upstream,
+        "tracked_files": tracked,
+    }
 
 
 _REPO_META_CACHE: dict[str, dict] = {}

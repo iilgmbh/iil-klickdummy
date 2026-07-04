@@ -2,6 +2,7 @@
 
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR3) — reine Code-Motion.
 """
+
 from __future__ import annotations
 
 import re
@@ -29,14 +30,20 @@ def compute_acceptance_status(acceptance: dict | None) -> dict:
     Rückgabe: ``{axis: {status, latest_date, latest_by, latest_ref, age_days}}``.
     """
     from datetime import date
+
     today = date.today()
     out: dict[str, dict] = {}
     accept = acceptance if isinstance(acceptance, dict) else {}
     for axis in _ACCEPTANCE_AXES:
         entries = accept.get(axis) or []
         if not isinstance(entries, list) or not entries:
-            out[axis] = {"status": "missing", "latest_date": None,
-                         "latest_by": None, "latest_ref": None, "age_days": None}
+            out[axis] = {
+                "status": "missing",
+                "latest_date": None,
+                "latest_by": None,
+                "latest_ref": None,
+                "age_days": None,
+            }
             continue
         # Jüngster Eintrag
         latest = None
@@ -50,8 +57,13 @@ def compute_acceptance_status(acceptance: dict | None) -> dict:
             if latest is None or d > latest["_d"]:
                 latest = {**e, "_d": d}
         if latest is None:
-            out[axis] = {"status": "missing", "latest_date": None,
-                         "latest_by": None, "latest_ref": None, "age_days": None}
+            out[axis] = {
+                "status": "missing",
+                "latest_date": None,
+                "latest_by": None,
+                "latest_ref": None,
+                "age_days": None,
+            }
             continue
         age = (today - latest["_d"]).days
         status = "stale" if age > _ACCEPTANCE_STALE_DAYS else "signed"
@@ -98,53 +110,92 @@ def validate_kd(r: dict, kd_registry: set[str]) -> list[dict]:
 
     # I1-Verstoß: render-only ohne Spec
     if r.get("kind", "spec") != "spec":
-        warnings.append({
-            "severity": "error", "code": "I1-NO-SPEC",
-            "msg": "I1-Verstoß: klickbares HTML vorhanden, aber keine screens-spec.yaml — keine maschinenlesbare Spec, kein Vertrag.",
-        })
+        warnings.append(
+            {
+                "severity": "error",
+                "code": "I1-NO-SPEC",
+                "msg": "I1-Verstoß: klickbares HTML vorhanden, aber keine screens-spec.yaml — keine maschinenlesbare Spec, kein Vertrag.",
+            }
+        )
         return warnings  # alle weiteren Checks brauchen Spec-Daten
 
     # I4-Format-Check für consumes_from-Refs
     for cf in d.get("consumes_from", []) or []:
         ref = (cf.get("ref") or "").strip() if isinstance(cf, dict) else ""
         if ref and not CROSS_REPO_REF_RE.match(ref):
-            warnings.append({"severity": "error", "code": "I4-MALFORMED-REF",
-                             "msg": f"Cross-Repo-Ref '{ref}' verletzt platform:ADR-213-Regex (^[a-z][a-z0-9-]+:ADR-[0-9]{{3}}$)."})
+            warnings.append(
+                {
+                    "severity": "error",
+                    "code": "I4-MALFORMED-REF",
+                    "msg": f"Cross-Repo-Ref '{ref}' verletzt platform:ADR-213-Regex (^[a-z][a-z0-9-]+:ADR-[0-9]{{3}}$).",
+                }
+            )
         elif ref and ref not in kd_registry:
-            warnings.append({"severity": "warning", "code": "DANGLING-REF",
-                             "msg": f"Cross-Repo-Ref '{ref}' zeigt auf keinen bekannten KD (Drift-Klasse klickdummy-adr180-collision)."})
+            warnings.append(
+                {
+                    "severity": "warning",
+                    "code": "DANGLING-REF",
+                    "msg": f"Cross-Repo-Ref '{ref}' zeigt auf keinen bekannten KD (Drift-Klasse klickdummy-adr180-collision).",
+                }
+            )
 
     # I3-Sunset (F4)
     sunset_str = (d.get("off_ramp", {}) or {}).get("sunset_after")
     if sunset_str:
         try:
             from datetime import date
+
             yyyy_mm_dd = str(sunset_str)[:10]
             sunset = date.fromisoformat(yyyy_mm_dd)
             days_left = (sunset - date.today()).days
             if days_left < 0:
-                warnings.append({"severity": "error", "code": "SUNSET-OVERDUE",
-                                 "msg": f"Sunset {sunset_str} ist um {-days_left} Tage überfällig — platform:ADR-211 Rev 11 verlangt auto-deprecated."})
+                warnings.append(
+                    {
+                        "severity": "error",
+                        "code": "SUNSET-OVERDUE",
+                        "msg": f"Sunset {sunset_str} ist um {-days_left} Tage überfällig — platform:ADR-211 Rev 11 verlangt auto-deprecated.",
+                    }
+                )
             elif days_left < 90:
-                warnings.append({"severity": "warning", "code": "SUNSET-NEAR",
-                                 "msg": f"Sunset in {days_left} Tagen — Extension via PR prüfen."})
+                warnings.append(
+                    {
+                        "severity": "warning",
+                        "code": "SUNSET-NEAR",
+                        "msg": f"Sunset in {days_left} Tagen — Extension via PR prüfen.",
+                    }
+                )
         except ValueError:
-            warnings.append({"severity": "warning", "code": "SUNSET-MALFORMED",
-                             "msg": f"sunset_after '{sunset_str}' ist kein ISO-Datum."})
+            warnings.append(
+                {
+                    "severity": "warning",
+                    "code": "SUNSET-MALFORMED",
+                    "msg": f"sunset_after '{sunset_str}' ist kein ISO-Datum.",
+                }
+            )
     elif d.get("class") in {"mock", "stub-demo", "story", "spec-demo"}:
-        warnings.append({"severity": "warning", "code": "SUNSET-MISSING",
-                         "msg": "class deklariert, aber kein sunset_after — Rev-11-Pflicht-Frontmatter fehlt."})
+        warnings.append(
+            {
+                "severity": "warning",
+                "code": "SUNSET-MISSING",
+                "msg": "class deklariert, aber kein sunset_after — Rev-11-Pflicht-Frontmatter fehlt.",
+            }
+        )
 
     return warnings
 
 
 def compute_sunset_badge(d: dict) -> tuple[str, str]:
     """Returnt (css-class, text) für die Sunset-Spalte."""
-    sunset_str = (d.get("off_ramp", {}) or {}).get("sunset_after") if isinstance(d, dict) else None
+    sunset_str = (
+        (d.get("off_ramp", {}) or {}).get("sunset_after")
+        if isinstance(d, dict)
+        else None
+    )
     if not sunset_str:
         return ("sunset-na", "—")
     try:
         from datetime import date
+
         yyyy_mm_dd = str(sunset_str)[:10]
         sunset = date.fromisoformat(yyyy_mm_dd)
         days_left = (sunset - date.today()).days
@@ -187,17 +238,19 @@ def _extract_screen_routes(record: dict) -> list[dict]:
         api_paths = []
         api_block = brief.get("api") or {}
         if isinstance(api_block, dict):
-            for endpoint in (api_block.get("endpoints") or []):
+            for endpoint in api_block.get("endpoints") or []:
                 if isinstance(endpoint, dict) and endpoint.get("path"):
                     api_paths.append(endpoint["path"])
-        out.append({
-            "screen_id": sid,
-            "title": title,
-            "route": route,
-            "route_example": route_example,
-            "api_paths": api_paths[:3],
-            "has_brief": bool(brief),
-        })
+        out.append(
+            {
+                "screen_id": sid,
+                "title": title,
+                "route": route,
+                "route_example": route_example,
+                "api_paths": api_paths[:3],
+                "has_brief": bool(brief),
+            }
+        )
     return out
 
 
@@ -217,6 +270,7 @@ def _compute_drift_status(record: dict) -> dict:
       - compare_url: Deep-Link zu Brief §10 (Drift-Sektion)
     """
     from datetime import datetime
+
     repo = record["repo"]
     kd_name = record["kd"]
     d = record.get("data") or {}
@@ -233,7 +287,9 @@ def _compute_drift_status(record: dict) -> dict:
                 expected_briefs.append(sid)
 
     # Tatsächlich vorhandene Briefs prüfen
-    actual_briefs: list[tuple[str, str, int]] = []  # (screen_id, brief_md_path, age_days)
+    actual_briefs: list[
+        tuple[str, str, int]
+    ] = []  # (screen_id, brief_md_path, age_days)
     brief_dir = get_cfg().genesor_out / "impl-brief"
     today = datetime.now()
     for sid in expected_briefs:

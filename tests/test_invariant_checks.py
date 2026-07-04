@@ -5,6 +5,7 @@ Pass/Fail-Semantiken festgenagelt — inkl. der Regressionen:
   - I3: fehlendes `off_ramp_status` ist FAIL, kein stiller 'static'-Default
   - I4: ADR-Whitelist hängt am Scan-Root, nicht am CWD
 """
+
 from __future__ import annotations
 
 import json
@@ -31,6 +32,7 @@ def _write_pair(tmp_path, spec_text: str, schema: dict = SIMPLE_SCHEMA):
 
 
 # ----------------------------------------------------------------------- I1
+
 
 def test_i1_should_pass_on_schema_conformant_spec(tmp_path):
     pair = _write_pair(tmp_path, "spec_id: demo\n")
@@ -59,6 +61,7 @@ def test_i1_should_fail_on_entry_without_colon():
 
 # ---------------------------------------------------------------- I3 helpers
 
+
 def _i3_spec(tmp_path, body: str) -> str:
     spec = tmp_path / "spec.yaml"
     spec.write_text(textwrap.dedent(body), encoding="utf-8")
@@ -68,8 +71,11 @@ def _i3_spec(tmp_path, body: str) -> str:
 
 # ----------------------------------------------------------------------- I3
 
+
 def test_i3_should_pass_when_all_screens_have_valid_status(tmp_path):
-    pair = _i3_spec(tmp_path, """
+    pair = _i3_spec(
+        tmp_path,
+        """
         off_ramp:
           policy: test
           doppelquell_grenze: prod-release
@@ -78,13 +84,16 @@ def test_i3_should_pass_when_all_screens_have_valid_status(tmp_path):
             off_ramp_status: static
           - id: s2
             off_ramp_status: parity-green
-    """)
+    """,
+    )
     assert check_i3.main([pair]) == 0
 
 
 def test_i3_should_fail_when_off_ramp_status_missing(tmp_path):
     # Regression: vorher Default 'static' -> False-Pass
-    pair = _i3_spec(tmp_path, """
+    pair = _i3_spec(
+        tmp_path,
+        """
         off_ramp:
           policy: test
           doppelquell_grenze: prod-release
@@ -93,42 +102,53 @@ def test_i3_should_fail_when_off_ramp_status_missing(tmp_path):
             off_ramp_status: static
           - id: s2
             title: ohne Status
-    """)
+    """,
+    )
     assert check_i3.main([pair]) == 1
 
 
 def test_i3_should_fail_on_invalid_status_value(tmp_path):
-    pair = _i3_spec(tmp_path, """
+    pair = _i3_spec(
+        tmp_path,
+        """
         off_ramp:
           policy: test
           doppelquell_grenze: prod-release
         screens:
           - id: s1
             off_ramp_status: definitely-not-a-status
-    """)
+    """,
+    )
     assert check_i3.main([pair]) == 1
 
 
 def test_i3_should_fail_without_off_ramp_block(tmp_path):
-    pair = _i3_spec(tmp_path, """
+    pair = _i3_spec(
+        tmp_path,
+        """
         screens:
           - id: s1
             off_ramp_status: static
-    """)
+    """,
+    )
     assert check_i3.main([pair]) == 1
 
 
 def test_i3_should_fail_on_wrong_doppelquell_grenze(tmp_path):
-    pair = _i3_spec(tmp_path, """
+    pair = _i3_spec(
+        tmp_path,
+        """
         off_ramp:
           policy: test
           doppelquell_grenze: irgendwann
         screens: []
-    """)
+    """,
+    )
     assert check_i3.main([pair]) == 1
 
 
 # ---------------------------------------------------------------- I4 helpers
+
 
 def _make_repo(tmp_path, *, local_adr: str = "ADR-042"):
     repo = tmp_path / "repo"
@@ -141,6 +161,7 @@ def _make_repo(tmp_path, *, local_adr: str = "ADR-042"):
 
 
 # ----------------------------------------------------------------------- I4
+
 
 def test_i4_should_pass_local_adr_ref_regardless_of_cwd(tmp_path, monkeypatch):
     # Regression: ADR_DIR war CWD-relativ -> Whitelist leer bei fremdem CWD

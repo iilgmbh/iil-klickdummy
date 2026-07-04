@@ -11,6 +11,7 @@ Akzeptierte Felder im Spec-Root:
 Aufruf:  python3 scripts/klickdummy/check_i2.py <spec>:<schema> [...]
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler
 """
+
 from __future__ import annotations
 import json
 import pathlib
@@ -67,8 +68,10 @@ def main(argv: list[str]) -> int:
             elif cls in LEGACY:
                 # weich, mit Migrations-Hinweis (kein FAIL — sonst CI-Bruch
                 # vor abgeschlossener Migration in allen Schwester-Repos)
-                print(f"      ⚠ class={cls!r} (Rev-10-Begriff) — bitte auf "
-                      f"{LEGACY[cls]!r} migrieren (platform:ADR-211 Rev 11, 4-Pattern)")
+                print(
+                    f"      ⚠ class={cls!r} (Rev-10-Begriff) — bitte auf "
+                    f"{LEGACY[cls]!r} migrieren (platform:ADR-211 Rev 11, 4-Pattern)"
+                )
             elif cls not in ALLOWED:
                 print(f"      ✗ class={cls!r} nicht in {sorted(ALLOWED)}")
                 errs += 1
@@ -91,4 +94,5 @@ if __name__ == "__main__":
 def main_cli() -> int:
     """Console-Script entry (pyproject.toml [project.scripts])."""
     import sys
+
     return main(sys.argv[1:])

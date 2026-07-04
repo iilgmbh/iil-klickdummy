@@ -21,6 +21,7 @@ optional ein vorab gerendertes testid-Inventar (`--testids <file>`, eine ID/Zeil
 Aufruf:  klickdummy-infer-asserts <spec.yaml> <shell.html> [--emit-diff] [--testids <file>]
 Exit:    0 = Vorschläge erzeugt · 2 = Setup-Fehler
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -40,11 +41,15 @@ _BEHAVIORAL = re.compile(
     r"neu\s+erzeugt|verhindert|erzwingt",
     re.IGNORECASE,
 )
-_COUNT = re.compile(r"\b(?:alle\s+)?(\d+)\b.*?(sichtbar|angezeigt|einträge|schritte|zeilen|elemente)",
-                    re.IGNORECASE)
+_COUNT = re.compile(
+    r"\b(?:alle\s+)?(\d+)\b.*?(sichtbar|angezeigt|einträge|schritte|zeilen|elemente)",
+    re.IGNORECASE,
+)
 _VISIBLE = re.compile(r"sichtbar|angezeigt|erscheint|vorhanden", re.IGNORECASE)
 _TESTID_TAG = re.compile(r'data-testid="([^"]+)"')
-_TEMPLATED = re.compile(r"\$\{|'\s*\+|\+\s*'")   # ${…} oder String-Concat = JS-interpoliert
+_TEMPLATED = re.compile(
+    r"\$\{|'\s*\+|\+\s*'"
+)  # ${…} oder String-Concat = JS-interpoliert
 
 
 def testid_inventory(shell_html: str) -> tuple[set[str], set[str]]:
@@ -84,7 +89,7 @@ def _match_testid(check: str, concrete: set[str], templated: set[str]) -> str | 
             return tid
     for pfx in sorted(templated, key=len, reverse=True):
         if _hit(pfx):
-            return f"{pfx}*"   # Präfix-Markierung → Container nötig
+            return f"{pfx}*"  # Präfix-Markierung → Container nötig
     return None
 
 
@@ -92,9 +97,11 @@ def infer_one(check: str, concrete: set[str], templated: set[str]) -> dict:
     """Kandidat für EINEN check. Rückgabe:
     {kind, assert?, note}. kind ∈ executable|behavioral-manual."""
     if _BEHAVIORAL.search(check):
-        return {"kind": "behavioral-manual",
-                "note": "State-/Interaktions-Aussage — nicht per visible/text/count ausdrückbar (heute). "
-                        "Manuell ODER Roadmap-B (State-DSL)."}
+        return {
+            "kind": "behavioral-manual",
+            "note": "State-/Interaktions-Aussage — nicht per visible/text/count ausdrückbar (heute). "
+            "Manuell ODER Roadmap-B (State-DSL).",
+        }
     m = _COUNT.search(check)
     tid = _match_testid(check, concrete, templated)
     if m and tid:
@@ -104,20 +111,32 @@ def infer_one(check: str, concrete: set[str], templated: set[str]) -> dict:
             # KEIN executable-Assert emittieren (der wäre funktional tot und würde als
             # `kind:executable` das Gate täuschen); stattdessen behavioral-manual +
             # konkreter Hinweis, wie es executable würde (stabiler Container-testid).
-            return {"kind": "behavioral-manual",
-                    "note": f"testid '{tid[:-1]}…' ist JS-templated → nicht per exact-match zählbar. "
-                            f"Executable machen: einen stabilen Container-testid ergänzen "
-                            f"(z.B. testid={tid[:-1]}-list) und `count` dagegen setzen — dann `kind:executable`."}
-        return {"kind": "executable",
-                "assert": {"action": "count", "selector": f"testid={tid}", "expect": int(m.group(1))},
-                "note": "Zähl-Kandidat aus Zahl + testid-Match."}
+            return {
+                "kind": "behavioral-manual",
+                "note": f"testid '{tid[:-1]}…' ist JS-templated → nicht per exact-match zählbar. "
+                f"Executable machen: einen stabilen Container-testid ergänzen "
+                f"(z.B. testid={tid[:-1]}-list) und `count` dagegen setzen — dann `kind:executable`.",
+            }
+        return {
+            "kind": "executable",
+            "assert": {
+                "action": "count",
+                "selector": f"testid={tid}",
+                "expect": int(m.group(1)),
+            },
+            "note": "Zähl-Kandidat aus Zahl + testid-Match.",
+        }
     if _VISIBLE.search(check) and tid and not tid.endswith("*"):
-        return {"kind": "executable",
-                "assert": {"action": "visible", "selector": f"testid={tid}"},
-                "note": "Präsenz-Kandidat aus 'sichtbar' + testid-Match."}
-    return {"kind": "behavioral-manual",
-            "note": "Kein sicheres testid-Match / kein Präsenz-/Zähl-Muster — manuell prüfen "
-            "(Kandidat ohne Beleg wäre Garbage; bewusst KEIN Assert geraten)."}
+        return {
+            "kind": "executable",
+            "assert": {"action": "visible", "selector": f"testid={tid}"},
+            "note": "Präsenz-Kandidat aus 'sichtbar' + testid-Match.",
+        }
+    return {
+        "kind": "behavioral-manual",
+        "note": "Kein sicheres testid-Match / kein Präsenz-/Zähl-Muster — manuell prüfen "
+        "(Kandidat ohne Beleg wäre Garbage; bewusst KEIN Assert geraten).",
+    }
 
 
 def analyse(spec: dict, concrete: set[str], templated: set[str]) -> list[dict]:
@@ -127,7 +146,7 @@ def analyse(spec: dict, concrete: set[str], templated: set[str]) -> list[dict]:
         sid = sc.get("id", "screen")
         for pa in sc.get("parity_acceptance", []) or []:
             if pa.get("assert"):
-                continue   # hat schon einen Assert
+                continue  # hat schon einen Assert
             rec = {"screen": sid, "id": pa.get("id", "?"), "check": pa.get("check", "")}
             rec.update(infer_one(str(pa.get("check", "")), concrete, templated))
             out.append(rec)
@@ -144,7 +163,9 @@ def main(argv: list[str]) -> int:
         elif not a.startswith("--"):
             positional.append(a)
     if len(positional) < 2:
-        print("Usage: klickdummy-infer-asserts <spec.yaml> <shell.html> [--emit-diff] [--testids <file>]")
+        print(
+            "Usage: klickdummy-infer-asserts <spec.yaml> <shell.html> [--emit-diff] [--testids <file>]"
+        )
         return 2
     spec_path, shell_path = pathlib.Path(positional[0]), pathlib.Path(positional[1])
     try:
@@ -163,12 +184,18 @@ def main(argv: list[str]) -> int:
     n_exec = sum(1 for r in recs if r["kind"] == "executable")
     n_behav = sum(1 for r in recs if r["kind"] == "behavioral-manual")
 
-    print("⚗ EXPERIMENTAL: Kill-Gate (Bestätigungsquote) noch nicht gemessen "
-          "(KONZ-008, review_by 2026-08-03) — Kandidaten prüfen, nicht blind übernehmen.",
-          file=sys.stderr)
+    print(
+        "⚗ EXPERIMENTAL: Kill-Gate (Bestätigungsquote) noch nicht gemessen "
+        "(KONZ-008, review_by 2026-08-03) — Kandidaten prüfen, nicht blind übernehmen.",
+        file=sys.stderr,
+    )
     print(f"== Assert-Inferenz ==  Spec: {spec_path.name}  Shell: {shell_path.name}")
-    print(f"  testids: {len(concrete)} konkret · {len(templated)} templated (Präfixe: {sorted(templated)[:6]})")
-    print(f"  Checks ohne assert: {len(recs)}  →  {n_exec} assert-Kandidat · {n_behav} behavioral-manual")
+    print(
+        f"  testids: {len(concrete)} konkret · {len(templated)} templated (Präfixe: {sorted(templated)[:6]})"
+    )
+    print(
+        f"  Checks ohne assert: {len(recs)}  →  {n_exec} assert-Kandidat · {n_behav} behavioral-manual"
+    )
     for r in recs:
         head = f"  [{r['screen']}/{r['id']}] {r['kind']}"
         print(head)
@@ -180,9 +207,13 @@ def main(argv: list[str]) -> int:
     if emit:
         # Vorschlag NEBEN die Spec schreiben — NIE die Spec selbst überschreiben.
         sug = spec_path.with_suffix(".suggested.yaml")
-        sug.write_text(yaml.safe_dump({"inferred": recs}, allow_unicode=True, sort_keys=False),
-                       encoding="utf-8")
-        print(f"  ✍ Vorschlag geschrieben: {sug}  (Mensch prüft + gießt in die Spec — kein Auto-Commit)")
+        sug.write_text(
+            yaml.safe_dump({"inferred": recs}, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        print(
+            f"  ✍ Vorschlag geschrieben: {sug}  (Mensch prüft + gießt in die Spec — kein Auto-Commit)"
+        )
     return 0
 
 

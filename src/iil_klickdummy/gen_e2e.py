@@ -44,6 +44,7 @@ Aufruf:
 Exit: 0 ok, 1 Spec-Fehler, 2 Setup-Fehler, 3 Off-Ramp-Gate (fragile Selektoren
 mit --strict-selectors bzw. Spec-Attribut `strict_selectors: true`).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -69,6 +70,7 @@ except ImportError:
 
 
 # -- Helpers ------------------------------------------------------------------
+
 
 def ident(s: str) -> str:
     """Python-sicherer Bezeichner-Fragment (für Testfunktionsnamen)."""
@@ -155,6 +157,7 @@ def screen_route(sc: dict) -> tuple[str, bool]:
 # -- Assertion-Vokabular ------------------------------------------------------
 # Bewusst klein & standard-nah gehalten (Playwright sync_api). Ein `assert`-Block
 # ist {action, selector?, expect?}. Unbekannte/fehlende action ⇒ nur-Prosa.
+
 
 def _q(s) -> str:
     """Double-quoted Python-String-Literal — `ruff format`-konform (nicht `repr`,
@@ -250,7 +253,7 @@ def render_assertion(a: dict) -> str | None:
 
 # -- Generator ----------------------------------------------------------------
 
-HEADER = '''# AUTO-GENERATED — NICHT von Hand editieren (re-generieren: klickdummy-gen-e2e).
+HEADER = """# AUTO-GENERATED — NICHT von Hand editieren (re-generieren: klickdummy-gen-e2e).
 # Quelle: {spec_id} v{spec_version}  ({spec_rel})
 # Spec-SHA256: {sha}  ·  platform:ADR-211 §Parity-Off-Ramp (I3-Gate)
 # Deterministisch aus der Spec — KEIN Zeitstempel im File (sonst rauscht der
@@ -279,7 +282,7 @@ pytest.importorskip("playwright")
 from playwright.sync_api import Page, expect  # noqa: E402
 
 BASE = os.environ.get("SPEC_RENDERER_BASE_URL", "http://localhost:8000").rstrip("/")
-'''
+"""
 
 
 # Stabile, fachliche Test-Anker statt fragiler CSS-/Text-Pfade (REC-6/M28-3).
@@ -349,8 +352,9 @@ def selector_fallthrough_hint(sel) -> str | None:
 def _gen_version() -> str:
     try:
         from iil_klickdummy import __version__
+
         return __version__
-    except Exception:                              # noqa: BLE001
+    except Exception:  # noqa: BLE001
         return "0.0.0+unknown"
 
 
@@ -366,8 +370,11 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
 
     sha = hashlib.sha256(spec_path.read_bytes()).hexdigest()
     header = HEADER.format(
-        spec_id=spec_id, spec_version=ver, spec_rel=spec_path.name,
-        sha=sha, this=this_name,
+        spec_id=spec_id,
+        spec_version=ver,
+        spec_rel=spec_path.name,
+        sha=sha,
+        this=this_name,
     )
     n_exec = 0
     skipped: list[dict] = []
@@ -389,11 +396,11 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
         login_fixture = spec_auth.get("login_fixture")
         if storage:
             auth_blocks.append(
-                f"@pytest.fixture(scope=\"session\")\n"
+                f'@pytest.fixture(scope="session")\n'
                 f"def browser_context_args(browser_context_args):\n"
                 f'    """Auth via storage_state aus Spec-Block — pytest-playwright lädt\n'
                 f'    den State bei Context-Erzeugung (einzige funktionierende API)."""\n'
-                f"    return {{**browser_context_args, \"storage_state\": {_q(storage)}}}"
+                f'    return {{**browser_context_args, "storage_state": {_q(storage)}}}'
             )
         elif login_fixture:
             # `login_fixture` wird als Funktions-Parametername emittiert — auf
@@ -419,12 +426,16 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
         )
 
         # Auth-Pflicht: `login_required` in Spec + kein auth-Block → alle Checks skip
-        login_required = sc.get("login_required", False) or spec_auth.get("required", False)
+        login_required = sc.get("login_required", False) or spec_auth.get(
+            "required", False
+        )
         auth_missing = login_required and not spec_auth
 
         pas = sc.get("parity_acceptance", []) or []
         if not pas:
-            blocks.append(f"{screen_comment}\n# (keine parity_acceptance im Screen {sid})")
+            blocks.append(
+                f"{screen_comment}\n# (keine parity_acceptance im Screen {sid})"
+            )
             continue
         first = True
         for pa in pas:
@@ -442,8 +453,14 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
                     f"parametrisierte Route {route} — bitte `route_example` in der Spec "
                     f"ergänzen (konkrete URL mit echten IDs/UUIDs)"
                 )
-                skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
-                                 "skip_reason": "parametrised_route"})
+                skipped.append(
+                    {
+                        "screen": sid,
+                        "id": acc_id,
+                        "check": pa.get("check", ""),
+                        "skip_reason": "parametrised_route",
+                    }
+                )
                 blocks.append(
                     f"{prefix}@pytest.mark.skip(reason={_q(skip_reason)})\n"
                     f"def {fn}(page: Page):\n"
@@ -457,8 +474,14 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
                     f"login_required=True für Screen {sid} — "
                     f"bitte `auth`-Block in der Spec ergänzen (storage_state oder login_fixture)"
                 )
-                skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
-                                 "skip_reason": "login_required_no_auth"})
+                skipped.append(
+                    {
+                        "screen": sid,
+                        "id": acc_id,
+                        "check": pa.get("check", ""),
+                        "skip_reason": "login_required_no_auth",
+                    }
+                )
                 blocks.append(
                     f"{prefix}@pytest.mark.skip(reason={_q(skip_reason)})\n"
                     f"def {fn}(page: Page):\n"
@@ -470,8 +493,14 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
             a = pa.get("assert")
             line = render_assertion(a)
             if line is None:
-                skipped.append({"screen": sid, "id": acc_id, "check": pa.get("check", ""),
-                                 "skip_reason": "no_assert"})
+                skipped.append(
+                    {
+                        "screen": sid,
+                        "id": acc_id,
+                        "check": pa.get("check", ""),
+                        "skip_reason": "no_assert",
+                    }
+                )
                 blocks.append(
                     f'{prefix}@pytest.mark.skip(reason="kein ausführbares `assert` — Prosa-Parity")\n'
                     f"def {fn}(page: Page):\n"
@@ -500,7 +529,11 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
     # header endet mit '\n' nach BASE; '\n\n' davor ⇒ zwei Leerzeilen vor dem
     # ersten Block; Blöcke mit '\n\n\n' (zwei Leerzeilen) verbunden; ein \n am Ende.
     all_blocks = auth_blocks + blocks
-    body = (header + "\n\n" + "\n\n\n".join(all_blocks) + "\n") if all_blocks else header + "\n"
+    body = (
+        (header + "\n\n" + "\n\n\n".join(all_blocks) + "\n")
+        if all_blocks
+        else header + "\n"
+    )
     stats = {
         "executable": n_exec,
         "skipped": len(skipped),
@@ -511,6 +544,7 @@ def gen_suite(spec: dict, spec_path: pathlib.Path, this_name: str) -> tuple[str,
 
 
 # -- Main ---------------------------------------------------------------------
+
 
 def main(argv: list[str]) -> int:
     positional = [a for a in argv if not a.startswith("--")]
@@ -524,7 +558,9 @@ def main(argv: list[str]) -> int:
     # CLI-Flag `--strict-selectors` (der Off-Ramp-Pfad setzt es pro Lauf) ODER
     # Spec-Attribut `strict_selectors: true` (REC-1/AD-1: spec-deklariert, damit
     # ein vergessenes Flag in CI-Configs das Gate nicht stumm schaltet).
-    strict_selectors = "--strict-selectors" in argv or bool(spec.get("strict_selectors", False))
+    strict_selectors = "--strict-selectors" in argv or bool(
+        spec.get("strict_selectors", False)
+    )
     stem = re.sub(r"[^0-9a-z]+", "_", spec_path.stem.lower()).strip("_") or "spec"
     if len(positional) > 1:
         out = pathlib.Path(positional[1])
@@ -572,13 +608,19 @@ def main(argv: list[str]) -> int:
     print(f"  Spec     : {spec_path}")
     print(f"  Out      : {out}")
     print(f"  Manifest : {manifest_path}")
-    print(f"  Parity-Checks: {total}  ·  ausführbar: {n_exec}  ·  nur-Prosa (skip): {n_prose}")
+    print(
+        f"  Parity-Checks: {total}  ·  ausführbar: {n_exec}  ·  nur-Prosa (skip): {n_prose}"
+    )
     if n_prose:
-        print(f"  ⚠ {n_prose} Check(s) ohne `assert`-Block bleiben als skip sichtbar (Skip-Debt).")
+        print(
+            f"  ⚠ {n_prose} Check(s) ohne `assert`-Block bleiben als skip sichtbar (Skip-Debt)."
+        )
     n_fragile = len(stats["fragile_selectors"])
     if n_fragile:
-        print(f"  ⚠ {n_fragile} fragile(r) Selektor(en) ohne stabilen Anker "
-              f"(REC-6/F23) — bare CSS/text=; testid=/role=/label= bevorzugen.")
+        print(
+            f"  ⚠ {n_fragile} fragile(r) Selektor(en) ohne stabilen Anker "
+            f"(REC-6/F23) — bare CSS/text=; testid=/role=/label= bevorzugen."
+        )
         # REC-2: Präfix-Parser-Fallthroughs (Tippfehler/kaputte Syntax) explizit
         # benennen — die sehen wie DSL aus, laufen aber als CSS.
         for f in stats["fragile_selectors"]:
@@ -587,8 +629,10 @@ def main(argv: list[str]) -> int:
     print("  Dual-Renderer: SPEC_RENDERER_BASE_URL umschalten (Renderer #1 ↔ #2).")
     # F23/D1: am Off-Ramp ist ein fragiler Selektor kein bloßer Hinweis mehr.
     if strict_selectors and n_fragile:
-        print(f"  ✗ strict-selectors (CLI-Flag oder Spec-Attribut): {n_fragile} fragile(r) "
-              f"Selektor(en) → Off-Ramp-Gate ROT (exit 3). Auf stabilen Anker umstellen.")
+        print(
+            f"  ✗ strict-selectors (CLI-Flag oder Spec-Attribut): {n_fragile} fragile(r) "
+            f"Selektor(en) → Off-Ramp-Gate ROT (exit 3). Auf stabilen Anker umstellen."
+        )
         return 3
     return 0
 

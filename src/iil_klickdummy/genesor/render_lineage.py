@@ -3,6 +3,7 @@
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR4) — Code-Motion;
 einzige Anpassungen: _cfg→get_cfg() (Importbindung) und __file__-Pfadtiefe.
 """
+
 from __future__ import annotations
 
 import html
@@ -175,8 +176,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 
-def build_html(mermaid_text: str, specs: list[tuple[str, Path, dict]], contracts: dict) -> str:
+def build_html(
+    mermaid_text: str, specs: list[tuple[str, Path, dict]], contracts: dict
+) -> str:
     from datetime import date
+
     kd_options = "\n      ".join(
         f'<option value="{html.escape(kd_name)}">{html.escape(kd_name)}</option>'
         for kd_name, _p, _d in specs
@@ -208,18 +212,21 @@ def build_html(mermaid_text: str, specs: list[tuple[str, Path, dict]], contracts
 def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]:
     """Pro Repo eine Mermaid-Lineage-HTML generieren — nur wenn ≥2 KDs mit Spec (F12)."""
     from collections import defaultdict
+
     by_repo: dict[str, list[dict]] = defaultdict(list)
     for r in records:
         if r.get("kind", "spec") != "spec":
-            continue   # render-only KDs ohne Spec im Lineage nichts beizutragen
+            continue  # render-only KDs ohne Spec im Lineage nichts beizutragen
         by_repo[r["repo"]].append(r)
     written: list[Path] = []
     for repo_name, repo_records in by_repo.items():
         if len(repo_records) < 2:
-            continue   # F12: nur sinnvoll bei ≥2 KDs (sonst leerer Graph)
+            continue  # F12: nur sinnvoll bei ≥2 KDs (sonst leerer Graph)
         specs_for_repo = [(r["kd"], r["path"], r["data"]) for r in repo_records]
         # Suche Contracts in zwei möglichen Pfaden:
-        contracts_dir_a = get_cfg().repos_root / repo_name / "docs" / "01-architektur" / "contracts"
+        contracts_dir_a = (
+            get_cfg().repos_root / repo_name / "docs" / "01-architektur" / "contracts"
+        )
         contracts_dir_b = get_cfg().repos_root / repo_name / "contracts"
         repo_contracts: dict[str, Path] = {}
         for cd in (contracts_dir_a, contracts_dir_b):
@@ -245,9 +252,11 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
                 f'    click {nid} "./render/{repo_name}-{kd_name}.html" "Open mockup" _blank'
             )
         # Theme-Variables: Font-Family minimal halten (kein Quote-Mix)
-        font_simple = '"sans-serif"' if "Georgia" not in style["font_h"] else '"Georgia, serif"'
+        font_simple = (
+            '"sans-serif"' if "Georgia" not in style["font_h"] else '"Georgia, serif"'
+        )
         new_init = (
-            '%%{init: {'
+            "%%{init: {"
             '"theme":"base",'
             '"themeVariables":{'
             f'"primaryColor":"{style["accent_bg"]}",'
@@ -257,9 +266,9 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
             '"secondaryColor":"#fef3c7",'
             '"tertiaryColor":"#f3f4f6",'
             f'"fontFamily":{font_simple}'
-            '},'
+            "},"
             '"flowchart":{"curve":"basis"}'
-            '}}%%'
+            "}}%%"
         )
         # Click-Direktiven VOR classDef einfügen, damit Mermaid 10.9.1
         # die Knoten-Refs noch findet bevor Style-Block schliesst.
@@ -268,7 +277,9 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
             new_init,
         ).replace(
             "%% --- Styling ---",
-            "%% --- Click-Direktiven (CD-Upgrade) ---\n" + "\n".join(click_lines) + "\n\n%% --- Styling ---",
+            "%% --- Click-Direktiven (CD-Upgrade) ---\n"
+            + "\n".join(click_lines)
+            + "\n\n%% --- Styling ---",
         )
 
         html_out = build_html(mermaid_themed, specs_for_repo, repo_contracts)
@@ -276,16 +287,22 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
         # HTML_TEMPLATE hat meiki-hub als Platzhalter hartkodiert (H1 ·, <title> —,
         # Feedback-Repo); alle drei je Repo ersetzen, sonst leakt meiki-hub in jede
         # lineage-<repo>.html (Feedback würde an achimdehnert/meiki-hub fehlgeleitet).
-        repo_org = (repo_records[0].get("org") if repo_records else None) or detect_org(repo_name)
-        html_out = html_out.replace(
-            "Klickdummy-Lineage · meiki-hub",
-            f"Klickdummy-Lineage · {repo_name}",
-        ).replace(
-            "Klickdummy-Lineage — meiki-hub (auto-generated)",
-            f"Klickdummy-Lineage — {repo_name} (auto-generated)",
-        ).replace(
-            'window.KLICKDUMMY_FEEDBACK_REPO = "achimdehnert/meiki-hub";',
-            f'window.KLICKDUMMY_FEEDBACK_REPO = "{html.escape(repo_org)}/{html.escape(repo_name)}";',
+        repo_org = (repo_records[0].get("org") if repo_records else None) or detect_org(
+            repo_name
+        )
+        html_out = (
+            html_out.replace(
+                "Klickdummy-Lineage · meiki-hub",
+                f"Klickdummy-Lineage · {repo_name}",
+            )
+            .replace(
+                "Klickdummy-Lineage — meiki-hub (auto-generated)",
+                f"Klickdummy-Lineage — {repo_name} (auto-generated)",
+            )
+            .replace(
+                'window.KLICKDUMMY_FEEDBACK_REPO = "achimdehnert/meiki-hub";',
+                f'window.KLICKDUMMY_FEEDBACK_REPO = "{html.escape(repo_org)}/{html.escape(repo_name)}";',
+            )
         )
 
         # Quick-Stats für Header (KD-Count, Profile, Smoke-Status — wird beim Build berechnet)
@@ -294,48 +311,48 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
         stats_chip = (
             f'<span style="background:rgba(255,255,255,.15);padding:3px 10px;border-radius:4px;font-size:12px;">'
             f'{kd_count} KD · profile <code style="background:rgba(255,255,255,.2);padding:1px 5px;border-radius:3px;">{html.escape(profile)}</code>'
-            f' · class {", ".join(html.escape(c) for c in kd_classes)}</span>'
+            f" · class {', '.join(html.escape(c) for c in kd_classes)}</span>"
         )
 
         # Cross-Genesor Nav-Banner direkt nach <body> mit Quick-Stats + Skin-Switcher
         accent_color = style["accent"]
         nav_banner = (
             f'<div style="background:{accent_color};color:#fff;padding:10px 18px;font-size:13px;'
-            f'display:flex;gap:14px;align-items:center;flex-wrap:wrap;'
+            f"display:flex;gap:14px;align-items:center;flex-wrap:wrap;"
             f'font-family:{style["font_h"]};">'
             f'<a href="./index.html" style="color:#fff;text-decoration:none;font-weight:600;">🌱 Genesor</a>'
             f'<a href="./uc-{html.escape(repo_name)}.html" style="color:#fff;text-decoration:none;">'
-            f'📋 Use Cases ({html.escape(repo_name)})</a>'
+            f"📋 Use Cases ({html.escape(repo_name)})</a>"
             f'<a href="./coverage.html" style="color:#fff;text-decoration:none;">'
-            f'📊 Cross-Repo Coverage</a>'
+            f"📊 Cross-Repo Coverage</a>"
             f'<span style="flex:1;"></span>'
-            f'{stats_chip}'
+            f"{stats_chip}"
             f'<select id="lineage-skin-select" '
             f'style="padding:4px 8px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.1);color:#fff;border-radius:4px;font-size:12px;">'
             f'<option value="__default">🎨 Default</option>'
             f'<option value="__dark">Dark</option>'
             f'<option value="__print">Print (B/W)</option>'
-            f'</select>'
-            f'</div>'
-            f'<script>'
-            f'(function(){{'
+            f"</select>"
+            f"</div>"
+            f"<script>"
+            f"(function(){{"
             f'const K="lineage_skin";'
-            f'function apply(v){{'
+            f"function apply(v){{"
             f'document.body.classList.remove("skin-dark","skin-print");'
             f'if(v==="__dark")document.body.classList.add("skin-dark");'
             f'if(v==="__print")document.body.classList.add("skin-print");'
-            f'try{{localStorage.setItem(K,v);}}catch(e){{}}'
-            f'}}'
+            f"try{{localStorage.setItem(K,v);}}catch(e){{}}"
+            f"}}"
             f'let s="__default";try{{s=localStorage.getItem(K)||"__default";}}catch(e){{}}'
             f'const el=document.getElementById("lineage-skin-select");'
             f'if(el){{el.value=s;apply(s);el.addEventListener("change",e=>apply(e.target.value));}}'
-            f'}})();'
-            f'</script>'
-            f'<style>'
-            f'body.skin-dark{{background:#1f2937!important;color:#e5e7eb!important;}}'
-            f'body.skin-dark .graph-wrap{{background:#111827!important;border-color:#374151!important;}}'
-            f'body.skin-print *{{filter:grayscale(1);}}'
-            f'</style>'
+            f"}})();"
+            f"</script>"
+            f"<style>"
+            f"body.skin-dark{{background:#1f2937!important;color:#e5e7eb!important;}}"
+            f"body.skin-dark .graph-wrap{{background:#111827!important;border-color:#374151!important;}}"
+            f"body.skin-print *{{filter:grayscale(1);}}"
+            f"</style>"
         )
         html_out = html_out.replace("<body>", "<body>" + nav_banner, 1)
         out_path = out_dir / f"lineage-{repo_name}.html"
@@ -344,10 +361,12 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
     return written
 
 
-def build_screen_lineage_html(repo: str, kd_name: str, spec_data: dict,
-                             profile: str, style: dict) -> str:
+def build_screen_lineage_html(
+    repo: str, kd_name: str, spec_data: dict, profile: str, style: dict
+) -> str:
     """Standalone HTML-Page mit eingebettetem Mermaid-Screen-Lineage."""
     from datetime import date
+
     mermaid_body = emit_screen_lineage(spec_data)
     screens = spec_data.get("screens") or []
     n_screens = len([s for s in screens if isinstance(s, dict) and s.get("id")])

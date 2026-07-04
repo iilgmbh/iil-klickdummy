@@ -3,15 +3,28 @@
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR4) — Code-Motion;
 einzige Anpassungen: _cfg→get_cfg() (Importbindung) und __file__-Pfadtiefe.
 """
+
 from __future__ import annotations
 
 import html
 from .config import get_cfg
-from .scan import _load_iil_apps_index, detect_org, find_mockup_html, kunde_from, url_for_path
-from .validate import _ACCEPTANCE_AXES, _compute_drift_status, _extract_screen_routes, build_kd_registry, compute_acceptance_status, compute_sunset_badge, validate_kd
+from .scan import (
+    _load_iil_apps_index,
+    detect_org,
+    find_mockup_html,
+    kunde_from,
+    url_for_path,
+)
+from .validate import (
+    _ACCEPTANCE_AXES,
+    _compute_drift_status,
+    _extract_screen_routes,
+    build_kd_registry,
+    compute_acceptance_status,
+    compute_sunset_badge,
+    validate_kd,
+)
 from .render_common import skin_library
-
-
 
 
 def _org_chip(o: str) -> str:
@@ -20,14 +33,16 @@ def _org_chip(o: str) -> str:
 
 def _role_chip(r: str) -> str:
     return (
-        f'<span class="role-{r}">{r}</span>' if r in {"root", "hybrid"}
+        f'<span class="role-{r}">{r}</span>'
+        if r in {"root", "hybrid"}
         else '<span class="role-default">—</span>'
     )
 
 
 # ---- Detail-Panel-Renderer ----
-def _render_kd_detail(r: dict, idx: int, records: list[dict],
-                      all_warnings: dict[int, list[dict]]) -> str:
+def _render_kd_detail(
+    r: dict, idx: int, records: list[dict], all_warnings: dict[int, list[dict]]
+) -> str:
     d = r["data"]
     warnings = all_warnings.get(idx, [])
 
@@ -38,13 +53,17 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
         for w in warnings:
             sev_class = "warn-error" if w["severity"] == "error" else "warn-warning"
             icon = "❌" if w["severity"] == "error" else "⚠"
-            items.append(f'<li class="{sev_class}">{icon} <b>{w["code"]}</b> · {html.escape(w["msg"])}</li>')
+            items.append(
+                f'<li class="{sev_class}">{icon} <b>{w["code"]}</b> · {html.escape(w["msg"])}</li>'
+            )
         warn_html = f'<div class="warnings"><h4>Drift-Validierung ({len(warnings)})</h4><ul class="compact">{"".join(items)}</ul></div>'
 
     # F11 — Render-only-KDs: anderes Detail (kein Spec)
     if r.get("kind", "spec") != "spec":
         html_files = d.get("_html_files") or [d.get("_html_file")]
-        html_files_str = ", ".join(f'<code>{html.escape(f)}</code>' for f in html_files if f)
+        html_files_str = ", ".join(
+            f"<code>{html.escape(f)}</code>" for f in html_files if f
+        )
         rel_path = ""
         try:
             rel_path = str(r["path"].relative_to(get_cfg().repos_root))
@@ -54,16 +73,24 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
         if r["kind"] == "render-only-inline":
             mockup_url = url_for_path(r["path"])
             mockup_link = (
-                f'<div class="mockup-link"><a href="{mockup_url}" target="_blank">'
-                f'📱 → {html.escape(r["path"].name)} öffnen</a></div>'
-            ) if mockup_url else ""
+                (
+                    f'<div class="mockup-link"><a href="{mockup_url}" target="_blank">'
+                    f"📱 → {html.escape(r['path'].name)} öffnen</a></div>"
+                )
+                if mockup_url
+                else ""
+            )
         else:
             # Subdir mit HTMLs — erste finden
             mh = find_mockup_html(r["path"].parent, r["kd"])
             mockup_link = (
-                f'<div class="mockup-link"><a href="{url_for_path(mh)}" target="_blank">'
-                f'📱 → {html.escape(mh.name)} öffnen</a></div>'
-            ) if mh else ""
+                (
+                    f'<div class="mockup-link"><a href="{url_for_path(mh)}" target="_blank">'
+                    f"📱 → {html.escape(mh.name)} öffnen</a></div>"
+                )
+                if mh
+                else ""
+            )
         return f"""
     <tr class="detail-row" id="detail-{idx}">
       <td colspan="13" class="detail-cell">
@@ -93,12 +120,20 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
         desc = pdata.get("description", "") if isinstance(pdata, dict) else ""
         rechte = pdata.get("rechte", []) if isinstance(pdata, dict) else []
         persona_items.append(
-            f'<li><b>{html.escape(pname)}</b>'
-            + (f' <span class="muted">— {html.escape(desc)}</span>' if desc else '')
-            + (f'<br/><span class="small muted">Rechte: {html.escape(", ".join(rechte))}</span>' if rechte else '')
-            + '</li>'
+            f"<li><b>{html.escape(pname)}</b>"
+            + (f' <span class="muted">— {html.escape(desc)}</span>' if desc else "")
+            + (
+                f'<br/><span class="small muted">Rechte: {html.escape(", ".join(rechte))}</span>'
+                if rechte
+                else ""
+            )
+            + "</li>"
         )
-    personas_html = f'<ul class="compact">{"".join(persona_items)}</ul>' if persona_items else '<span class="muted">—</span>'
+    personas_html = (
+        f'<ul class="compact">{"".join(persona_items)}</ul>'
+        if persona_items
+        else '<span class="muted">—</span>'
+    )
 
     # Screens
     screens = d.get("screens", []) or []
@@ -116,15 +151,21 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
             sper = [sper]
         sper_str = ", ".join(sper) if sper else "—"
         # F17: Screen klickbar → Deep-Link in den Mockup (#screen-<id>, Hash-Nav im KD).
-        label = f'<code>{html.escape(sid)}</code> <b>{html.escape(str(stitle))}</b>'
+        label = f"<code>{html.escape(sid)}</code> <b>{html.escape(str(stitle))}</b>"
         if mockup_url:
-            label = (f'<a href="{html.escape(mockup_url)}#screen-{html.escape(sid)}" '
-                     f'target="_blank" title="Diesen Screen im Mockup öffnen">{label}</a>')
+            label = (
+                f'<a href="{html.escape(mockup_url)}#screen-{html.escape(sid)}" '
+                f'target="_blank" title="Diesen Screen im Mockup öffnen">{label}</a>'
+            )
         screen_items.append(
-            f'<li>{label}'
+            f"<li>{label}"
             + f'<br/><span class="small muted">Personas: {html.escape(sper_str)}</span></li>'
         )
-    screens_html = f'<ul class="compact">{"".join(screen_items)}</ul>' if screen_items else '<span class="muted">—</span>'
+    screens_html = (
+        f'<ul class="compact">{"".join(screen_items)}</ul>'
+        if screen_items
+        else '<span class="muted">—</span>'
+    )
 
     # Beziehungen
     rel_lines = []
@@ -133,22 +174,34 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
         for entry in cf:
             ref = entry.get("ref", "?") if isinstance(entry, dict) else str(entry)
             entities = entry.get("entities", []) if isinstance(entry, dict) else []
-            rel_lines.append(f'<li><span class="rel-tag rel-cf">consumes_from</span> <code>{html.escape(ref)}</code> ({len(entities)} entities)</li>')
+            rel_lines.append(
+                f'<li><span class="rel-tag rel-cf">consumes_from</span> <code>{html.escape(ref)}</code> ({len(entities)} entities)</li>'
+            )
     pc = d.get("provides_contracts") or []
     if pc:
         for entry in pc:
             cid = entry.get("schema_ref") or entry.get("id", "?")
-            rel_lines.append(f'<li><span class="rel-tag rel-pc">provides_contracts</span> <code>{html.escape(cid)}</code></li>')
+            rel_lines.append(
+                f'<li><span class="rel-tag rel-pc">provides_contracts</span> <code>{html.escape(cid)}</code></li>'
+            )
     ac = d.get("accepts_contracts") or []
     if ac:
         for entry in ac:
             cid = entry.get("schema_ref") or entry.get("id", "?")
-            rel_lines.append(f'<li><span class="rel-tag rel-ac">accepts_contracts</span> <code>{html.escape(cid)}</code></li>')
+            rel_lines.append(
+                f'<li><span class="rel-tag rel-ac">accepts_contracts</span> <code>{html.escape(cid)}</code></li>'
+            )
     re_root = d.get("root_entities") or {}
     if re_root:
         n = len(re_root) if isinstance(re_root, dict) else len(list(re_root))
-        rel_lines.append(f'<li><span class="rel-tag rel-rt">root_entities</span> {n} exponiert</li>')
-    rel_html = f'<ul class="compact">{"".join(rel_lines)}</ul>' if rel_lines else '<span class="muted">standalone — keine Cross-KD-Beziehungen</span>'
+        rel_lines.append(
+            f'<li><span class="rel-tag rel-rt">root_entities</span> {n} exponiert</li>'
+        )
+    rel_html = (
+        f'<ul class="compact">{"".join(rel_lines)}</ul>'
+        if rel_lines
+        else '<span class="muted">standalone — keine Cross-KD-Beziehungen</span>'
+    )
 
     # Spec-Pfad + Mermaid-Detail-Link (wenn vorhanden)
     rel_path = ""
@@ -158,7 +211,9 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
         rel_path = str(r.get("path", "?"))
 
     # Per-Repo-Mermaid-Lineage (Stufe 1b, F12: nur wenn ≥2 KDs im Repo)
-    repo_kd_count = sum(1 for x in records if x["repo"] == r["repo"] and x.get("kind", "spec") == "spec")
+    repo_kd_count = sum(
+        1 for x in records if x["repo"] == r["repo"] and x.get("kind", "spec") == "spec"
+    )
     repo_slug = html.escape(r["repo"])
     # Deep-Link in die gefilterte Genesor-Übersicht (Hash-Route #/repo/<slug>,
     # vom SPA-Router unterstützt: facets repo/org/class/role).
@@ -168,47 +223,56 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
         # (sonst wäre die Topologie-Seite aus der Zeile nicht mehr erreichbar).
         lineage_link = (
             '<div class="lineage-link">'
-            f'🌐 Topologie für <code>{repo_slug}</code>: '
-            f'{genesor_link}'
+            f"🌐 Topologie für <code>{repo_slug}</code>: "
+            f"{genesor_link}"
             f' · <a href="lineage-{repo_slug}.html" target="_blank">→ Mermaid-Topologie öffnen</a>'
-            '</div>'
+            "</div>"
         )
     else:
         lineage_link = (
             '<div class="lineage-link muted small">'
-            f'🌐 <code>{repo_slug}</code>: {genesor_link}'
-            f' · ℹ Nur 1 KD — kein eigener Mermaid-Graph generiert.'
-            '</div>'
+            f"🌐 <code>{repo_slug}</code>: {genesor_link}"
+            f" · ℹ Nur 1 KD — kein eigener Mermaid-Graph generiert."
+            "</div>"
         )
 
     # Mockup-HTML (Stufe 1b: "Klickdummy klickbar") — mockup_url oben vorberechnet.
     if _mockup_html_path and mockup_url:
         mockup_link = (
             '<div class="mockup-link">'
-            f'📱 Klickdummy-Mockup: '
+            f"📱 Klickdummy-Mockup: "
             f'<a href="{mockup_url}" target="_blank">→ {html.escape(_mockup_html_path.name)} öffnen</a>'
             f' <span class="small muted">(echter klickbarer HTML-Render)</span>'
-            '</div>'
+            "</div>"
         )
     else:
         # Render-Fallback: aus Spec generierte minimal-klickbare HTML
         mockup_link = (
             '<div class="mockup-link">'
-            f'🔬 Auto-Render aus Spec: '
+            f"🔬 Auto-Render aus Spec: "
             f'<a href="/genesor/render/{html.escape(r["repo"])}-{html.escape(r["kd"])}.html" target="_blank">→ Spec-Render öffnen</a>'
             f' <span class="small muted">(klickbar — Persona-Filter, kein eigenes Design)</span>'
-            '</div>'
+            "</div>"
         )
 
     # Grounding-Info
     g = d.get("grounding", {}) or {}
     ground_lines = []
-    for k in ("domain", "achse", "pilot_stakeholder", "pilot_lra", "konzept_ref", "prozessmodell"):
+    for k in (
+        "domain",
+        "achse",
+        "pilot_stakeholder",
+        "pilot_lra",
+        "konzept_ref",
+        "prozessmodell",
+    ):
         if k in g:
             v = g[k]
             v_str = ", ".join(v) if isinstance(v, list) else str(v)
-            ground_lines.append(f'<li><b>{k}:</b> {html.escape(v_str[:120])}</li>')
-    ground_html = f'<ul class="compact">{"".join(ground_lines)}</ul>' if ground_lines else ""
+            ground_lines.append(f"<li><b>{k}:</b> {html.escape(v_str[:120])}</li>")
+    ground_html = (
+        f'<ul class="compact">{"".join(ground_lines)}</ul>' if ground_lines else ""
+    )
 
     # Use-Cases-Section + Replaces-Section (Rev-15-Vorgriff)
     adr_meta = r.get("adr_meta") or {}
@@ -216,23 +280,25 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
     replaces_ref = adr_meta.get("replaces_system_ref")
     ucs_html = ""
     # Link auf UC-Repo-Index mit Filter (Workshop 2026-05-26 #2)
-    kd_filter_url = f'./uc-{html.escape(r["repo"])}.html?kd={html.escape(r["kd"])}'
+    kd_filter_url = f"./uc-{html.escape(r['repo'])}.html?kd={html.escape(r['kd'])}"
     if ucs_list:
-        uc_items = "".join(f"<li><code>{html.escape(uc)}</code></li>" for uc in ucs_list)
+        uc_items = "".join(
+            f"<li><code>{html.escape(uc)}</code></li>" for uc in ucs_list
+        )
         ucs_html = (
-            f'<h4>📋 Realisiert Use Cases ({len(ucs_list)}) '
+            f"<h4>📋 Realisiert Use Cases ({len(ucs_list)}) "
             f'<a href="{kd_filter_url}" style="font-size:12px;font-weight:normal;color:#06c;">→ alle UCs für diesen KD</a></h4>'
             f'<ul class="compact">{uc_items}</ul>'
         )
     elif r.get("kind", "spec") == "spec":
         ucs_html = (
-            f'<h4>📋 Use Cases</h4>'
+            f"<h4>📋 Use Cases</h4>"
             f'<span class="muted small">— keine <code>realizes_use_cases:</code> im ADR-Frontmatter · </span>'
             f'<a href="{kd_filter_url}" style="font-size:13px;color:#06c;">'
-            f'→ UC-Liste für diesen KD öffnen</a>'
+            f"→ UC-Liste für diesen KD öffnen</a>"
             f'<div class="muted small" style="margin-top:4px;">'
-            f'(Per-Discovery-UCs werden auf der UC-Index-Page gezeigt, gefiltert nach diesem KD)'
-            f'</div>'
+            f"(Per-Discovery-UCs werden auf der UC-Index-Page gezeigt, gefiltert nach diesem KD)"
+            f"</div>"
         )
     replaces_html = ""
     if replaces_ref:
@@ -257,7 +323,7 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
             {rel_html}
             {ucs_html}
             {replaces_html}
-            {('<h4 style="margin-top:12px;">📌 Grounding</h4>' + ground_html) if ground_html else ''}
+            {('<h4 style="margin-top:12px;">📌 Grounding</h4>' + ground_html) if ground_html else ""}
           </div>
         </div>
         {lineage_link}
@@ -266,11 +332,13 @@ def _render_kd_detail(r: dict, idx: int, records: list[dict],
     </tr>"""
 
 
-def _render_table_body(records: list[dict],
-                       by_org: dict[str, dict[str, list[dict]]],
-                       all_warnings: dict[int, list[dict]],
-                       drift_by_idx: dict[int, dict],
-                       apps_index: dict[str, dict]) -> str:
+def _render_table_body(
+    records: list[dict],
+    by_org: dict[str, dict[str, list[dict]]],
+    all_warnings: dict[int, list[dict]],
+    drift_by_idx: dict[int, dict],
+    apps_index: dict[str, dict],
+) -> str:
     """Tabellen-Body: eine sichtbare Zeile + Detail-Panel-Zeile pro KD."""
     rows: list[str] = []
     # idx muss konsistent zu den all_warnings-Keys sein (Reihenfolge wie records)
@@ -281,7 +349,7 @@ def _render_table_body(records: list[dict],
             kd_records = sorted(by_org[org][repo], key=lambda r: r["kd"])
             for r in kd_records:
                 d = r["data"]
-                idx = by_record_idx[id(r)]   # echter Index für warnings-Lookup
+                idx = by_record_idx[id(r)]  # echter Index für warnings-Lookup
                 is_render_only = r.get("kind", "spec") != "spec"
 
                 if is_render_only:
@@ -302,12 +370,15 @@ def _render_table_body(records: list[dict],
                     if isinstance(personas_obj, dict):
                         personas_list = list(personas_obj.keys())
                     elif isinstance(personas_obj, list):
-                        personas_list = [p.get("id", str(p)) if isinstance(p, dict) else str(p) for p in personas_obj]
+                        personas_list = [
+                            p.get("id", str(p)) if isinstance(p, dict) else str(p)
+                            for p in personas_obj
+                        ]
                     else:
                         personas_list = []
                     personas = ", ".join(personas_list[:3])
                     if len(personas_list) > 3:
-                        personas += f" +{len(personas_list)-3}"
+                        personas += f" +{len(personas_list) - 3}"
                     personas = personas or "—"
                     kunde = kunde_from(d, org)
 
@@ -327,79 +398,108 @@ def _render_table_body(records: list[dict],
                 n_kd_ucs = len(ucs_list) if isinstance(ucs_list, list) else 0
                 ucs_cell = (
                     f'<a href="./uc-{html.escape(r["repo"])}.html" style="color:#06c;font-weight:600;text-decoration:none;" title="Alle UCs in {html.escape(r["repo"])}">{n_kd_ucs}</a>'
-                    if n_kd_ucs else
-                    f'<a href="./uc-{html.escape(r["repo"])}.html" style="color:#999;text-decoration:none;" title="UC-Liste für {html.escape(r["repo"])} (leer für diesen KD)">—</a>'
+                    if n_kd_ucs
+                    else f'<a href="./uc-{html.escape(r["repo"])}.html" style="color:#999;text-decoration:none;" title="UC-Liste für {html.escape(r["repo"])} (leer für diesen KD)">—</a>'
                 )
                 replaces_ref = adr_meta.get("replaces_system_ref")
-                replaces_cell = f'<code>{html.escape(replaces_ref)}</code>' if replaces_ref else '<span class="muted">—</span>'
+                replaces_cell = (
+                    f"<code>{html.escape(replaces_ref)}</code>"
+                    if replaces_ref
+                    else '<span class="muted">—</span>'
+                )
 
                 org_cell = _org_chip(org)
-                repo_cell = f'<code>{html.escape(repo)}</code>'
+                repo_cell = f"<code>{html.escape(repo)}</code>"
 
                 # Surface-Switcher: KD / Dev / Staging / Stable (Pilot-Memo §Surface)
                 app_info = apps_index.get(repo, {})
                 surface_urls = app_info.get("urls", {})
                 # KD-Spec ist immer da — entweder Mockup-HTML oder Auto-Render
                 kd_mockup = find_mockup_html(r["path"].parent, r["kd"])
-                kd_url = url_for_path(kd_mockup) if kd_mockup else (
-                    f"/genesor/render/{html.escape(r['repo'])}-{html.escape(r['kd'])}.html"
+                kd_url = (
+                    url_for_path(kd_mockup)
+                    if kd_mockup
+                    else (
+                        f"/genesor/render/{html.escape(r['repo'])}-{html.escape(r['kd'])}.html"
+                    )
                 )
                 # Sichtbarer Flag: KD ohne echtes Mockup-HTML → nur Spec-Render.
                 mockup_missing_badge = (
                     '<span class="warn-badge warn-warning mockup-missing" '
                     'title="Kein echtes Mockup-HTML im KD-Verzeichnis — Link zeigt auf den '
                     'aus der Spec generierten Auto-Render.">⚠ Mockup fehlt · nur Spec-Render</span> '
-                    if kd_mockup is None else ""
+                    if kd_mockup is None
+                    else ""
                 )
                 # Feature B: "🛠 Mockup generieren" — nur wenn kein echtes Mockup existiert.
                 # Verlinkt auf ein vorausgefülltes GitHub-Issue (labels=klickdummy,auto).
                 mockup_generate_btn = ""
                 if kd_mockup is None:
                     from urllib.parse import quote as _quote
-                    _issue_title = f'[klickdummy] {r["kd"]} bauen'
+
+                    _issue_title = f"[klickdummy] {r['kd']} bauen"
                     # Idempotenz-Schlüssel (KONZ-iil-klickdummy-001, Teil A): identisch zum
                     # Sentinel von klickdummy_sync.py (find_existing_issue) — so erkennt der Sync
                     # button-erzeugte Issues und legt keine Dublette an / kann sie rekonziliieren.
                     _issue_body = (
-                        f'Mockup für {repo}:{r["kd"]} bauen gemäß ADR-211, '
-                        f'angefordert über genesor.\n\n'
-                        f'<!-- klickdummy-sync:{r["kd"]} -->'
+                        f"Mockup für {repo}:{r['kd']} bauen gemäß ADR-211, "
+                        f"angefordert über genesor.\n\n"
+                        f"<!-- klickdummy-sync:{r['kd']} -->"
                     )
                     _issue_url = (
-                        f'https://github.com/{detect_org(repo)}/{repo}/issues/new'
-                        f'?title={_quote(_issue_title)}'
-                        f'&labels=klickdummy,auto'
-                        f'&body={_quote(_issue_body)}'
+                        f"https://github.com/{detect_org(repo)}/{repo}/issues/new"
+                        f"?title={_quote(_issue_title)}"
+                        f"&labels=klickdummy,auto"
+                        f"&body={_quote(_issue_body)}"
                     )
                     mockup_generate_btn = (
                         f'<a class="mockup-gen-btn" href="{html.escape(_issue_url, quote=True)}" '
                         f'target="_blank" rel="noopener" '
                         f'title="GitHub-Issue zum Bau dieses Mockups vorausfüllen (labels=klickdummy,auto)" '
                         f'onclick="event.stopPropagation(); mockupGenStart(this);">'
-                        f'🛠 Mockup generieren</a> '
+                        f"🛠 Mockup generieren</a> "
                     )
 
                 # Screen×Surface-Matrix als JSON-Datenstruktur fürs Modal
                 screen_routes = _extract_screen_routes(r)
                 import json as _json
-                modal_payload = _json.dumps({
-                    "repo": repo,
-                    "kd": r["kd"],
-                    "kd_title": title,
-                    "kd_url": kd_url,
-                    "surface_base": {
-                        "dev": surface_urls.get("dev"),
-                        "staging": surface_urls.get("staging"),
-                        "prod": surface_urls.get("prod"),
+
+                modal_payload = _json.dumps(
+                    {
+                        "repo": repo,
+                        "kd": r["kd"],
+                        "kd_title": title,
+                        "kd_url": kd_url,
+                        "surface_base": {
+                            "dev": surface_urls.get("dev"),
+                            "staging": surface_urls.get("staging"),
+                            "prod": surface_urls.get("prod"),
+                        },
+                        "screens": screen_routes,
                     },
-                    "screens": screen_routes,
-                }, ensure_ascii=False)
+                    ensure_ascii=False,
+                )
 
                 surfaces = [
-                    ("kd",      "📋 KD",  kd_url,                       "Klickdummy-Spec / Render"),
-                    ("dev",     "🛠 Dev", surface_urls.get("dev"),      "Development-Environment"),
-                    ("staging", "🧪 Stg", surface_urls.get("staging"),  "Staging-Environment"),
-                    ("prod",    "✅ Prod", surface_urls.get("prod"),    "Production / Stable"),
+                    ("kd", "📋 KD", kd_url, "Klickdummy-Spec / Render"),
+                    (
+                        "dev",
+                        "🛠 Dev",
+                        surface_urls.get("dev"),
+                        "Development-Environment",
+                    ),
+                    (
+                        "staging",
+                        "🧪 Stg",
+                        surface_urls.get("staging"),
+                        "Staging-Environment",
+                    ),
+                    (
+                        "prod",
+                        "✅ Prod",
+                        surface_urls.get("prod"),
+                        "Production / Stable",
+                    ),
                 ]
                 surface_pills = []
                 for code, label, url, surface_title in surfaces:
@@ -409,7 +509,7 @@ def _render_table_body(records: list[dict],
                             f'data-surface="{code}" '
                             f'title="{html.escape(surface_title)} — Modal mit Screen-Liste öffnen" '
                             f'onclick="event.stopPropagation(); openSurfaceModal(this);">'
-                            f'{label}</button>'
+                            f"{label}</button>"
                         )
                     else:
                         surface_pills.append(
@@ -420,7 +520,7 @@ def _render_table_body(records: list[dict],
                 surface_cell = (
                     f'<div class="surface-tabs" data-modal-payload="{html.escape(modal_payload, quote=True)}">'
                     + "".join(surface_pills)
-                    + '</div>'
+                    + "</div>"
                 )
 
                 # Drift-Status-Spalte (Pilot-Memo 2026-05-26)
@@ -435,8 +535,8 @@ def _render_table_body(records: list[dict],
                     drift_cell = '<span class="muted small">—</span>'
                 elif d_compare:
                     drift_cell = (
-                        f'<span class="drift-badge" style="background:{d_color}20;color:{d_color};" title="Brief-Coverage: {d_cov}% ({d_info.get("n_actual_briefs",0)}/{d_expected})">'
-                        f'● {html.escape(d_label)}</span> '
+                        f'<span class="drift-badge" style="background:{d_color}20;color:{d_color};" title="Brief-Coverage: {d_cov}% ({d_info.get("n_actual_briefs", 0)}/{d_expected})">'
+                        f"● {html.escape(d_label)}</span> "
                         f'<a href="{html.escape(d_compare)}" target="_blank" class="compare-link" '
                         f'title="Brief §10 Drift-Sektion öffnen" onclick="event.stopPropagation();">🔍</a>'
                     )
@@ -444,11 +544,11 @@ def _render_table_body(records: list[dict],
                     drift_cell = (
                         f'<span class="drift-badge" style="background:{d_color}20;color:{d_color};" '
                         f'title="{d_expected} Screen(s) mit implementation_brief, aber noch keine Briefs generiert">'
-                        f'○ {html.escape(d_label)}</span>'
+                        f"○ {html.escape(d_label)}</span>"
                     )
 
                 rows.append(f"""
-    <tr class="kd-row {'render-only' if is_render_only else ''}" data-detail-id="detail-{idx}" data-drift-status="{d_status}" data-org="{html.escape(org)}" data-repo="{html.escape(repo)}" data-class="{html.escape(klass)}" data-role="{html.escape(role)}" onclick="toggleDetail(this)">
+    <tr class="kd-row {"render-only" if is_render_only else ""}" data-detail-id="detail-{idx}" data-drift-status="{d_status}" data-org="{html.escape(org)}" data-repo="{html.escape(repo)}" data-class="{html.escape(klass)}" data-role="{html.escape(role)}" onclick="toggleDetail(this)">
       <td class="org-cell">{org_cell}</td>
       <td class="repo-cell">{repo_cell}</td>
       <td><span class="toggle">▸</span> {badge} <b>{html.escape(r["kd"])}</b><br/>{mockup_missing_badge}{mockup_generate_btn}<span class="muted">{html.escape(title)}</span></td>
@@ -491,16 +591,16 @@ def _render_acceptance_matrix(records: list[dict]) -> str:
             if st == "signed":
                 chip = (
                     f'<span class="ac-chip ac-signed" title="{html.escape(label)}: '
-                    f'{html.escape(str(info.get("latest_by") or "?"))} · '
-                    f'{html.escape(str(info.get("latest_date") or ""))} · '
+                    f"{html.escape(str(info.get('latest_by') or '?'))} · "
+                    f"{html.escape(str(info.get('latest_date') or ''))} · "
                     f'ref={html.escape(str(info.get("latest_ref") or "—"))}">'
-                    f'✓ signed</span>'
+                    f"✓ signed</span>"
                 )
             elif st == "stale":
                 chip = (
                     f'<span class="ac-chip ac-stale" title="{html.escape(label)}: '
-                    f'letzter Eintrag {info.get("age_days")}d alt '
-                    f'({html.escape(str(info.get("latest_date") or ""))}) — '
+                    f"letzter Eintrag {info.get('age_days')}d alt "
+                    f"({html.escape(str(info.get('latest_date') or ''))}) — "
                     f'Spec-Drift möglich, neue Abnahme empfohlen">⚠ stale</span>'
                 )
                 row_has_open = True
@@ -510,31 +610,31 @@ def _render_acceptance_matrix(records: list[dict]) -> str:
                     f'keine Abnahme erfasst">offen</span>'
                 )
                 row_has_open = True
-            cells.append(f'<td>{chip}</td>')
+            cells.append(f"<td>{chip}</td>")
         if row_has_open:
             _am_open_count += 1
         repo = r["repo"]
         org = r.get("org") or detect_org(repo)
         _am_rows.append(
-            f'<tr>'
+            f"<tr>"
             f'<td class="am-label">{_org_chip(org)} <code>{html.escape(repo)}</code> · '
-            f'<b>{html.escape(r["kd"])}</b></td>'
-            f'{"".join(cells)}'
-            f'</tr>'
+            f"<b>{html.escape(r['kd'])}</b></td>"
+            f"{''.join(cells)}"
+            f"</tr>"
         )
     acceptance_matrix_section = (
         '<details class="acceptance-matrix">'
-        f'<summary>✍️ Acceptance-Matrix — {_am_open_count}/{len(records)} KD(s) mit '
-        'offener Abnahme (klicken zum Aufklappen)</summary>'
-        '<table>'
-        '<thead><tr>'
-        '<th>Repo · Klickdummy</th>'
+        f"<summary>✍️ Acceptance-Matrix — {_am_open_count}/{len(records)} KD(s) mit "
+        "offener Abnahme (klicken zum Aufklappen)</summary>"
+        "<table>"
+        "<thead><tr>"
+        "<th>Repo · Klickdummy</th>"
         f'<th title="ADR-211 Achse spec_signed">{_ac_axis_labels["spec_signed"]}</th>'
         f'<th title="ADR-211 Achse ui_walked">{_ac_axis_labels["ui_walked"]}</th>'
-        '</tr></thead>'
-        f'<tbody>{"".join(_am_rows)}</tbody>'
-        '</table>'
-        '</details>'
+        "</tr></thead>"
+        f"<tbody>{''.join(_am_rows)}</tbody>"
+        "</table>"
+        "</details>"
     )
     return acceptance_matrix_section
 
@@ -553,7 +653,9 @@ def _render_skin_options() -> str:
     _genesor_skin_options = []
     for _value, _label in skin_library():
         if _value == "__greenfield":
-            _genesor_skin_options.append('<option value="__greenfield">Greenfield (Default)</option>')
+            _genesor_skin_options.append(
+                '<option value="__greenfield">Greenfield (Default)</option>'
+            )
             continue
         _short = _genesor_skin_short_labels.get(_value.rsplit("/", 1)[-1], _label)
         _genesor_skin_options.append(
@@ -1220,9 +1322,9 @@ document.querySelectorAll('th.sortable').forEach(th => {
 """
 
 
-def build_genesor_html(records: list[dict],
-                      uc_coverage: dict | None = None,
-                      n_ucs: int = 0) -> str:
+def build_genesor_html(
+    records: list[dict], uc_coverage: dict | None = None, n_ucs: int = 0
+) -> str:
     """Cross-Repo Übersichts-HTML — klickbare Tabelle mit Detail-Panel pro KD.
 
     Optional: UC-Coverage-Summary in der Topbar + Link zu coverage.html
@@ -1270,12 +1372,10 @@ def build_genesor_html(records: list[dict],
     n_apps_indexed = len(apps_index)
     # Rev-15-Stats: UCs + Ablösungen
     n_ucs_total = sum(
-        len(r.get("adr_meta", {}).get("realizes_use_cases") or [])
-        for r in records
+        len(r.get("adr_meta", {}).get("realizes_use_cases") or []) for r in records
     )
     n_replaces = sum(
-        1 for r in records
-        if (r.get("adr_meta", {}) or {}).get("replaces_system_ref")
+        1 for r in records if (r.get("adr_meta", {}) or {}).get("replaces_system_ref")
     )
 
     # Gruppieren nach Org → Repo
@@ -1283,13 +1383,15 @@ def build_genesor_html(records: list[dict],
     for r in records:
         by_org[r["org"]][r["repo"]].append(r)
 
-
-    table_body = _render_table_body(records, by_org, all_warnings,
-                                    drift_by_idx, apps_index)
+    table_body = _render_table_body(
+        records, by_org, all_warnings, drift_by_idx, apps_index
+    )
     acceptance_matrix_section = _render_acceptance_matrix(records)
     genesor_skin_options = _render_skin_options()
 
-    return _GENESOR_HEAD + f"""    <div class="sub">Cross-Repo · auto-generiert · {date.today().isoformat()} · Stufe 1a (statisch)</div>
+    return (
+        _GENESOR_HEAD
+        + f"""    <div class="sub">Cross-Repo · auto-generiert · {date.today().isoformat()} · Stufe 1a (statisch)</div>
     <div class="sub" style="margin-top:4px;"><a href="./coverage.html" style="color:#06c;text-decoration:none;">📊 UC ↔ KD Coverage</a> · {n_ucs} Use Cases erfasst</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;color:#fff;">
@@ -1378,10 +1480,10 @@ def build_genesor_html(records: list[dict],
     <div class="kv"><span class="n">{n_pilot_kds}</span><span class="lbl">KDs mit Pilot-Brief</span></div>
     <div class="kv"><span class="n">{n_briefs_total}</span><span class="lbl">Briefs generiert</span></div>
     <div class="kv"><span class="n">{n_briefs_expected}</span><span class="lbl">erwartet</span></div>
-    <div class="kv drift-status-in-sync"><span class="n">{drift_counter['in-sync']}</span><span class="lbl">🟢 in-sync</span></div>
-    <div class="kv drift-status-stale"><span class="n">{drift_counter['stale']}</span><span class="lbl">🟡 stale</span></div>
-    <div class="kv drift-status-partial"><span class="n">{drift_counter['partial']}</span><span class="lbl">🟠 partial</span></div>
-    <div class="kv drift-status-no-brief"><span class="n">{drift_counter['no-brief']}</span><span class="lbl">⚪ no-brief</span></div>
+    <div class="kv drift-status-in-sync"><span class="n">{drift_counter["in-sync"]}</span><span class="lbl">🟢 in-sync</span></div>
+    <div class="kv drift-status-stale"><span class="n">{drift_counter["stale"]}</span><span class="lbl">🟡 stale</span></div>
+    <div class="kv drift-status-partial"><span class="n">{drift_counter["partial"]}</span><span class="lbl">🟠 partial</span></div>
+    <div class="kv drift-status-no-brief"><span class="n">{drift_counter["no-brief"]}</span><span class="lbl">⚪ no-brief</span></div>
   </div>
   <div class="drift-filters">
     <span class="filter-label">Filter:</span>
@@ -1422,4 +1524,6 @@ def build_genesor_html(records: list[dict],
     </tr>
   </thead>
   <tbody>{table_body}
-""" + _GENESOR_TAIL
+"""
+        + _GENESOR_TAIL
+    )

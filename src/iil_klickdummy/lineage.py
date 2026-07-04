@@ -26,6 +26,7 @@ Seams (Default-Verhalten byte-identisch zu früher):
 Relocation 2026-05-28: aus meiki-hub/scripts/ in das Plattform-Paket
 iil-klickdummy verlagert (cross-cutting Tooling, vgl. meiki:ADR-035).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,7 +44,6 @@ _FILE_SAFE = set(string.ascii_letters + string.digits + "_-")
 def _safe_seg(value) -> str:
     """Ein Dateinamen-Segment: nur [A-Za-z0-9_-], Rest → '_'; leer → 'x'."""
     return "".join(c if c in _FILE_SAFE else "_" for c in str(value or "")) or "x"
-
 
 
 # --- Genesor-Sub-Package Imports (KONZ-003 Empf-1, PR2) ---
@@ -69,6 +69,7 @@ from .genesor.config import (  # noqa: E402,F401
     _AKTEN_PROFIL_POOL,
     _FRONTMATTER_RE,
 )
+
 # introspect_django: Django-Introspection-Helfer
 from .genesor.introspect_django import (  # noqa: E402,F401
     _inspect_django_models,
@@ -77,8 +78,10 @@ from .genesor.introspect_django import (  # noqa: E402,F401
     _inspect_dev_run,
     _inspect_infra_context,
 )
+
 # export: UC-JSON-Export
 from .genesor.export import build_uc_export_json  # noqa: E402,F401
+
 # --- PR4-Split (KONZ-003 Empf-1): Renderer-Module ---
 from .genesor.render_common import (  # noqa: E402,F401
     FEEDBACK_WIDGET_JS,
@@ -111,6 +114,7 @@ from .genesor.render_uc import (  # noqa: E402,F401
     build_impl_brief_html,
     build_repo_uc_index_html,
 )
+
 # --- PR3-Split (KONZ-003 Empf-1): scan/synth/mermaid/validate/publish/ucs ---
 from .genesor.scan import (  # noqa: E402,F401
     CONTRACTS_DIR,
@@ -192,7 +196,9 @@ from .genesor.ucs import (  # noqa: E402,F401
 )
 
 
-OUT_DIR = ROOT / "docs" / "01-architektur" / "lineage"           # Single-Repo-Lineage (Rückwärtskompat)
+OUT_DIR = (
+    ROOT / "docs" / "01-architektur" / "lineage"
+)  # Single-Repo-Lineage (Rückwärtskompat)
 
 
 # _base_prefix, _skin_url, MOCKUP_PRIO_NAMES imported from .genesor.config above.
@@ -269,42 +275,90 @@ OUT_DIR = ROOT / "docs" / "01-architektur" / "lineage"           # Single-Repo-L
 
 # ---- main -------------------------------------------------------------------
 
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Klickdummy-Lineage-Viewer + IIL-Genesor")
-    parser.add_argument("--genesor", action="store_true",
-                        help="Cross-Repo-Übersicht (Stufe 1a/b) zusätzlich emittieren")
-    parser.add_argument("--no-single", action="store_true",
-                        help="Single-Repo-Output (meiki-hub) überspringen")
-    parser.add_argument("--gen-uc-skeletons", action="store_true",
-                        help="UC-Skelette aus Klickdummy-Specs erzeugen (ADR-211 Rev 16)")
-    parser.add_argument("--prune-auto-ucs", action="store_true",
-                        help="UC-Files mit `auto_generated: true` Frontmatter löschen (idempotent)")
-    parser.add_argument("--validate-ucs", action="store_true",
-                        help="UC-Validator (Layer A) standalone laufen — exit 1 bei errors")
-    parser.add_argument("--strict", action="store_true",
-                        help="--validate-ucs: warnings als FAIL behandeln (CI-Modus)")
-    parser.add_argument("--gen-impl-brief", metavar="REPO:KD:SCREEN",
-                        help="Implementation-Brief für 1 Screen erzeugen (Variante-3-Pilot)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Nur anzeigen was geschrieben/gelöscht würde, ohne Files anzufassen")
-    parser.add_argument("--auto-publish", action="store_true",
-                        help="Nach Gen/Prune: pro Repo Commit + Push der geänderten _auto/-Files")
-    parser.add_argument("--allow-main-push", action="store_true",
-                        help="Erlaube --auto-publish auch auf main/master (Default: skip mit Warning)")
-    parser.add_argument("--repos-root", default=str(Path.home() / "github"),
-                        help="Wurzelverzeichnis der gescannten Repos (Default: ~/github)")
-    parser.add_argument("--out", default=None,
-                        help="Genesor-Output-Verzeichnis (Default: <repos-root>/genesor)")
-    parser.add_argument("--base-url", default="/",
-                        help="URL-Präfix für generierte Links + Skin-Pfade (Default: '/')")
-    parser.add_argument("--skin-base", default="",
-                        help="Basis-URL für Skin-CSS (z. B. '/genesor/skins'). Leer (Default) → "
-                             "Skins unter '/iil-klickdummy/.../skins/<name>.css' (byte-identisch zu früher); "
-                             "gesetzt → '<skin-base>/<name>.css' für einen self-contained Build.")
-    parser.add_argument("--vendored-repos", default="",
-                        help="Komma-separierte Repo-Namen, deren echte Mockup-HTMLs einvendoriert "
-                             "unter '/kd/<repo>/...' ausgeliefert werden (z. B. 'ausschreibungs-hub'). "
-                             "Leer (Default) → keine Umschreibung (byte-identisch zu früher).")
+    parser = argparse.ArgumentParser(
+        description="Klickdummy-Lineage-Viewer + IIL-Genesor"
+    )
+    parser.add_argument(
+        "--genesor",
+        action="store_true",
+        help="Cross-Repo-Übersicht (Stufe 1a/b) zusätzlich emittieren",
+    )
+    parser.add_argument(
+        "--no-single",
+        action="store_true",
+        help="Single-Repo-Output (meiki-hub) überspringen",
+    )
+    parser.add_argument(
+        "--gen-uc-skeletons",
+        action="store_true",
+        help="UC-Skelette aus Klickdummy-Specs erzeugen (ADR-211 Rev 16)",
+    )
+    parser.add_argument(
+        "--prune-auto-ucs",
+        action="store_true",
+        help="UC-Files mit `auto_generated: true` Frontmatter löschen (idempotent)",
+    )
+    parser.add_argument(
+        "--validate-ucs",
+        action="store_true",
+        help="UC-Validator (Layer A) standalone laufen — exit 1 bei errors",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="--validate-ucs: warnings als FAIL behandeln (CI-Modus)",
+    )
+    parser.add_argument(
+        "--gen-impl-brief",
+        metavar="REPO:KD:SCREEN",
+        help="Implementation-Brief für 1 Screen erzeugen (Variante-3-Pilot)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Nur anzeigen was geschrieben/gelöscht würde, ohne Files anzufassen",
+    )
+    parser.add_argument(
+        "--auto-publish",
+        action="store_true",
+        help="Nach Gen/Prune: pro Repo Commit + Push der geänderten _auto/-Files",
+    )
+    parser.add_argument(
+        "--allow-main-push",
+        action="store_true",
+        help="Erlaube --auto-publish auch auf main/master (Default: skip mit Warning)",
+    )
+    parser.add_argument(
+        "--repos-root",
+        default=str(Path.home() / "github"),
+        help="Wurzelverzeichnis der gescannten Repos (Default: ~/github)",
+    )
+    parser.add_argument(
+        "--out",
+        default=None,
+        help="Genesor-Output-Verzeichnis (Default: <repos-root>/genesor)",
+    )
+    parser.add_argument(
+        "--base-url",
+        default="/",
+        help="URL-Präfix für generierte Links + Skin-Pfade (Default: '/')",
+    )
+    parser.add_argument(
+        "--skin-base",
+        default="",
+        help="Basis-URL für Skin-CSS (z. B. '/genesor/skins'). Leer (Default) → "
+        "Skins unter '/iil-klickdummy/.../skins/<name>.css' (byte-identisch zu früher); "
+        "gesetzt → '<skin-base>/<name>.css' für einen self-contained Build.",
+    )
+    parser.add_argument(
+        "--vendored-repos",
+        default="",
+        help="Komma-separierte Repo-Namen, deren echte Mockup-HTMLs einvendoriert "
+        "unter '/kd/<repo>/...' ausgeliefert werden (z. B. 'ausschreibungs-hub'). "
+        "Leer (Default) → keine Umschreibung (byte-identisch zu früher).",
+    )
     args = parser.parse_args()
 
     # Argparse → GenesorConfig (KONZ-003 Empf-1: keine bare-Global-Mutation mehr).
@@ -330,13 +384,17 @@ def main() -> int:
             print(f"❌ Format: REPO:KD:SCREEN — '{args.gen_impl_brief}'")
             return 1
         records = find_all_repos_specs()
-        rec = next((r for r in records if r["repo"] == repo_a and r["kd"] == kd_a), None)
+        rec = next(
+            (r for r in records if r["repo"] == repo_a and r["kd"] == kd_a), None
+        )
         if not rec:
             print(f"❌ KD nicht gefunden: {repo_a}:{kd_a}")
             return 1
         brief_md = build_impl_brief(rec, screen_a)
         if brief_md is None:
-            print(f"❌ Screen '{screen_a}' hat kein `implementation_brief`-Block ODER existiert nicht")
+            print(
+                f"❌ Screen '{screen_a}' hat kein `implementation_brief`-Block ODER existiert nicht"
+            )
             return 1
         out_dir = _cfg.genesor_out / "impl-brief"
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -354,13 +412,15 @@ def main() -> int:
         for gid, items in sorted(findings.items()):
             for f in items:
                 icon = "❌" if f["severity"] == "error" else "⚠"
-                print(f'  {icon} {gid:<45} {f["code"]:<22} {f["msg"]}')
+                print(f"  {icon} {gid:<45} {f['code']:<22} {f['msg']}")
                 if f["severity"] == "error":
                     n_err += 1
                 else:
                     n_warn += 1
         n_clean = len(ucs) - len(findings)
-        print(f"\nValidator (Layer A): {n_clean}/{len(ucs)} clean · {n_warn} warnings · {n_err} errors")
+        print(
+            f"\nValidator (Layer A): {n_clean}/{len(ucs)} clean · {n_warn} warnings · {n_err} errors"
+        )
         if n_err > 0:
             return 1
         if args.strict and n_warn > 0:
@@ -387,11 +447,16 @@ def main() -> int:
                 deleted.append(uc_path)
         for p in deleted:
             print(f"{'(dry) ' if args.dry_run else ''}🗑️  {p}")
-        print(f"\n{len(deleted)} UC-File(s) {'würden gelöscht' if args.dry_run else 'gelöscht'}.")
+        print(
+            f"\n{len(deleted)} UC-File(s) {'würden gelöscht' if args.dry_run else 'gelöscht'}."
+        )
         if args.auto_publish and deleted:
-            _auto_publish_per_repo(deleted, action="prune",
-                                  dry_run=args.dry_run,
-                                  allow_main=args.allow_main_push)
+            _auto_publish_per_repo(
+                deleted,
+                action="prune",
+                dry_run=args.dry_run,
+                allow_main=args.allow_main_push,
+            )
         elif deleted and not args.dry_run:
             print("\n💡 Tipp: --auto-publish für direkten Commit+Push der Löschung")
         return 0
@@ -402,20 +467,29 @@ def main() -> int:
         result = generate_uc_skeletons(records, existing_ucs, dry_run=args.dry_run)
         for p in result["written"]:
             print(f"{'(dry) ' if args.dry_run else ''}✓ {p}")
-        print(f"\n{len(result['written'])} UC-Skelette {'würden geschrieben' if args.dry_run else 'geschrieben'} · {result['skipped']} übersprungen (existierend/abgedeckt)")
+        print(
+            f"\n{len(result['written'])} UC-Skelette {'würden geschrieben' if args.dry_run else 'geschrieben'} · {result['skipped']} übersprungen (existierend/abgedeckt)"
+        )
         if args.auto_publish and result["written"]:
-            _auto_publish_per_repo(result["written"], action="gen",
-                                  dry_run=args.dry_run,
-                                  allow_main=args.allow_main_push)
+            _auto_publish_per_repo(
+                result["written"],
+                action="gen",
+                dry_run=args.dry_run,
+                allow_main=args.allow_main_push,
+            )
         elif result["written"] and not args.dry_run:
-            print("\n💡 Tipp: --auto-publish für direkten Commit+Push (Edit-Links sofort auf GitHub aktiv)")
+            print(
+                "\n💡 Tipp: --auto-publish für direkten Commit+Push (Edit-Links sofort auf GitHub aktiv)"
+            )
         return 0
 
     if not args.no_single:
         specs = find_specs()
         contracts = find_contracts()
         if specs:
-            print(f"Single-Repo · gefundene Klickdummies: {len(specs)} · Contracts: {len(contracts)}")
+            print(
+                f"Single-Repo · gefundene Klickdummies: {len(specs)} · Contracts: {len(contracts)}"
+            )
             mermaid_text = emit_mermaid(specs, contracts)
             html_text = build_html(mermaid_text, specs, contracts)
             OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -427,12 +501,17 @@ def main() -> int:
     if args.genesor:
         records = find_all_repos_specs()
         if not records:
-            print(f"WARN: Keine Klickdummies unter {_cfg.repos_root} gefunden.", file=sys.stderr)
+            print(
+                f"WARN: Keine Klickdummies unter {_cfg.repos_root} gefunden.",
+                file=sys.stderr,
+            )
             return 1
         _cfg.genesor_out.mkdir(parents=True, exist_ok=True)
-        print(f"Genesor (Cross-Repo) · gefundene Klickdummies: {len(records)} aus "
-              f"{len({(r['org'], r['repo']) for r in records})} Repos / "
-              f"{len({r['org'] for r in records})} Orgs")
+        print(
+            f"Genesor (Cross-Repo) · gefundene Klickdummies: {len(records)} aus "
+            f"{len({(r['org'], r['repo']) for r in records})} Repos / "
+            f"{len({r['org'] for r in records})} Orgs"
+        )
         # Cross-Repo-Lookup für Auto-KD-Linking in Akten-Zeilen:
         # Aktentyp (z. B. „wohngeld") wird gegen diesen Set gematcht; existiert
         # ein KD, bekommt die Tabellen-Zeile einen Sprung-CTA ins Ziel-FV-KD.
@@ -450,15 +529,20 @@ def main() -> int:
         n_rendered = 0
         for rec in records:
             if rec.get("kind", "spec") != "spec":
-                continue   # render-only KDs haben schon HTML, kein Fallback nötig
+                continue  # render-only KDs haben schon HTML, kein Fallback nötig
             kd_dir = rec["path"].parent
             if find_mockup_html(kd_dir, rec["kd"]) is None:
-                generate_render_fallback(rec, _cfg.genesor_out,
-                                         known_kds=known_kds,
-                                         known_kd_repos=known_kd_repos)
+                generate_render_fallback(
+                    rec,
+                    _cfg.genesor_out,
+                    known_kds=known_kds,
+                    known_kd_repos=known_kd_repos,
+                )
                 n_rendered += 1
         if n_rendered:
-            print(f"✓ {n_rendered} Render-Fallback-HTMLs in {_cfg.genesor_out / 'render'}/")
+            print(
+                f"✓ {n_rendered} Render-Fallback-HTMLs in {_cfg.genesor_out / 'render'}/"
+            )
         # Stufe 1b: Per-Repo-Lineages zuerst (damit Genesor sie verlinken kann)
         # Implementation-Briefs auto-emittieren (Pilot ADR-Variante-3) für alle
         # Screens mit implementation_brief-Block (User-Wunsch 2026-05-26: P2)
@@ -478,14 +562,20 @@ def main() -> int:
                 # S-03: sid/repo/kd file-sicher machen (Path-Traversal-Schutz).
                 # sid bleibt für den Render (build_impl_brief*) unverändert — dort
                 # wird es via html.escape ausgegeben (S-02-Pfad).
-                fseg = f"{_safe_seg(rec['repo'])}-{_safe_seg(rec['kd'])}-{_safe_seg(sid)}"
+                fseg = (
+                    f"{_safe_seg(rec['repo'])}-{_safe_seg(rec['kd'])}-{_safe_seg(sid)}"
+                )
                 out_file = impl_briefs_dir / f"{fseg}.md"
                 out_file.write_text(brief_md, encoding="utf-8")
                 # HTML-Render daneben (CD aus doc-profile)
                 profile_ib = read_doc_profile(_cfg.repos_root / rec["repo"])
                 style_ib = _DOMAIN_STYLES.get(profile_ib, _DOMAIN_STYLES["default"])
-                html_out_ib = build_impl_brief_html(brief_md, rec["repo"], rec["kd"], sid, profile_ib, style_ib)
-                (_cfg.genesor_out / f"impl-brief-{fseg}.html").write_text(html_out_ib, encoding="utf-8")
+                html_out_ib = build_impl_brief_html(
+                    brief_md, rec["repo"], rec["kd"], sid, profile_ib, style_ib
+                )
+                (_cfg.genesor_out / f"impl-brief-{fseg}.html").write_text(
+                    html_out_ib, encoding="utf-8"
+                )
                 n_briefs += 1
         if n_briefs:
             print(f"✓ {n_briefs} Implementation-Brief(s) in {impl_briefs_dir}/")
@@ -502,8 +592,12 @@ def main() -> int:
             kd_kd = rec["kd"]
             profile_sl = read_doc_profile(_cfg.repos_root / repo_kd)
             style_sl = _DOMAIN_STYLES.get(profile_sl, _DOMAIN_STYLES["default"])
-            html_out_sl = build_screen_lineage_html(repo_kd, kd_kd, d, profile_sl, style_sl)
-            (_cfg.genesor_out / f"screen-lineage-{repo_kd}-{kd_kd}.html").write_text(html_out_sl, encoding="utf-8")
+            html_out_sl = build_screen_lineage_html(
+                repo_kd, kd_kd, d, profile_sl, style_sl
+            )
+            (_cfg.genesor_out / f"screen-lineage-{repo_kd}-{kd_kd}.html").write_text(
+                html_out_sl, encoding="utf-8"
+            )
             n_screen_lineage += 1
         if n_screen_lineage:
             print(f"✓ {n_screen_lineage} Screen-Lineage-Pages in {_cfg.genesor_out}/")
@@ -518,24 +612,37 @@ def main() -> int:
         (_cfg.genesor_out / "coverage.html").write_text(coverage_html, encoding="utf-8")
         n_realized = sum(1 for v in coverage["uc_realized_count"].values() if v > 0)
         n_cells = sum(len(v) for v in coverage["matrix"].values())
-        print(f"✓ {_cfg.genesor_out / 'coverage.html'} ({len(ucs)} UCs / {n_realized} realized / {n_cells} cells)")
+        print(
+            f"✓ {_cfg.genesor_out / 'coverage.html'} ({len(ucs)} UCs / {n_realized} realized / {n_cells} cells)"
+        )
 
         # UC-Validator (Layer A) — Workshop 2026-05-26
         uc_findings = validate_ucs(ucs, records)
-        n_err = sum(1 for v in uc_findings.values() for f in v if f["severity"] == "error")
-        n_warn = sum(1 for v in uc_findings.values() for f in v if f["severity"] == "warning")
+        n_err = sum(
+            1 for v in uc_findings.values() for f in v if f["severity"] == "error"
+        )
+        n_warn = sum(
+            1 for v in uc_findings.values() for f in v if f["severity"] == "warning"
+        )
         n_clean = len(ucs) - len(uc_findings)
-        print(f"--- UC-Validator (Layer A): {n_clean}/{len(ucs)} clean · {n_warn}w · {n_err}e ---")
+        print(
+            f"--- UC-Validator (Layer A): {n_clean}/{len(ucs)} clean · {n_warn}w · {n_err}e ---"
+        )
 
         # Pro-Repo UC-Index (Workshop-Feedback 2026-05-26 #1)
         ucs_by_repo: dict[str, list[dict]] = {}
         for u in ucs:
             ucs_by_repo.setdefault(u["repo"], []).append(u)
         for repo_name, ucs_for_repo in ucs_by_repo.items():
-            uc_idx_html = build_repo_uc_index_html(repo_name, ucs_for_repo, coverage,
-                                                  kds=records, validation=uc_findings)
-            (_cfg.genesor_out / f"uc-{repo_name}.html").write_text(uc_idx_html, encoding="utf-8")
-            print(f"✓ {_cfg.genesor_out / ('uc-' + repo_name + '.html')} ({len(ucs_for_repo)} UCs)")
+            uc_idx_html = build_repo_uc_index_html(
+                repo_name, ucs_for_repo, coverage, kds=records, validation=uc_findings
+            )
+            (_cfg.genesor_out / f"uc-{repo_name}.html").write_text(
+                uc_idx_html, encoding="utf-8"
+            )
+            print(
+                f"✓ {_cfg.genesor_out / ('uc-' + repo_name + '.html')} ({len(ucs_for_repo)} UCs)"
+            )
 
         # JSON-Export (Workshop-Feedback 2026-05-26 #5) — strukturierter Snapshot
         # für externe Konsumenten (Backstage, Excel, Linear-Sync, PDF-Report).
@@ -567,8 +674,8 @@ def main() -> int:
             content = render_path.read_text("utf-8")
             checks = [
                 ("App-Frame vorhanden", '<div class="app-frame"' in content),
-                ("ℹ Info-Button (Spec-Sicht)", 'ℹ Info' in content),
-                ("❓ Hilfe-Button (End-User)", '❓ Hilfe' in content),
+                ("ℹ Info-Button (Spec-Sicht)", "ℹ Info" in content),
+                ("❓ Hilfe-Button (End-User)", "❓ Hilfe" in content),
                 ("Info-Modal-Global", 'id="info-modal-bg"' in content),
                 ("Info-Hidden-Container", '<div class="screen-info" hidden' in content),
                 ("Help-Hidden-Container", '<div class="screen-help" hidden' in content),
@@ -577,10 +684,19 @@ def main() -> int:
                 ("Feedback-Widget (widget.js)", "KLICKDUMMY_FEEDBACK_REPO" in content),
                 ("Spec-Sicht-Toggle", 'id="spec-toggle"' in content),
                 ("Status-Bar", '<div class="app-statusbar">' in content),
-                ("Layout-Modus aktiv (Sidebar oder Tab-Bar)", 'class="has-sidebar"' in content or 'class="has-tabs"' in content),
-                ("Akte-Modal-Container vorhanden", '<div class="screen-akte" hidden' in content),
-                ("Akten-Link in Tabellen (sofern Entity Aktenzeichen hat)",
-                 'class="akten-link"' in content or 'aktenzeichen' not in content.lower()),
+                (
+                    "Layout-Modus aktiv (Sidebar oder Tab-Bar)",
+                    'class="has-sidebar"' in content or 'class="has-tabs"' in content,
+                ),
+                (
+                    "Akte-Modal-Container vorhanden",
+                    '<div class="screen-akte" hidden' in content,
+                ),
+                (
+                    "Akten-Link in Tabellen (sofern Entity Aktenzeichen hat)",
+                    'class="akten-link"' in content
+                    or "aktenzeichen" not in content.lower(),
+                ),
             ]
             failed = [name for name, ok in checks if not ok]
             if failed:
@@ -592,7 +708,10 @@ def main() -> int:
         for r in smoke_results[:5]:
             print(r)
         if smoke_fail > 0:
-            print(f"\n⚠ {smoke_fail} Render(s) mit fehlenden Pattern. Re-Generierung oder Code-Fix nötig.", file=sys.stderr)
+            print(
+                f"\n⚠ {smoke_fail} Render(s) mit fehlenden Pattern. Re-Generierung oder Code-Fix nötig.",
+                file=sys.stderr,
+            )
 
     return 0
 

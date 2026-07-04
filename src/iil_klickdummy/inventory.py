@@ -1,4 +1,5 @@
 """S11 Cross-Repo Legacy-Class-Inventur (platform:ADR-211 Rev 12 §Migration)."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,17 +8,31 @@ import pathlib
 import re
 import sys
 
-DEFAULT_REPOS = ["meiki-hub", "writing-hub", "risk-hub", "pptx-hub", "dev-hub", "ttz-hub"]
+DEFAULT_REPOS = [
+    "meiki-hub",
+    "writing-hub",
+    "risk-hub",
+    "pptx-hub",
+    "dev-hub",
+    "ttz-hub",
+]
 LEGACY_PATTERN = re.compile(r"mock-prototyp|demo-render")
 INCLUDE_EXT = {".yaml", ".yml", ".json", ".md", ".html", ".py"}
-EXCLUDE_PATH_PARTS = {"node_modules", ".venv", "__pycache__", "build", "dist", "_archiv"}
+EXCLUDE_PATH_PARTS = {
+    "node_modules",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "_archiv",
+}
 EXCLUDE_FILES_SUFFIX = ("feedback-log.md",)
 INTENTIONAL_LINE_PATTERNS = [
-    re.compile(r'LEGACY\s*=\s*\{'),
+    re.compile(r"LEGACY\s*=\s*\{"),
     re.compile(r'"mock-prototyp"\s*:\s*"mock"'),
     re.compile(r'"demo-render"\s*:\s*"spec-demo"'),
-    re.compile(r'#\s*vorher\s+(mock-prototyp|demo-render)'),
-    re.compile(r'\(vorher\s+(mock-prototyp|demo-render)'),
+    re.compile(r"#\s*vorher\s+(mock-prototyp|demo-render)"),
+    re.compile(r"\(vorher\s+(mock-prototyp|demo-render)"),
     re.compile(r'in\s+\("mock",\s*"mock-prototyp"\)'),
     re.compile(r'in\s+\("demo-render",\s*"spec-demo"\)'),
 ]

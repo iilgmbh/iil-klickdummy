@@ -3,6 +3,7 @@
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR4) — Code-Motion;
 einzige Anpassungen: _cfg→get_cfg() (Importbindung) und __file__-Pfadtiefe.
 """
+
 from __future__ import annotations
 
 import html
@@ -17,7 +18,10 @@ from .scan import detect_org
 try:
     FEEDBACK_WIDGET_JS = (
         # genesor/ liegt eine Ebene unter dem Paket → ein .parent mehr als in lineage.py
-        Path(__file__).resolve().parent.parent / "snippets" / "feedback-widget" / "widget.js"
+        Path(__file__).resolve().parent.parent
+        / "snippets"
+        / "feedback-widget"
+        / "widget.js"
     ).read_text(encoding="utf-8")
 except Exception:  # noqa: BLE001
     FEEDBACK_WIDGET_JS = "/* widget.js nicht gefunden */"
@@ -105,13 +109,15 @@ def build_skin_switcher_html(initial_value: str = "__greenfield") -> str:
     """HTML-Snippet für das Skin-Switcher-Dropdown — wird in Topbar + Genesor verwendet."""
     options = []
     for value, label in skin_library():
-        sel = ' selected' if value == initial_value else ''
-        options.append(f'<option value="{html.escape(value)}"{sel}>{html.escape(label)}</option>')
+        sel = " selected" if value == initial_value else ""
+        options.append(
+            f'<option value="{html.escape(value)}"{sel}>{html.escape(label)}</option>'
+        )
     return (
         '<div class="style-switch">'
         '<label for="skin-select">🎨 Style</label>'
         f'<select id="skin-select">{"".join(options)}</select>'
-        '</div>'
+        "</div>"
     )
 
 
@@ -213,7 +219,11 @@ def _gh_issue_url(repo: str, sid: str, kd_name: str, s: dict, kind: str) -> str:
 
     org = detect_org(repo)
     persona_raw = s.get("personas") or s.get("persona") or []
-    persona = ", ".join(persona_raw) if isinstance(persona_raw, list) else str(persona_raw or "—")
+    persona = (
+        ", ".join(persona_raw)
+        if isinstance(persona_raw, list)
+        else str(persona_raw or "—")
+    )
 
     if kind == "use-case":
         # Routet auf das strukturierte GitHub Issue Form (uc-klickdummy.yml).
@@ -253,7 +263,13 @@ def _gh_issue_url(repo: str, sid: str, kd_name: str, s: dict, kind: str) -> str:
 
 
 def build_trace_strip(
-    s: dict, klass: str, role: str, accept_status: dict, repo: str = "", kd_name: str = "", sid: str = ""
+    s: dict,
+    klass: str,
+    role: str,
+    accept_status: dict,
+    repo: str = "",
+    kd_name: str = "",
+    sid: str = "",
 ) -> str:
     """Gelabeltes Spec-Sicht-Panel pro Screen (X-Ray) — substanzielle Inhalte +
     aktionierbare „anlegen"-Buttons für fehlende Pflicht-Angaben (ADR-211 Co-Creation)."""
@@ -266,9 +282,13 @@ def build_trace_strip(
         _title_html = (
             f'<span class="tr-screen-title">'
             f'<span class="tr-screen-id">{html.escape(_sid_display)}</span>'
-            + (f' — {html.escape(str(_title))}' if _title and _title != _sid_display else "")
+            + (
+                f" — {html.escape(str(_title))}"
+                if _title and _title != _sid_display
+                else ""
+            )
             + '<span class="tr-screen-subtab"></span>'
-            + '</span>'
+            + "</span>"
         )
         rows.append(f'<div class="tr-row tr-row-title">{_title_html}</div>')
 
@@ -298,7 +318,7 @@ def build_trace_strip(
     # 📋 Use Cases — klappbare Liste oder anlegen-Button
     ucs, uc_src = _screen_use_cases(s)
     if ucs:
-        items = "".join(f'<li>{html.escape(u)}</li>' for u in ucs)
+        items = "".join(f"<li>{html.escape(u)}</li>" for u in ucs)
         uc_val = (
             f'<details class="tr-uc-details"><summary>{len(ucs)} UC(s)'
             f' <span class="tr-dim">({html.escape(uc_src)})</span></summary>'
@@ -306,7 +326,12 @@ def build_trace_strip(
         )
         row("📋", "Use Cases", uc_val)
     else:
-        row("📋", "Use Cases", "nicht deklariert" + act("use-case", "+ UC anlegen"), missing=True)
+        row(
+            "📋",
+            "Use Cases",
+            "nicht deklariert" + act("use-case", "+ UC anlegen"),
+            missing=True,
+        )
 
     # 📦 Daten — Entities + Datenfelder mit Typ
     konsumiert = s.get("konsumiert_entities") or []
@@ -328,7 +353,9 @@ def build_trace_strip(
     if ent_names or df_parts:
         val = "Entitäten: " + (html.escape(", ".join(ent_names)) or "—")
         if df_parts:
-            val += ' · <span class="tr-dim">Felder:</span> ' + html.escape(", ".join(df_parts))
+            val += ' · <span class="tr-dim">Felder:</span> ' + html.escape(
+                ", ".join(df_parts)
+            )
         row("📦", "Daten", val)
     else:
         row("📦", "Daten", "keine Entities/Datenfelder deklariert", missing=True)
@@ -336,12 +363,22 @@ def build_trace_strip(
     # 🏷 Status — class/role/off-ramp/pipeline
     ors = s.get("off_ramp_status")
     pipeline = s.get("pipeline_status") or "klickdummy"
-    status_bits = [f"class <b>{html.escape(klass)}</b>", f"role <b>{html.escape(role)}</b>", f"pipeline <b>{html.escape(str(pipeline))}</b>"]
+    status_bits = [
+        f"class <b>{html.escape(klass)}</b>",
+        f"role <b>{html.escape(role)}</b>",
+        f"pipeline <b>{html.escape(str(pipeline))}</b>",
+    ]
     if ors:
-        status_bits.insert(2, f'off-ramp <b>{html.escape(str(ors))}</b>')
+        status_bits.insert(2, f"off-ramp <b>{html.escape(str(ors))}</b>")
         row("🏷", "Status", " · ".join(status_bits))
     else:
-        row("🏷", "Status", " · ".join(status_bits) + " · <span class='tr-miss-inline'>off-ramp fehlt</span>" + act("off-ramp", "+ off-ramp"))
+        row(
+            "🏷",
+            "Status",
+            " · ".join(status_bits)
+            + " · <span class='tr-miss-inline'>off-ramp fehlt</span>"
+            + act("off-ramp", "+ off-ramp"),
+        )
 
     # ✓ Abnahme — who/when je Achse
     acc_parts = []
@@ -349,9 +386,13 @@ def build_trace_strip(
         label = "PO-Sign-Off" if axis == "spec_signed" else "Workshop-Walk"
         st = info.get("status")
         if st == "signed":
-            acc_parts.append(f'✓ {label}: {html.escape(info.get("latest_by") or "?")} · {info.get("latest_date")} ({info.get("age_days")}d)')
+            acc_parts.append(
+                f"✓ {label}: {html.escape(info.get('latest_by') or '?')} · {info.get('latest_date')} ({info.get('age_days')}d)"
+            )
         elif st == "stale":
-            acc_parts.append(f'⚠ {label}: {info.get("age_days")}d alt — neue Abnahme empfohlen')
+            acc_parts.append(
+                f"⚠ {label}: {info.get('age_days')}d alt — neue Abnahme empfohlen"
+            )
     if acc_parts:
         row("✓", "Abnahme", " · ".join(acc_parts))
     else:
@@ -363,17 +404,26 @@ def build_trace_strip(
     if total:
         val = f"{n_exec}/{total} ausführbar"
         if prose_ids:
-            val += ' · <span class="tr-dim">prose-only:</span> ' + html.escape(", ".join(prose_ids))
+            val += ' · <span class="tr-dim">prose-only:</span> ' + html.escape(
+                ", ".join(prose_ids)
+            )
         if fragile_ids:
-            val += ' · <span class="tr-miss-inline">fragil:</span> ' + html.escape(", ".join(fragile_ids))
+            val += ' · <span class="tr-miss-inline">fragil:</span> ' + html.escape(
+                ", ".join(fragile_ids)
+            )
         row("🎯", "Coverage (I1)", val)
     else:
-        row("🎯", "Coverage (I1)", "keine parity_acceptance-Checks" + act("parity", "+ Parity"), missing=True)
+        row(
+            "🎯",
+            "Coverage (I1)",
+            "keine parity_acceptance-Checks" + act("parity", "+ Parity"),
+            missing=True,
+        )
 
     # ❓ Validierungsfrage — echter Text
     vf = s.get("validierungsfrage")
     if vf:
-        row("❓", "Validierung", f'»{html.escape(str(vf))}«')
+        row("❓", "Validierung", f"»{html.escape(str(vf))}«")
 
     return (
         '<div class="trace-strip" aria-label="Spec-Sicht (X-Ray)">'

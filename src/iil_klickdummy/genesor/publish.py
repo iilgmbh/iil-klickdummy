@@ -2,6 +2,7 @@
 
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR3) — reine Code-Motion.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -40,9 +41,14 @@ def _repo_of_path(p: Path) -> str | None:
         return None
 
 
-def _git_publish_changes(repo: str, paths: list[Path], commit_msg: str,
-                        dry_run: bool = False, push: bool = True,
-                        allow_main: bool = False) -> dict:
+def _git_publish_changes(
+    repo: str,
+    paths: list[Path],
+    commit_msg: str,
+    dry_run: bool = False,
+    push: bool = True,
+    allow_main: bool = False,
+) -> dict:
     """Stage + commit + push einer Path-Liste in einem Repo (Auto-Publish).
 
     Sicherheits-Konstraints:
@@ -53,15 +59,28 @@ def _git_publish_changes(repo: str, paths: list[Path], commit_msg: str,
     Returns: ``{committed, pushed, branch, sha, n_files, skip_reason}``.
     """
     import subprocess
+
     repo_path = get_cfg().repos_root / repo
     try:
         branch = subprocess.check_output(
             ["git", "-C", str(repo_path), "rev-parse", "--abbrev-ref", "HEAD"],
-            stderr=subprocess.DEVNULL, text=True, timeout=3,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=3,
         ).strip()
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-        return {"committed": False, "pushed": False, "branch": None, "sha": None,
-                "n_files": 0, "skip_reason": "git-not-available"}
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
+        return {
+            "committed": False,
+            "pushed": False,
+            "branch": None,
+            "sha": None,
+            "n_files": 0,
+            "skip_reason": "git-not-available",
+        }
 
     rel_paths: list[str] = []
     for p in paths:
@@ -70,13 +89,24 @@ def _git_publish_changes(repo: str, paths: list[Path], commit_msg: str,
         except ValueError:
             continue
     if not rel_paths:
-        return {"committed": False, "pushed": False, "branch": branch, "sha": None,
-                "n_files": 0, "skip_reason": "no-files"}
+        return {
+            "committed": False,
+            "pushed": False,
+            "branch": branch,
+            "sha": None,
+            "n_files": 0,
+            "skip_reason": "no-files",
+        }
 
     if dry_run:
-        return {"committed": False, "pushed": False, "branch": branch, "sha": None,
-                "n_files": len(rel_paths),
-                "skip_reason": f"dry-run · würde {len(rel_paths)} Files auf {branch} committen"}
+        return {
+            "committed": False,
+            "pushed": False,
+            "branch": branch,
+            "sha": None,
+            "n_files": len(rel_paths),
+            "skip_reason": f"dry-run · würde {len(rel_paths)} Files auf {branch} committen",
+        }
 
     # Stage (auch deleted files — git add -A für die Pfade)
     subprocess.run(
@@ -84,12 +114,21 @@ def _git_publish_changes(repo: str, paths: list[Path], commit_msg: str,
         check=True,
     )
     # Idempotent check
-    if subprocess.run(
-        ["git", "-C", str(repo_path), "diff", "--cached", "--quiet"],
-        stderr=subprocess.DEVNULL,
-    ).returncode == 0:
-        return {"committed": False, "pushed": False, "branch": branch, "sha": None,
-                "n_files": len(rel_paths), "skip_reason": "nothing-to-commit"}
+    if (
+        subprocess.run(
+            ["git", "-C", str(repo_path), "diff", "--cached", "--quiet"],
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    ):
+        return {
+            "committed": False,
+            "pushed": False,
+            "branch": branch,
+            "sha": None,
+            "n_files": len(rel_paths),
+            "skip_reason": "nothing-to-commit",
+        }
 
     subprocess.run(
         ["git", "-C", str(repo_path), "commit", "-m", commit_msg],
@@ -101,53 +140,88 @@ def _git_publish_changes(repo: str, paths: list[Path], commit_msg: str,
     ).strip()
 
     if not push:
-        return {"committed": True, "pushed": False, "branch": branch, "sha": sha,
-                "n_files": len(rel_paths), "skip_reason": "push-disabled"}
+        return {
+            "committed": True,
+            "pushed": False,
+            "branch": branch,
+            "sha": sha,
+            "n_files": len(rel_paths),
+            "skip_reason": "push-disabled",
+        }
     if branch in ("main", "master") and not allow_main:
-        return {"committed": True, "pushed": False, "branch": branch, "sha": sha,
-                "n_files": len(rel_paths),
-                "skip_reason": f"branch={branch} (Schutz; --allow-main-push zum overriden)"}
+        return {
+            "committed": True,
+            "pushed": False,
+            "branch": branch,
+            "sha": sha,
+            "n_files": len(rel_paths),
+            "skip_reason": f"branch={branch} (Schutz; --allow-main-push zum overriden)",
+        }
 
     push_result = subprocess.run(
         ["git", "-C", str(repo_path), "push"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if push_result.returncode != 0:
         # Vermutlich: branch hat keinen upstream → -u nötig
         retry = subprocess.run(
             ["git", "-C", str(repo_path), "push", "-u", "origin", branch],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         if retry.returncode != 0:
-            return {"committed": True, "pushed": False, "branch": branch, "sha": sha,
-                    "n_files": len(rel_paths),
-                    "skip_reason": f"push-failed: {retry.stderr.strip()[:200]}"}
-    return {"committed": True, "pushed": True, "branch": branch, "sha": sha,
-            "n_files": len(rel_paths), "skip_reason": None}
+            return {
+                "committed": True,
+                "pushed": False,
+                "branch": branch,
+                "sha": sha,
+                "n_files": len(rel_paths),
+                "skip_reason": f"push-failed: {retry.stderr.strip()[:200]}",
+            }
+    return {
+        "committed": True,
+        "pushed": True,
+        "branch": branch,
+        "sha": sha,
+        "n_files": len(rel_paths),
+        "skip_reason": None,
+    }
 
 
-def _auto_publish_per_repo(paths: list[Path], action: str, dry_run: bool,
-                          allow_main: bool) -> None:
+def _auto_publish_per_repo(
+    paths: list[Path], action: str, dry_run: bool, allow_main: bool
+) -> None:
     """Gruppiert Pfade pro Repo und publishet jedes Repo einzeln. Stdout-Report."""
     from collections import defaultdict
+
     by_repo: dict[str, list[Path]] = defaultdict(list)
     for p in paths:
         r = _repo_of_path(p)
         if r:
             by_repo[r].append(p)
     msg_map = {
-        "gen":   "feat(use-cases): auto-generierte UC-Skelette (--auto-publish)",
+        "gen": "feat(use-cases): auto-generierte UC-Skelette (--auto-publish)",
         "prune": "chore(use-cases): prune auto-generierte UC-Skelette (--auto-publish)",
     }
     commit_msg = msg_map.get(action, "chore(use-cases): auto-publish")
     print(f"\n--- Auto-Publish ({action}) ---")
     for repo, paths_for_repo in by_repo.items():
-        result = _git_publish_changes(repo, paths_for_repo, commit_msg,
-                                     dry_run=dry_run, push=True,
-                                     allow_main=allow_main)
+        result = _git_publish_changes(
+            repo,
+            paths_for_repo,
+            commit_msg,
+            dry_run=dry_run,
+            push=True,
+            allow_main=allow_main,
+        )
         if result["committed"] and result["pushed"]:
-            print(f"  ✓ {repo}: commit {result['sha']} auf {result['branch']} gepusht ({result['n_files']} Files)")
+            print(
+                f"  ✓ {repo}: commit {result['sha']} auf {result['branch']} gepusht ({result['n_files']} Files)"
+            )
         elif result["committed"]:
-            print(f"  ⚠ {repo}: commit {result['sha']} auf {result['branch']} — PUSH übersprungen ({result['skip_reason']})")
+            print(
+                f"  ⚠ {repo}: commit {result['sha']} auf {result['branch']} — PUSH übersprungen ({result['skip_reason']})"
+            )
         elif result["skip_reason"]:
             print(f"  · {repo}: {result['skip_reason']}")

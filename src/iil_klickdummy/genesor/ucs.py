@@ -2,6 +2,7 @@
 
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR3) — reine Code-Motion.
 """
+
 from __future__ import annotations
 
 import re
@@ -94,27 +95,33 @@ def find_all_repos_ucs() -> list[dict]:
                 fm = _parse_uc_frontmatter(text)
                 if not fm or not fm.get("uc_id"):
                     continue
-                out.append({
-                    "org": org,
-                    "repo": repo_name,
-                    "uc_id": str(fm["uc_id"]),
-                    "name": str(fm.get("name") or fm.get("uc_id")),
-                    "akteur": fm.get("primaer_akteur") or fm.get("akteur") or "",
-                    "sekundaer": fm.get("sekundaer_akteure") or [],
-                    "realisiert_von": fm.get("realisiert_von_klickdummy") or fm.get("source_spec") or "",
-                    "related_screens": fm.get("related_screens") or [],
-                    "fv_bezug": fm.get("fv_bezug") or "",
-                    "prio": fm.get("prio") or "",
-                    "status": fm.get("status") or "draft",
-                    "source_file": uc_path,
-                })
+                out.append(
+                    {
+                        "org": org,
+                        "repo": repo_name,
+                        "uc_id": str(fm["uc_id"]),
+                        "name": str(fm.get("name") or fm.get("uc_id")),
+                        "akteur": fm.get("primaer_akteur") or fm.get("akteur") or "",
+                        "sekundaer": fm.get("sekundaer_akteure") or [],
+                        "realisiert_von": fm.get("realisiert_von_klickdummy")
+                        or fm.get("source_spec")
+                        or "",
+                        "related_screens": fm.get("related_screens") or [],
+                        "fv_bezug": fm.get("fv_bezug") or "",
+                        "prio": fm.get("prio") or "",
+                        "status": fm.get("status") or "draft",
+                        "source_file": uc_path,
+                    }
+                )
     return out
 
 
 _SCREEN_REF_RE = re.compile(r"^(?:([^:]+):)?([^#]+)(?:#(.+))?$")
 
 
-def _resolve_screen_ref(ref: str, adr_to_kd: dict[tuple[str, str], str]) -> tuple[str, str, str] | None:
+def _resolve_screen_ref(
+    ref: str, adr_to_kd: dict[tuple[str, str], str]
+) -> tuple[str, str, str] | None:
     """``<prefix>:ADR-NNN#screen-id`` oder ``<prefix>:<kd-or-spec-id>#screen-id``
     → ``(repo, kd_name, screen_id)``. Gibt ``None`` bei Auflösungs-Fehler.
     ``adr_to_kd``: Lookup ``{(repo, adr_id): kd_name}``.
@@ -165,7 +172,11 @@ def build_uc_coverage(ucs: list[dict], kds: list[dict]) -> dict:
     for kd in kds:
         if kd.get("kind", "spec") != "spec":
             continue
-        scr_ids = {s.get("id") for s in (kd.get("data", {}).get("screens") or []) if isinstance(s, dict) and s.get("id")}
+        scr_ids = {
+            s.get("id")
+            for s in (kd.get("data", {}).get("screens") or [])
+            if isinstance(s, dict) and s.get("id")
+        }
         kd_screens[(kd["repo"], kd["kd"])] = scr_ids
 
     matrix: dict[tuple[str, str, str], list[str]] = {}
@@ -199,7 +210,9 @@ def build_uc_coverage(ucs: list[dict], kds: list[dict]) -> dict:
     }
 
 
-def _uc_kd_targets(uc: dict, repo: str, adr_to_kd: dict[tuple[str, str], str] | None = None) -> list[str]:
+def _uc_kd_targets(
+    uc: dict, repo: str, adr_to_kd: dict[tuple[str, str], str] | None = None
+) -> list[str]:
     """Aus ``related_screens`` die KD-Namen extrahieren (für ?kd=-Filter).
 
     Ref-Formate: ``<prefix>:ADR-NNN#screen`` oder ``<prefix>:<spec-id>#screen``.
@@ -267,7 +280,8 @@ def validate_ucs(ucs: list[dict], kds: list[dict]) -> dict[str, list[dict]]:
         else:
             kd_personas[(kd["repo"], kd["kd"])] = set()
         kd_screens[(kd["repo"], kd["kd"])] = {
-            s.get("id") for s in (d.get("screens") or [])
+            s.get("id")
+            for s in (d.get("screens") or [])
             if isinstance(s, dict) and s.get("id")
         }
 
@@ -279,74 +293,108 @@ def validate_ucs(ucs: list[dict], kds: list[dict]) -> dict[str, list[dict]]:
 
         # 1. uc_id-Pattern
         if not _UC_ID_PATTERN.match(uc["uc_id"]):
-            findings.append({
-                "severity": "warning",
-                "code": "UC-ID-PATTERN",
-                "msg": f"uc_id {uc['uc_id']!r} matched nicht ^UC-[A-Z0-9-]+$ (Konvention)",
-            })
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "UC-ID-PATTERN",
+                    "msg": f"uc_id {uc['uc_id']!r} matched nicht ^UC-[A-Z0-9-]+$ (Konvention)",
+                }
+            )
 
         # 2. Pflichtfelder
         if not uc.get("name"):
-            findings.append({"severity": "error", "code": "MISSING-NAME",
-                            "msg": "Pflichtfeld `name` fehlt"})
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "MISSING-NAME",
+                    "msg": "Pflichtfeld `name` fehlt",
+                }
+            )
         if not uc.get("akteur"):
-            findings.append({"severity": "warning", "code": "MISSING-PERSONA",
-                            "msg": "Empfohlenes Feld `primaer_akteur` fehlt"})
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "MISSING-PERSONA",
+                    "msg": "Empfohlenes Feld `primaer_akteur` fehlt",
+                }
+            )
 
         # 3. Status-enum
         st = (uc.get("status") or "").lower()
         if st and st not in _VALID_UC_STATUS:
-            findings.append({
-                "severity": "error", "code": "INVALID-STATUS",
-                "msg": f"status={st!r} nicht in {sorted(_VALID_UC_STATUS)}",
-            })
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "INVALID-STATUS",
+                    "msg": f"status={st!r} nicht in {sorted(_VALID_UC_STATUS)}",
+                }
+            )
 
         # 4. related_screens-Auflösung
         rs_list = uc.get("related_screens") or []
         if not rs_list:
-            findings.append({
-                "severity": "warning", "code": "NO-REL-SCREENS",
-                "msg": "Keine `related_screens` — UC ist nicht im Klickdummy realisiert",
-            })
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "NO-REL-SCREENS",
+                    "msg": "Keine `related_screens` — UC ist nicht im Klickdummy realisiert",
+                }
+            )
         else:
             target_kds: set[tuple[str, str]] = set()
             for ref in rs_list:
                 resolved = _resolve_screen_ref(str(ref), adr_to_kd)
                 if not resolved:
-                    findings.append({
-                        "severity": "warning", "code": "UNRESOLVED-REF",
-                        "msg": f"related_screens-Ref {ref!r} nicht auflösbar",
-                    })
+                    findings.append(
+                        {
+                            "severity": "warning",
+                            "code": "UNRESOLVED-REF",
+                            "msg": f"related_screens-Ref {ref!r} nicht auflösbar",
+                        }
+                    )
                     continue
                 r, k, sid = resolved
                 if sid not in kd_screens.get((r, k), set()):
-                    findings.append({
-                        "severity": "error", "code": "MISSING-SCREEN",
-                        "msg": f"Screen `{sid}` existiert nicht in {r}:{k}",
-                    })
+                    findings.append(
+                        {
+                            "severity": "error",
+                            "code": "MISSING-SCREEN",
+                            "msg": f"Screen `{sid}` existiert nicht in {r}:{k}",
+                        }
+                    )
                     continue
                 target_kds.add((r, k))
 
             # 5. Persona-Existenz (in mindestens einem Ziel-KD)
             akt = uc.get("akteur")
             if akt and target_kds:
-                in_any = any(akt in kd_personas.get((r, k), set()) for r, k in target_kds)
+                in_any = any(
+                    akt in kd_personas.get((r, k), set()) for r, k in target_kds
+                )
                 if not in_any:
-                    findings.append({
-                        "severity": "warning", "code": "PERSONA-NOT-IN-KD",
-                        "msg": f"Persona `{akt}` nicht in Personas der related Klickdummies "
-                               f"({', '.join(f'{r}:{k}' for r, k in target_kds)})",
-                    })
+                    findings.append(
+                        {
+                            "severity": "warning",
+                            "code": "PERSONA-NOT-IN-KD",
+                            "msg": f"Persona `{akt}` nicht in Personas der related Klickdummies "
+                            f"({', '.join(f'{r}:{k}' for r, k in target_kds)})",
+                        }
+                    )
 
         # 6. Doppelte uc_id cross-repo
         if gid in seen_gids:
-            findings.append({
-                "severity": "error", "code": "DUPLICATE-UC-ID",
-                "msg": f"uc_id {gid} bereits in {seen_gids[gid]} verwendet",
-            })
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "DUPLICATE-UC-ID",
+                    "msg": f"uc_id {gid} bereits in {seen_gids[gid]} verwendet",
+                }
+            )
         else:
             try:
-                seen_gids[gid] = str(uc["source_file"].relative_to(get_cfg().repos_root))
+                seen_gids[gid] = str(
+                    uc["source_file"].relative_to(get_cfg().repos_root)
+                )
             except (ValueError, KeyError):
                 seen_gids[gid] = str(uc.get("source_file", "?"))
 
@@ -383,8 +431,15 @@ def _kd_shortcode(kd_name: str) -> str:
     return "".join(p[0] for p in parts).upper()[:5]
 
 
-def gen_uc_skeleton(repo: str, kd_name: str, kd_adr_local: str | None,
-                   spec_data: dict, screen: dict, persona: str, counter: int) -> tuple[str, str]:
+def gen_uc_skeleton(
+    repo: str,
+    kd_name: str,
+    kd_adr_local: str | None,
+    spec_data: dict,
+    screen: dict,
+    persona: str,
+    counter: int,
+) -> tuple[str, str]:
     """Erzeugt UC-MD-Skelett aus Spec-Inhalten. Return (filename, content).
 
     Beschreibungen werden aus Spec abgeleitet (statt nur TODOs):
@@ -408,7 +463,11 @@ def gen_uc_skeleton(repo: str, kd_name: str, kd_adr_local: str | None,
     kd_slug = _kd_shortcode(kd_name)
     uc_id = f"UC-AUTO-{short}-{kd_slug}-{counter:03d}"
     filename = f"{uc_id}-{sid.replace('_', '-')}-{persona.replace('_', '-')}.md"
-    realisiert_ref = f"{repo.replace('-hub','')}:{kd_adr_local.split(':',1)[1]}" if kd_adr_local and ':' in kd_adr_local else (kd_adr_local or f"{repo}:{kd_name}")
+    realisiert_ref = (
+        f"{repo.replace('-hub', '')}:{kd_adr_local.split(':', 1)[1]}"
+        if kd_adr_local and ":" in kd_adr_local
+        else (kd_adr_local or f"{repo}:{kd_name}")
+    )
     related_ref = f"{realisiert_ref}#{sid}"
 
     # Persona-Kontext aus Spec
@@ -416,7 +475,10 @@ def gen_uc_skeleton(repo: str, kd_name: str, kd_adr_local: str | None,
     persona_desc = persona_def.get("description", "")
     persona_rechte = persona_def.get("rechte") or []
     persona_halbschicht = persona_def.get("halbschicht", halbschicht)
-    anlass_pflicht = persona_def.get("abteilungs_kontext_pflicht") or screen.get("voraussetzung_screen") == "anlass_modal"
+    anlass_pflicht = (
+        persona_def.get("abteilungs_kontext_pflicht")
+        or screen.get("voraussetzung_screen") == "anlass_modal"
+    )
 
     # 1. Kurzbeschreibung — abgeleitet
     halbschicht_de = {
@@ -436,7 +498,10 @@ def gen_uc_skeleton(repo: str, kd_name: str, kd_adr_local: str | None,
     # 2. Vorbedingung — aus persona.rechte + voraussetzung_screen
     vor_items = ["Persona ist authentifiziert"]
     if persona_rechte:
-        vor_items.append(f"Berechtigungen aktiv: `{', '.join(persona_rechte[:3])}`" + (" …" if len(persona_rechte) > 3 else ""))
+        vor_items.append(
+            f"Berechtigungen aktiv: `{', '.join(persona_rechte[:3])}`"
+            + (" …" if len(persona_rechte) > 3 else "")
+        )
     if voraus:
         vor_items.append(f"Vorgängiger Screen wurde durchlaufen: `{voraus}`")
     if anlass_pflicht:
@@ -445,7 +510,7 @@ def gen_uc_skeleton(repo: str, kd_name: str, kd_adr_local: str | None,
 
     # 3. Hauptablauf — aus fokus, durchnumeriert
     if fokus:
-        ablauf_items = [f"{i+1}. {str(f)}" for i, f in enumerate(fokus[:6])]
+        ablauf_items = [f"{i + 1}. {str(f)}" for i, f in enumerate(fokus[:6])]
     else:
         ablauf_items = [
             f"1. {persona} öffnet *{stitle}*",
@@ -457,14 +522,22 @@ def gen_uc_skeleton(repo: str, kd_name: str, kd_adr_local: str | None,
     # 4. Postcondition — aus next_screens + entity-Effekten
     post_items = []
     if next_screens:
-        screens_lookup = {s.get("id"): s.get("title") for s in (spec_data.get("screens") or []) if isinstance(s, dict)}
+        screens_lookup = {
+            s.get("id"): s.get("title")
+            for s in (spec_data.get("screens") or [])
+            if isinstance(s, dict)
+        }
         for nsid in next_screens[:3]:
             ntitle = screens_lookup.get(nsid, nsid)
             post_items.append(f"Folge-Screen *{ntitle}* (`{nsid}`) ist erreichbar")
     if lokal:
-        post_items.append(f"Lokale Entities ergänzt/aktualisiert: `{', '.join(str(e) for e in lokal[:3])}`")
+        post_items.append(
+            f"Lokale Entities ergänzt/aktualisiert: `{', '.join(str(e) for e in lokal[:3])}`"
+        )
     if not post_items:
-        post_items = ["Screen-Inhalt wurde dargestellt; keine deklarierten Folge-Effekte in Spec"]
+        post_items = [
+            "Screen-Inhalt wurde dargestellt; keine deklarierten Folge-Effekte in Spec"
+        ]
     post_block = "\n".join(f"- {x}" for x in post_items)
 
     # 5. Akzeptanzkriterien — aus entity-Constraints
@@ -473,15 +546,26 @@ def gen_uc_skeleton(repo: str, kd_name: str, kd_adr_local: str | None,
         edef = _entity_def_from_spec(spec_data, str(ename))
         treat = edef.get("consumers_must_treat_as")
         if treat == "read-only":
-            ak_items.append(f"`{ename}`-Felder werden nur angezeigt, nicht editiert (read-only-Vertrag)")
+            ak_items.append(
+                f"`{ename}`-Felder werden nur angezeigt, nicht editiert (read-only-Vertrag)"
+            )
         elif treat == "append-only":
-            ak_items.append(f"`{ename}`-Einträge werden nur hinzugefügt, nie überschrieben (append-only-Vertrag)")
+            ak_items.append(
+                f"`{ename}`-Einträge werden nur hinzugefügt, nie überschrieben (append-only-Vertrag)"
+            )
     if anlass_pflicht:
-        ak_items.append("Cross-Abt-Zugriff schreibt **vor** Datensicht in `cross_abt_anlass_log` (audit-trail)")
+        ak_items.append(
+            "Cross-Abt-Zugriff schreibt **vor** Datensicht in `cross_abt_anlass_log` (audit-trail)"
+        )
     if persona_halbschicht == "buerger":
-        ak_items.append(f"`{persona}` sieht **nur eigene** Vorgänge/Stammdaten (Self-Service-Constraint)")
+        ak_items.append(
+            f"`{persona}` sieht **nur eigene** Vorgänge/Stammdaten (Self-Service-Constraint)"
+        )
     if not ak_items:
-        ak_items = ["*TODO: AC-001 — fachliche Mindestanforderung*", "*TODO: AC-002 — Fehlerverhalten*"]
+        ak_items = [
+            "*TODO: AC-001 — fachliche Mindestanforderung*",
+            "*TODO: AC-002 — Fehlerverhalten*",
+        ]
     ak_block = "\n".join(f"- {x}" for x in ak_items)
 
     content = f"""---
@@ -530,14 +614,15 @@ auto_source: "Generator aus screens-spec.yaml (Halbschicht: {persona_halbschicht
 
 - Klickdummy: `{realisiert_ref}`
 - Screen: `{sid}` (Halbschicht: `{persona_halbschicht}`)
-- Persona: `{persona}`{(' · ' + str(persona_rechte)) if persona_rechte else ''}
+- Persona: `{persona}`{(" · " + str(persona_rechte)) if persona_rechte else ""}
 - Generator-Stand: ADR-211 Rev 16 §UC-Coverage
 """
     return filename, content
 
 
-def generate_uc_skeletons(records: list[dict], existing_ucs: list[dict],
-                         dry_run: bool = False) -> dict:
+def generate_uc_skeletons(
+    records: list[dict], existing_ucs: list[dict], dry_run: bool = False
+) -> dict:
     """Generiert UC-Skelette für (screen × primary_persona)-Kombis ohne Coverage.
 
     Idempotent: existierende UCs (via uc_id ODER realized_in matching) werden
@@ -609,7 +694,9 @@ def generate_uc_skeletons(records: list[dict], existing_ucs: list[dict],
                 skipped += 1
                 continue
             counter += 1
-            filename, content = gen_uc_skeleton(repo, kd_name, kd_adr_local, d, s, primary, counter)
+            filename, content = gen_uc_skeleton(
+                repo, kd_name, kd_adr_local, d, s, primary, counter
+            )
             out_path = out_dir / filename
             if out_path.exists():
                 skipped += 1

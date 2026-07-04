@@ -3,6 +3,7 @@
 detect_org/app_display_names lesen platform/registry/canonical.yaml (SSoT,
 ADR-234) unter --repos-root; ohne platform-Checkout greift die Code-Heuristik.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -26,7 +27,8 @@ def _write_canonical(root, meta: dict) -> None:
     reg_dir = root / "platform" / "registry"
     reg_dir.mkdir(parents=True)
     (reg_dir / "canonical.yaml").write_text(
-        yaml.safe_dump({"meta": meta, "repos": {}}), encoding="utf-8")
+        yaml.safe_dump({"meta": meta, "repos": {}}), encoding="utf-8"
+    )
 
 
 _META = {
@@ -69,10 +71,13 @@ def test_should_use_code_heuristic_when_prefix_rules_missing(repos_root):
     # Ältere platform-Version: repo_owner existiert (seit 2026-06-06), aber keine
     # owner_prefix_rules — Mapping ist unvollständig, meiki-* fiele auf den
     # Default durch. Muss komplett auf die Code-Heuristik zurückfallen.
-    _write_canonical(repos_root, {
-        "server": {"github_org": "achimdehnert"},
-        "repo_owner": {"iil-relaunch": "iilgmbh"},
-    })
+    _write_canonical(
+        repos_root,
+        {
+            "server": {"github_org": "achimdehnert"},
+            "repo_owner": {"iil-relaunch": "iilgmbh"},
+        },
+    )
     assert scan.get_org_registry() is None
     assert scan.detect_org("meiki-hub") == "meiki-lra"
     assert scan.detect_org("iil-testkit") == "iilgmbh"

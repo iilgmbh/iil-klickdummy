@@ -3,6 +3,7 @@
 Extrahiert aus lineage.py (KONZ-003 Empf-1, PR4) — Code-Motion;
 einzige Anpassungen: _cfg→get_cfg() (Importbindung) und __file__-Pfadtiefe.
 """
+
 from __future__ import annotations
 
 import html
@@ -11,7 +12,14 @@ from .config import _DOMAIN_STYLES, get_cfg
 from .scan import detect_org, get_org_registry, read_doc_profile, url_for_path
 from .synth import _entities_lookup, _synth_entity_table
 from .validate import compute_acceptance_status, merge_acceptance
-from .render_common import FEEDBACK_WIDGET_JS, SKIN_SWITCHER_JS, STORY_BANNER_JS, build_skin_switcher_html, build_trace_strip, skin_library
+from .render_common import (
+    FEEDBACK_WIDGET_JS,
+    SKIN_SWITCHER_JS,
+    STORY_BANNER_JS,
+    build_skin_switcher_html,
+    build_trace_strip,
+    skin_library,
+)
 
 
 RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
@@ -647,9 +655,12 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 """
 
 
-def generate_render_fallback(record: dict, out_dir: Path,
-                             known_kds: dict[str, str] | None = None,
-                             known_kd_repos: dict[str, str] | None = None) -> Path:
+def generate_render_fallback(
+    record: dict,
+    out_dir: Path,
+    known_kds: dict[str, str] | None = None,
+    known_kd_repos: dict[str, str] | None = None,
+) -> Path:
     """Render v2 — multi-Screen klickbares Mockup aus Spec (synthetische Daten).
 
     ``known_kds`` ist ein optionaler Lookup ``{kd_name: render_url}`` (Genesor-
@@ -705,7 +716,11 @@ def generate_render_fallback(record: dict, out_dir: Path,
         "pg-hub": "PG-Hub",
     }
     app_name = app_name_map.get(repo, repo.replace("-hub", " · Hub").title())
-    app_icon = "🏛" if profile in ("public-admin", "lra-pilot") else ("🏗" if "ausschreibungs" in repo else "📋")
+    app_icon = (
+        "🏛"
+        if profile in ("public-admin", "lra-pilot")
+        else ("🏗" if "ausschreibungs" in repo else "📋")
+    )
 
     # Tab-Buttons + Sidebar-Buttons + Screen-Sections
     # User-Feedback 2026-05-25: bei >5 Screens horizontales Scrollen unschön → Sidebar
@@ -714,7 +729,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
     body_class = "has-sidebar" if use_sidebar else "has-tabs"
 
     tab_buttons = []
-    sidebar_groups: dict[str, list[str]] = {}    # halbschicht -> [button_html]
+    sidebar_groups: dict[str, list[str]] = {}  # halbschicht -> [button_html]
     sidebar_ungrouped: list[str] = []
     screen_sections = []
     for s in screens:
@@ -739,7 +754,7 @@ def generate_render_fallback(record: dict, out_dir: Path,
             f'<button role="tab" aria-selected="false" '
             f'aria-controls="screen-{html.escape(sid)}" '
             f'data-screen="{html.escape(sid)}" data-personas="{per_data}">'
-            f'{html.escape(str(stitle) or sid)}</button>'
+            f"{html.escape(str(stitle) or sid)}</button>"
         )
         # Sidebar-Button (gruppiert nach halbschicht falls vorhanden);
         # kein role=tab (aside ist keine tablist) — aktiver Zustand via aria-current
@@ -747,9 +762,9 @@ def generate_render_fallback(record: dict, out_dir: Path,
         sidebar_btn = (
             f'<button aria-controls="screen-{html.escape(sid)}" '
             f'data-screen="{html.escape(sid)}" data-personas="{per_data}">'
-            f'{html.escape(str(stitle) or sid)}'
-            f'<small>{html.escape(", ".join(sper[:2]))}</small>'
-            f'</button>'
+            f"{html.escape(str(stitle) or sid)}"
+            f"<small>{html.escape(', '.join(sper[:2]))}</small>"
+            f"</button>"
         )
         if halbschicht:
             sidebar_groups.setdefault(halbschicht, []).append(sidebar_btn)
@@ -760,7 +775,9 @@ def generate_render_fallback(record: dict, out_dir: Path,
         primary_persona = sper[0] if sper else "—"
 
         # Per-Chips für Toolbar
-        per_chips = "".join(f'<span class="persona-chip">{html.escape(p)}</span>' for p in sper)
+        per_chips = "".join(
+            f'<span class="persona-chip">{html.escape(p)}</span>' for p in sper
+        )
 
         # Self-Service-Detection: bei Bürger-Halbschicht zeigt der Screen die
         # Sicht *eines* eingeloggten Bürgers — alle Zeilen derselben Person.
@@ -779,33 +796,40 @@ def generate_render_fallback(record: dict, out_dir: Path,
                 ent_desc_html = ""
                 if isinstance(ent_def, dict) and ent_def.get("description"):
                     ent_desc_html = f'<p style="color:#6b7280;font-size:12px;margin:0 0 8px;">{html.escape(str(ent_def["description"])[:120])}</p>'
-                table_html = _synth_entity_table(ename, ent_def, n_rows=n_rows_for_screen,
-                                                 screen_id=sid, known_kds=known_kds,
-                                                 known_kd_repos=known_kd_repos,
-                                                 viewer_idx=viewer_idx)
+                table_html = _synth_entity_table(
+                    ename,
+                    ent_def,
+                    n_rows=n_rows_for_screen,
+                    screen_id=sid,
+                    known_kds=known_kds,
+                    known_kd_repos=known_kd_repos,
+                    viewer_idx=viewer_idx,
+                )
                 entity_panels.append((ename, True, ent_desc_html + table_html))
             else:
                 stub_html = (
                     '<p style="color:#6b7280;font-size:13px;">Konsumiert von externem Klickdummy '
-                    '<code>(siehe consumes_from-Block)</code>. Beispiel-Daten via integriertem Cross-KD-Render.</p>'
+                    "<code>(siehe consumes_from-Block)</code>. Beispiel-Daten via integriertem Cross-KD-Render.</p>"
                 )
                 entity_panels.append((ename, False, stub_html))
 
         # Sub-Tabs (Punkt 3) — bei ≥2 Entities, sonst Single-Panel
         content_blocks = []
         if len(entity_panels) >= 2:
-            sub_tab_html = '<div class="sub-tabs" role="tablist" aria-label="Entitäten">'
-            sub_panels_html = ''
+            sub_tab_html = (
+                '<div class="sub-tabs" role="tablist" aria-label="Entitäten">'
+            )
+            sub_panels_html = ""
             for i, (ename, _has, panel) in enumerate(entity_panels):
-                active = ' active' if i == 0 else ''
-                aria_sel = 'true' if i == 0 else 'false'
+                active = " active" if i == 0 else ""
+                aria_sel = "true" if i == 0 else "false"
                 sub_tab_html += (
                     f'<button class="sub-tab{active}" role="tab" aria-selected="{aria_sel}" '
                     f'aria-controls="sub-{html.escape(sid)}-{i}" '
                     f'data-sub="{html.escape(sid)}-{i}">📊 {html.escape(ename)}</button>'
                 )
                 sub_panels_html += f'<div class="sub-panel{active}" role="tabpanel" id="sub-{html.escape(sid)}-{i}">{panel}</div>'
-            sub_tab_html += '</div>'
+            sub_tab_html += "</div>"
             content_blocks.append(sub_tab_html + sub_panels_html)
         elif len(entity_panels) == 1:
             ename, _has, panel = entity_panels[0]
@@ -823,21 +847,32 @@ def generate_render_fallback(record: dict, out_dir: Path,
         if isinstance(next_screens, str):
             next_screens = [next_screens]
         # Map next-screen-id → next-screen-title für Button-Label
-        screen_titles = {(s2.get("id") if isinstance(s2, dict) else None): (s2.get("title") if isinstance(s2, dict) else "")
-                         for s2 in screens}
+        screen_titles = {
+            (s2.get("id") if isinstance(s2, dict) else None): (
+                s2.get("title") if isinstance(s2, dict) else ""
+            )
+            for s2 in screens
+        }
         workflow_buttons = []
         for nsid in next_screens[:3]:
             ntitle = screen_titles.get(nsid) or nsid
             workflow_buttons.append(
                 f'<button onclick="showScreen(\'{html.escape(nsid)}\')" title="Weiter zu {html.escape(ntitle)}">'
-                f'→ {html.escape(ntitle)[:30]}</button>'
+                f"→ {html.escape(ntitle)[:30]}</button>"
             )
         if workflow_buttons:
-            action_buttons = "".join(workflow_buttons) + '<button class="secondary">Speichern</button><button class="secondary">Abbrechen</button>'
+            action_buttons = (
+                "".join(workflow_buttons)
+                + '<button class="secondary">Speichern</button><button class="secondary">Abbrechen</button>'
+            )
         else:
             action_buttons = '<button>Speichern</button><button class="secondary">Abbrechen</button><button class="secondary">Zurück</button>'
         # Cross-KD-Links als Buttons in Actionbar
-        screen_ckl = s.get("cross_klickdummy_link") if isinstance(s.get("cross_klickdummy_link"), (list, dict)) else None
+        screen_ckl = (
+            s.get("cross_klickdummy_link")
+            if isinstance(s.get("cross_klickdummy_link"), (list, dict))
+            else None
+        )
         cross_links_html = []
         if screen_ckl:
             ckl_list = screen_ckl if isinstance(screen_ckl, list) else [screen_ckl]
@@ -861,21 +896,36 @@ def generate_render_fallback(record: dict, out_dir: Path,
         fokus_modal_html = ""
         if isinstance(fokus, list) and fokus:
             fokus_items = "".join(f"<li>{html.escape(str(f))}</li>" for f in fokus)
-            fokus_modal_html = f'<h4>🎯 Funktionen / Verhalten</h4><ul>{fokus_items}</ul>'
-        per_list = "".join(f"<li><code>{html.escape(p)}</code></li>" for p in sper) or "<li>—</li>"
-        personas_modal_html = f'<h4>👥 Personas dieses Screens</h4><ul>{per_list}</ul>'
+            fokus_modal_html = (
+                f"<h4>🎯 Funktionen / Verhalten</h4><ul>{fokus_items}</ul>"
+            )
+        per_list = (
+            "".join(f"<li><code>{html.escape(p)}</code></li>" for p in sper)
+            or "<li>—</li>"
+        )
+        personas_modal_html = f"<h4>👥 Personas dieses Screens</h4><ul>{per_list}</ul>"
         ent_modal_lines = []
         for ename in all_ent_names[:8]:
             ent_def = entities.get(ename)
             if isinstance(ent_def, dict):
                 desc = ent_def.get("description", "")
-                ent_modal_lines.append(f'<li><code>{html.escape(ename)}</code>{(" — " + html.escape(desc[:80])) if desc else ""}</li>')
+                ent_modal_lines.append(
+                    f"<li><code>{html.escape(ename)}</code>{(' — ' + html.escape(desc[:80])) if desc else ''}</li>"
+                )
             else:
-                ent_modal_lines.append(f'<li><code>{html.escape(ename)}</code> <span style="color:#6b7280;">(cross-KD)</span></li>')
-        ent_modal_html = f'<h4>📦 Entity-Schema</h4><ul>{"".join(ent_modal_lines)}</ul>' if ent_modal_lines else ""
+                ent_modal_lines.append(
+                    f'<li><code>{html.escape(ename)}</code> <span style="color:#6b7280;">(cross-KD)</span></li>'
+                )
+        ent_modal_html = (
+            f"<h4>📦 Entity-Schema</h4><ul>{''.join(ent_modal_lines)}</ul>"
+            if ent_modal_lines
+            else ""
+        )
         info_modal_inner = (
             '<p style="font-size:11px;color:#9ca3af;margin-top:0;">(Spec-Sicht · in Prod ggf. nicht sichtbar)</p>'
-            + fokus_modal_html + personas_modal_html + ent_modal_html
+            + fokus_modal_html
+            + personas_modal_html
+            + ent_modal_html
         )
 
         # ----- ❓ Hilfe-Modal: fachliche End-User-Sicht ----------------------
@@ -913,14 +963,16 @@ def generate_render_fallback(record: dict, out_dir: Path,
                 if isinstance(sec, dict):
                     t = sec.get("title", "")
                     c = sec.get("content", "")
-                    parts.append(f"<h4>{html.escape(str(t))}</h4><p>{html.escape(str(c))}</p>")
+                    parts.append(
+                        f"<h4>{html.escape(str(t))}</h4><p>{html.escape(str(c))}</p>"
+                    )
             help_modal_inner = "".join(parts)
         else:
             # Default-Hilfetext aus den Spec-Feldern (heuristisch, fachlich getönt)
             default_what = (
-                f'<h4>Was sehen Sie hier?</h4>'
-                f'<p>{html.escape(str(stitle) or sid)} — dieser Bildschirm ist für '
-                f'{html.escape(", ".join(sper) or "alle Nutzer")} gedacht.</p>'
+                f"<h4>Was sehen Sie hier?</h4>"
+                f"<p>{html.escape(str(stitle) or sid)} — dieser Bildschirm ist für "
+                f"{html.escape(', '.join(sper) or 'alle Nutzer')} gedacht.</p>"
             )
             default_actions = ""
             if isinstance(fokus, list) and fokus:
@@ -929,16 +981,23 @@ def generate_render_fallback(record: dict, out_dir: Path,
             default_next = ""
             if next_screens:
                 next_titles = [screen_titles.get(n, n) for n in next_screens[:3]]
-                next_items = "".join(f"<li>{html.escape(str(t))}</li>" for t in next_titles)
+                next_items = "".join(
+                    f"<li>{html.escape(str(t))}</li>" for t in next_titles
+                )
                 default_next = f"<h4>Folge-Schritte</h4><ul>{next_items}</ul>"
             # validierungsfrage (Spec-Feld): was dieser Screen beim Stakeholder prüfen soll
             default_check = ""
             vfrage = s.get("validierungsfrage")
             if vfrage and isinstance(vfrage, str):
-                default_check = f'<h4>Diese Ansicht soll prüfen</h4><p>{html.escape(vfrage)}</p>'
+                default_check = (
+                    f"<h4>Diese Ansicht soll prüfen</h4><p>{html.escape(vfrage)}</p>"
+                )
             help_modal_inner = (
                 '<p style="font-size:11px;color:#9ca3af;margin-top:0;">(Auto-Hilfetext aus Spec — bei Bedarf in <code>screen.help_text:</code> überschreiben)</p>'
-                + default_what + default_actions + default_next + default_check
+                + default_what
+                + default_actions
+                + default_next
+                + default_check
             )
 
         # ----- 📁 Akte-Modal: Klick auf Aktenzeichen/-name in einer Tabelle --
@@ -954,34 +1013,34 @@ def generate_render_fallback(record: dict, out_dir: Path,
             target_url = ""
             if target_kd:
                 target_url = f"./{target_repo}-{target_kd}.html"
-            parts = ['<h4>Wie es weiter ginge</h4>']
+            parts = ["<h4>Wie es weiter ginge</h4>"]
             if hint:
-                parts.append(f'<p>{html.escape(hint)}</p>')
+                parts.append(f"<p>{html.escape(hint)}</p>")
             if target_url:
                 parts.append(
                     f'<p><a href="{html.escape(target_url)}" class="akte-next-cta">'
-                    f'→ {html.escape(label)}</a></p>'
+                    f"→ {html.escape(label)}</a></p>"
                 )
             else:
                 parts.append(
                     f'<p><span style="color:#9ca3af;">→ {html.escape(label)} '
-                    f'<em>(noch nicht als Klickdummy verlinkt)</em></span></p>'
+                    f"<em>(noch nicht als Klickdummy verlinkt)</em></span></p>"
                 )
             if uc:
                 parts.append(
                     f'<p style="color:#6b7280;font-size:12px;">Use Case: '
-                    f'<code>{html.escape(str(uc))}</code></p>'
+                    f"<code>{html.escape(str(uc))}</code></p>"
                 )
             akte_modal_inner = "".join(parts)
         else:
             akte_modal_inner = (
-                '<h4>Wie es weiter ginge</h4>'
-                '<p>Klick auf einen Akten-Eintrag würde im Echt-Betrieb '
-                'das jeweilige Fachverfahren öffnen (z. B. Wohngeld, UVG, Asyl).</p>'
+                "<h4>Wie es weiter ginge</h4>"
+                "<p>Klick auf einen Akten-Eintrag würde im Echt-Betrieb "
+                "das jeweilige Fachverfahren öffnen (z. B. Wohngeld, UVG, Asyl).</p>"
                 '<p style="color:#9ca3af;font-size:12px;">'
-                'Spec-seitig noch nicht deklariert. Tipp: <code>screen.akte_next: '
-                '{ label, hint, klickdummy, uc }</code> ergänzen.'
-                '</p>'
+                "Spec-seitig noch nicht deklariert. Tipp: <code>screen.akte_next: "
+                "{ label, hint, klickdummy, uc }</code> ergänzen."
+                "</p>"
             )
 
         # Acceptance-Status pro Screen (KD-Level + Screen-Level mergen)
@@ -993,23 +1052,26 @@ def generate_render_fallback(record: dict, out_dir: Path,
             if info["status"] == "signed":
                 accept_chips.append(
                     f'<span class="ac-chip ac-signed" title="{html.escape(label)}: '
-                    f'{html.escape(info["latest_by"] or "?")} · {info["latest_date"]} · '
+                    f"{html.escape(info['latest_by'] or '?')} · {info['latest_date']} · "
                     f'ref={html.escape(info["latest_ref"] or "—")}">'
-                    f'✓ {axis}</span>'
+                    f"✓ {axis}</span>"
                 )
             elif info["status"] == "stale":
                 accept_chips.append(
                     f'<span class="ac-chip ac-stale" title="{html.escape(label)}: '
-                    f'letzter Eintrag {info["age_days"]}d alt ({info["latest_date"]}) '
+                    f"letzter Eintrag {info['age_days']}d alt ({info['latest_date']}) "
                     f'— Spec-Drift möglich, neue Abnahme empfohlen">'
-                    f'⚠ {axis}</span>'
+                    f"⚠ {axis}</span>"
                 )
             # "missing" wird nicht gerendert — kein Rauschen
         accept_html = "".join(accept_chips)
 
         # Komplette App-Frame
         # (Fallback vorab — kein Backslash-Escape im f-string-Ausdruck → Python <3.12-kompatibel)
-        content_html = "".join(content_blocks) or '<p style="color:#6b7280;">Keine Inhalte im Spec deklariert.</p>'
+        content_html = (
+            "".join(content_blocks)
+            or '<p style="color:#6b7280;">Keine Inhalte im Spec deklariert.</p>'
+        )
         frame_html = (
             f'<div class="app-frame">'
             f'  <div class="app-bar">'
@@ -1019,43 +1081,45 @@ def generate_render_fallback(record: dict, out_dir: Path,
             f'    <button class="info-btn" onclick="openInfoModal(\'{html.escape(sid)}\')" title="Spec-Sicht: Funktionen / Personas / Entity-Schema (Build-/Workshop-Info)">ℹ Info</button>'
             f'    <button class="help-btn" onclick="openHelpModal(\'{html.escape(sid)}\')" title="Fachliche Hilfe für diesen Screen (End-User-Sicht)">❓ Hilfe</button>'
             f'    <span class="app-user">👤 {html.escape(primary_persona)}</span>'
-            f'  </div>'
+            f"  </div>"
             f'  <div class="app-toolbar">'
             f'    <span class="breadcrumb">Klickdummy · <b>{html.escape(kd_name)}</b></span>'
-            f'    <h2>{html.escape(str(stitle) or sid)}</h2>'
+            f"    <h2>{html.escape(str(stitle) or sid)}</h2>"
             f'    <span class="sid">{html.escape(sid)}</span>'
-            f'    {per_chips}'
-            f'  </div>'
+            f"    {per_chips}"
+            f"  </div>"
             f'  <div class="app-content">{content_html}</div>'
             f'  <div class="app-actionbar">'
             f'    <div class="actions">{action_buttons}</div>'
-            f'    {cross_html}'
-            f'  </div>'
+            f"    {cross_html}"
+            f"  </div>"
             f'  <div class="app-statusbar">'
-            f'    <span>👤 <code>{html.escape(primary_persona)}</code> · class <code>{html.escape(klass)}</code> · role <code>{html.escape(role)}</code></span>'
-            f'    <span>{accept_html}Sunset <code>{html.escape(sunset)}</code></span>'
-            f'  </div>'
-            f'</div>'
+            f"    <span>👤 <code>{html.escape(primary_persona)}</code> · class <code>{html.escape(klass)}</code> · role <code>{html.escape(role)}</code></span>"
+            f"    <span>{accept_html}Sunset <code>{html.escape(sunset)}</code></span>"
+            f"  </div>"
+            f"</div>"
             # Zwei versteckte Modal-Inhalte pro Screen — ℹ Info (Spec) + ❓ Hilfe (End-User)
             f'<div class="screen-info" hidden id="info-{html.escape(sid)}">'
             f'<div class="info-title">ℹ Spec-Info · {html.escape(str(stitle) or sid)} <code style="font-size:11px;font-weight:normal;color:#6b7280;">({html.escape(sid)})</code></div>'
             f'<div class="info-content">{info_modal_inner}</div>'
-            f'</div>'
+            f"</div>"
             f'<div class="screen-help" hidden id="help-{html.escape(sid)}">'
             f'<div class="info-title">❓ Hilfe · {html.escape(str(stitle) or sid)}</div>'
             f'<div class="info-content">{help_modal_inner}</div>'
-            f'</div>'
+            f"</div>"
             f'<div class="screen-akte" hidden id="akte-{html.escape(sid)}">'
             f'<div class="info-content">{akte_modal_inner}</div>'
-            f'</div>'
+            f"</div>"
         )
 
         # Spec-Layer (X-Ray): kompakter, spec-abgeleiteter Trace-Strip pro Screen
-        trace_html = build_trace_strip(s, klass, role, accept_status, repo=repo, kd_name=kd_name, sid=sid)
+        trace_html = build_trace_strip(
+            s, klass, role, accept_status, repo=repo, kd_name=kd_name, sid=sid
+        )
 
         screen_sections.append(
             f'<section class="screen" id="screen-{html.escape(sid)}" data-personas="{per_data}">'
-            f'{frame_html}{trace_html}</section>'
+            f"{frame_html}{trace_html}</section>"
         )
 
     # Spec-Pfad
@@ -1076,7 +1140,11 @@ def generate_render_fallback(record: dict, out_dir: Path,
         css_path = app_skin.get("custom_css")
         if css_path:
             # Relativ zum Repo → URL über repo-Pfad
-            css_full = (repo_dir / css_path).resolve() if not str(css_path).startswith("/") else Path(str(css_path))
+            css_full = (
+                (repo_dir / css_path).resolve()
+                if not str(css_path).startswith("/")
+                else Path(str(css_path))
+            )
             css_url = url_for_path(css_full) if css_full.is_file() else None
             if css_url:
                 # In Skin-Library suchen (zentraler Pfad bevorzugt für Cross-Render-Konsistenz)
@@ -1088,7 +1156,9 @@ def generate_render_fallback(record: dict, out_dir: Path,
                         break
                 # Initial-Skin = zentraler Pfad falls in Library, sonst spec-pfad
                 initial_skin = lib_url or css_url
-                custom_css_link = f"<!-- Skin via Switcher (initial: {html.escape(initial_skin)}) -->"
+                custom_css_link = (
+                    f"<!-- Skin via Switcher (initial: {html.escape(initial_skin)}) -->"
+                )
             else:
                 custom_css_link = f"<!-- custom_css '{html.escape(str(css_path))}' nicht erreichbar — ignoriert -->"
 
@@ -1112,7 +1182,10 @@ def generate_render_fallback(record: dict, out_dir: Path,
         if sidebar_blocks:
             sidebar_blocks.append("<h3>weitere</h3>")
         sidebar_blocks.extend(sidebar_ungrouped)
-    sidebar_content = "\n    ".join(sidebar_blocks) or '<p style="color:#9ca3af;padding:16px;font-size:12px;">(keine Screens)</p>'
+    sidebar_content = (
+        "\n    ".join(sidebar_blocks)
+        or '<p style="color:#9ca3af;padding:16px;font-size:12px;">(keine Screens)</p>'
+    )
 
     html_out = RENDER_FALLBACK_TEMPLATE.format(
         kd_name=html.escape(kd_name),
@@ -1121,11 +1194,13 @@ def generate_render_fallback(record: dict, out_dir: Path,
         klass=html.escape(klass),
         role=html.escape(role),
         sunset=html.escape(sunset),
-        persona_options=persona_options or '<option disabled>(keine Personas)</option>',
-        tab_buttons="\n  ".join(tab_buttons) or '<button class="active">(kein Screen)</button>',
+        persona_options=persona_options or "<option disabled>(keine Personas)</option>",
+        tab_buttons="\n  ".join(tab_buttons)
+        or '<button class="active">(kein Screen)</button>',
         sidebar_content=sidebar_content,
         body_class=body_class,
-        screen_sections="\n  ".join(screen_sections) or '<section class="screen active"><div class="empty-state"><p>Keine Screens in der Spec.</p></div></section>',
+        screen_sections="\n  ".join(screen_sections)
+        or '<section class="screen active"><div class="empty-state"><p>Keine Screens in der Spec.</p></div></section>',
         spec_rel=html.escape(spec_rel),
         style_accent=style["accent"],
         style_accent_bg=style["accent_bg"],
@@ -1137,7 +1212,9 @@ def generate_render_fallback(record: dict, out_dir: Path,
     )
     # JS-Inject (nach .format(), damit JS-{}-Klammern nicht als Format-Placeholder interpretiert werden)
     html_out = html_out.replace("__SKIN_SWITCHER_JS_PLACEHOLDER__", SKIN_SWITCHER_JS)
-    html_out = html_out.replace("__FEEDBACK_WIDGET_JS_PLACEHOLDER__", FEEDBACK_WIDGET_JS)
+    html_out = html_out.replace(
+        "__FEEDBACK_WIDGET_JS_PLACEHOLDER__", FEEDBACK_WIDGET_JS
+    )
     html_out = html_out.replace("__STORY_BANNER_JS_PLACEHOLDER__", STORY_BANNER_JS)
     render_dir = out_dir / "render"
     render_dir.mkdir(parents=True, exist_ok=True)

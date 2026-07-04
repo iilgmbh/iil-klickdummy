@@ -5,6 +5,7 @@ Aufruf:  python3 scripts/klickdummy/check_i1.py <spec_path>:<schema_path> [...]
 Policy:  ~/.claude/policies/klickdummy.md · platform:ADR-211
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler (fehlende Deps)
 """
+
 from __future__ import annotations
 import json
 import pathlib
@@ -69,4 +70,5 @@ if __name__ == "__main__":
 def main_cli() -> int:
     """Console-Script entry (pyproject.toml [project.scripts])."""
     import sys
+
     return main(sys.argv[1:])

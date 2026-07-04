@@ -15,6 +15,7 @@ Enthält:
 
 Keine Rückabhängigkeiten — kann von jedem anderen genesor-Modul importiert werden.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,6 +24,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Config-Dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class GenesorConfig:
@@ -35,6 +37,7 @@ class GenesorConfig:
 
     Defaults reproduzieren das bisherige Verhalten byte-identisch.
     """
+
     repos_root: Path = field(default_factory=lambda: Path.home() / "github")
     # genesor_out None → wird lazy auf repos_root / "genesor" aufgelöst
     _genesor_out: Path | None = field(default=None, repr=False)
@@ -107,6 +110,7 @@ VENDORED_REPOS: set[str] = _cfg.vendored_repos
 # URL-Helpers (ausschließlich config-abhängig)
 # ---------------------------------------------------------------------------
 
+
 def _base_prefix() -> str:
     """Normalisiert BASE_URL zu einem Präfix ohne Trailing-Slash ("/"→"")."""
     return get_cfg().base_url.rstrip("/")
@@ -135,35 +139,101 @@ MOCKUP_PRIO_NAMES = ("index.html", "shell.html")
 # "__greenfield" ist KEIN Pfad und wird nie präfixiert.
 SKIN_LIBRARY_REL: list[tuple[str, str]] = [
     ("__greenfield", "Greenfield (Default)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/okwobis-look.css", "OK.Wobis-Look (Win-Forms)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/prosoz-look.css", "Prosoz-Look (Web-Verwaltung)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/arriba-look.css", "ARRIBA-Look (AVA-Engineering)"),
-    ("iil-klickdummy/src/iil_klickdummy/snippets/skins/bayernid-look.css", "BayernID-Look (Bürger-modern)"),
+    (
+        "iil-klickdummy/src/iil_klickdummy/snippets/skins/okwobis-look.css",
+        "OK.Wobis-Look (Win-Forms)",
+    ),
+    (
+        "iil-klickdummy/src/iil_klickdummy/snippets/skins/prosoz-look.css",
+        "Prosoz-Look (Web-Verwaltung)",
+    ),
+    (
+        "iil-klickdummy/src/iil_klickdummy/snippets/skins/arriba-look.css",
+        "ARRIBA-Look (AVA-Engineering)",
+    ),
+    (
+        "iil-klickdummy/src/iil_klickdummy/snippets/skins/bayernid-look.css",
+        "BayernID-Look (Bürger-modern)",
+    ),
 ]
 
 _DOMAIN_STYLES = {
-    "public-admin": {"accent": "#0050a3", "accent_bg": "#e3f0ff", "font_h": "Georgia, 'Times New Roman', serif"},
-    "saas":         {"accent": "#2563eb", "accent_bg": "#eff6ff", "font_h": "-apple-system, 'Segoe UI', system-ui, sans-serif"},
-    "konzern-pilot":{"accent": "#7c2d12", "accent_bg": "#fff4ed", "font_h": "-apple-system, system-ui, sans-serif"},
-    "forschung":    {"accent": "#0d9488", "accent_bg": "#f0fdfa", "font_h": "-apple-system, system-ui, sans-serif"},
-    "default":      {"accent": "#374151", "accent_bg": "#f3f4f6", "font_h": "-apple-system, system-ui, sans-serif"},
+    "public-admin": {
+        "accent": "#0050a3",
+        "accent_bg": "#e3f0ff",
+        "font_h": "Georgia, 'Times New Roman', serif",
+    },
+    "saas": {
+        "accent": "#2563eb",
+        "accent_bg": "#eff6ff",
+        "font_h": "-apple-system, 'Segoe UI', system-ui, sans-serif",
+    },
+    "konzern-pilot": {
+        "accent": "#7c2d12",
+        "accent_bg": "#fff4ed",
+        "font_h": "-apple-system, system-ui, sans-serif",
+    },
+    "forschung": {
+        "accent": "#0d9488",
+        "accent_bg": "#f0fdfa",
+        "font_h": "-apple-system, system-ui, sans-serif",
+    },
+    "default": {
+        "accent": "#374151",
+        "accent_bg": "#f3f4f6",
+        "font_h": "-apple-system, system-ui, sans-serif",
+    },
     # Alias-Migration (siehe ADR-218 Rev 3)
-    "lra-pilot":    {"accent": "#0050a3", "accent_bg": "#e3f0ff", "font_h": "Georgia, 'Times New Roman', serif"},
+    "lra-pilot": {
+        "accent": "#0050a3",
+        "accent_bg": "#e3f0ff",
+        "font_h": "Georgia, 'Times New Roman', serif",
+    },
 }
 
 _BUERGER_POOL = [
-    {"vorname": "Sabine", "nachname": "Müller",  "gebdatum": "1972-03-14",
-     "adresse": "Friedrichstr. 12, 79541 Lörrach",  "kanal": "postbox"},
-    {"vorname": "Klaus",  "nachname": "Schmidt", "gebdatum": "1985-08-02",
-     "adresse": "Bahnhofstr. 7, 79588 Efringen",    "kanal": "email"},
-    {"vorname": "Ayşe",   "nachname": "Yilmaz",  "gebdatum": "1990-11-29",
-     "adresse": "Hauinger Str. 33, 79541 Lörrach",  "kanal": "brief"},
-    {"vorname": "Dimitri","nachname": "Petrov",  "gebdatum": "1968-05-21",
-     "adresse": "Lindenplatz 2, 79576 Weil",        "kanal": "postbox"},
-    {"vorname": "Maria",  "nachname": "Weber",   "gebdatum": "1978-09-09",
-     "adresse": "Mühlenweg 18, 79585 Steinen",      "kanal": "email"},
-    {"vorname": "Jens",   "nachname": "Lange",   "gebdatum": "1995-02-17",
-     "adresse": "Im Sandgrund 5, 79540 Lörrach",    "kanal": "postbox"},
+    {
+        "vorname": "Sabine",
+        "nachname": "Müller",
+        "gebdatum": "1972-03-14",
+        "adresse": "Friedrichstr. 12, 79541 Lörrach",
+        "kanal": "postbox",
+    },
+    {
+        "vorname": "Klaus",
+        "nachname": "Schmidt",
+        "gebdatum": "1985-08-02",
+        "adresse": "Bahnhofstr. 7, 79588 Efringen",
+        "kanal": "email",
+    },
+    {
+        "vorname": "Ayşe",
+        "nachname": "Yilmaz",
+        "gebdatum": "1990-11-29",
+        "adresse": "Hauinger Str. 33, 79541 Lörrach",
+        "kanal": "brief",
+    },
+    {
+        "vorname": "Dimitri",
+        "nachname": "Petrov",
+        "gebdatum": "1968-05-21",
+        "adresse": "Lindenplatz 2, 79576 Weil",
+        "kanal": "postbox",
+    },
+    {
+        "vorname": "Maria",
+        "nachname": "Weber",
+        "gebdatum": "1978-09-09",
+        "adresse": "Mühlenweg 18, 79585 Steinen",
+        "kanal": "email",
+    },
+    {
+        "vorname": "Jens",
+        "nachname": "Lange",
+        "gebdatum": "1995-02-17",
+        "adresse": "Im Sandgrund 5, 79540 Lörrach",
+        "kanal": "postbox",
+    },
 ]
 
 # Akten-Typ + KD-Hint: kd_hint wird zur Render-Zeit gegen die bekannten KDs
@@ -173,12 +243,27 @@ _AKTEN_PROFIL_POOL = [
     # kd_hint = KD-Name (cross-repo möglich); entry = Spec-Screen-ID, auf die der
     # Ziel-KD bei externem Sprung initialisieren soll (für *bestehende* Akten;
     # statt Default = „neuer Antrag/Eingang"). Hash-Routing: ?#screen-<entry>.
-    {"typ": "Antrag Wohngeld",     "prefix": "WOH", "kd_hint": "wohngeld", "entry": "antragsdaten"},
-    {"typ": "Bauantrag",           "prefix": "BAU", "kd_hint": None,       "entry": None},
-    {"typ": "UVG-Erstantrag",      "prefix": "UVG", "kd_hint": "uvg",      "entry": "antragsdaten_uvg"},
-    {"typ": "Asyl-Folgeantrag",    "prefix": "ASY", "kd_hint": "asyl",     "entry": "vorgangs_uebersicht"},
-    {"typ": "Bewohnerparkausweis", "prefix": "BPK", "kd_hint": None,       "entry": None},
-    {"typ": "Hundesteuer",         "prefix": "HDS", "kd_hint": None,       "entry": None},
+    {
+        "typ": "Antrag Wohngeld",
+        "prefix": "WOH",
+        "kd_hint": "wohngeld",
+        "entry": "antragsdaten",
+    },
+    {"typ": "Bauantrag", "prefix": "BAU", "kd_hint": None, "entry": None},
+    {
+        "typ": "UVG-Erstantrag",
+        "prefix": "UVG",
+        "kd_hint": "uvg",
+        "entry": "antragsdaten_uvg",
+    },
+    {
+        "typ": "Asyl-Folgeantrag",
+        "prefix": "ASY",
+        "kd_hint": "asyl",
+        "entry": "vorgangs_uebersicht",
+    },
+    {"typ": "Bewohnerparkausweis", "prefix": "BPK", "kd_hint": None, "entry": None},
+    {"typ": "Hundesteuer", "prefix": "HDS", "kd_hint": None, "entry": None},
 ]
 
 _FRONTMATTER_RE = __import__("re").compile(

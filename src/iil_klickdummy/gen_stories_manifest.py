@@ -19,6 +19,7 @@ Aufruf:  klickdummy-stories-manifest <repo_root> <out_dir> [shell_prefix]
                  (Vendored-Layout: `klickdummy/` → Link `klickdummy/<kd>/index.html`).
 Exit:    0 (auch wenn keine Stories → kein Manifest, kein Fehler), 2 = Usage
 """
+
 from __future__ import annotations
 
 import json
@@ -52,19 +53,21 @@ def build_manifest(repo_root: pathlib.Path, shell_prefix: str = "") -> dict | No
         for idx, step in enumerate(steps):
             prev_step = steps[idx - 1] if idx > 0 else None
             next_step = steps[idx + 1] if idx < total - 1 else None
-            kd_to_stories.setdefault(step["kd_name"], []).append({
-                "story_id": story["id"],
-                "story_title": story["title"],
-                "step_index": idx,       # 0-basiert
-                "step_total": total,
-                "step_label": step["label"],
-                "prev_kd": prev_step["kd_name"] if prev_step else None,
-                "prev_label": prev_step["label"] if prev_step else None,
-                "prev_shell": _shell(prev_step, shell_prefix),
-                "next_kd": next_step["kd_name"] if next_step else None,
-                "next_label": next_step["label"] if next_step else None,
-                "next_shell": _shell(next_step, shell_prefix),
-            })
+            kd_to_stories.setdefault(step["kd_name"], []).append(
+                {
+                    "story_id": story["id"],
+                    "story_title": story["title"],
+                    "step_index": idx,  # 0-basiert
+                    "step_total": total,
+                    "step_label": step["label"],
+                    "prev_kd": prev_step["kd_name"] if prev_step else None,
+                    "prev_label": prev_step["label"] if prev_step else None,
+                    "prev_shell": _shell(prev_step, shell_prefix),
+                    "next_kd": next_step["kd_name"] if next_step else None,
+                    "next_label": next_step["label"] if next_step else None,
+                    "next_shell": _shell(next_step, shell_prefix),
+                }
+            )
     return {"stories": stories, "kd_to_stories": kd_to_stories}
 
 
@@ -82,7 +85,9 @@ def main(argv: list[str]) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "stories-manifest.json"
     out.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"✓ {out} ({len(manifest['kd_to_stories'])} KDs, {len(manifest['stories'])} Stories)")
+    print(
+        f"✓ {out} ({len(manifest['kd_to_stories'])} KDs, {len(manifest['stories'])} Stories)"
+    )
     return 0
 
 

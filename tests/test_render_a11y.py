@@ -3,29 +3,42 @@
 Vorher: keine ARIA-Rollen auf Tabs/Sub-Tabs, kein Focus-Management in Modals,
 keine @media-Query, kein Scroll-Reset bei Screen-Wechsel.
 """
+
 from __future__ import annotations
 
 from iil_klickdummy import lineage
 
 
 SPEC = {
-    "spec_id": "a11y-kd", "spec_version": "0.1", "title": "A11y-Test", "class": "mock",
+    "spec_id": "a11y-kd",
+    "spec_version": "0.1",
+    "title": "A11y-Test",
+    "class": "mock",
     "off_ramp": {"unit": "per-screen", "rule": "test"},
     "local_entities": {
         "antrag": {"fields": ["az", "status"]},
         "person": {"fields": ["name", "ort"]},
     },
     "screens": [
-        {"id": "liste", "title": "Liste", "personas": ["SB"],
-         "lokale_entities": ["antrag", "person"]},
+        {
+            "id": "liste",
+            "title": "Liste",
+            "personas": ["SB"],
+            "lokale_entities": ["antrag", "person"],
+        },
         {"id": "detail", "title": "Detail", "personas": ["SB"]},
     ],
 }
 
 
 def _render(tmp_path) -> str:
-    record = {"spec_id": "a11y-kd", "path": tmp_path / "screens-spec.yaml",
-              "data": SPEC, "repo": "test-repo", "kd": "a11y-kd"}
+    record = {
+        "spec_id": "a11y-kd",
+        "path": tmp_path / "screens-spec.yaml",
+        "data": SPEC,
+        "repo": "test-repo",
+        "kd": "a11y-kd",
+    }
     return lineage.generate_render_fallback(record, tmp_path).read_text()
 
 
@@ -58,7 +71,7 @@ def test_spec_toggle_should_expose_aria_pressed(tmp_path):
 def test_template_should_have_keyboard_nav_and_scroll_reset(tmp_path):
     html = _render(tmp_path)
     assert "ArrowRight" in html and "ArrowUp" in html  # Pfeiltasten-Nav
-    assert "window.scrollTo" in html                   # Scroll-Reset je Screen-Wechsel
+    assert "window.scrollTo" in html  # Scroll-Reset je Screen-Wechsel
 
 
 def test_template_should_have_mobile_breakpoint(tmp_path):

@@ -1,4 +1,5 @@
 """Tests für discovery_push.py (v1.5 PoC, platform:ADR-215)."""
+
 from __future__ import annotations
 
 import pathlib
@@ -188,8 +189,8 @@ def test_should_default_filter_and_visibility_fields(forms_spec):
     spec = yaml.safe_load(forms_spec.read_text(encoding="utf-8"))
     entry = discovery_push.build_discovery_entry(repo_root, forms_spec, spec)
 
-    assert entry["visibility_scope"] == "org"          # least-exposure default (REC-6)
-    assert entry["discoverable"] is True               # soft-migrate default (REC-14)
+    assert entry["visibility_scope"] == "org"  # least-exposure default (REC-6)
+    assert entry["discoverable"] is True  # soft-migrate default (REC-14)
     assert entry["pipeline_status"] == "klickdummy"
     assert entry["off_ramp_status"] == "static"
     assert entry["tombstone"] is False
@@ -215,7 +216,8 @@ def test_should_skip_non_allowed_class_in_collect(tmp_path, capsys):
     spec_dir.mkdir(parents=True)
     (repo_root / ".git").mkdir()
     (repo_root / ".git" / "config").write_text(
-        '[remote "origin"]\n  url = git@github.com:achimdehnert/demo-hub.git\n', encoding="utf-8"
+        '[remote "origin"]\n  url = git@github.com:achimdehnert/demo-hub.git\n',
+        encoding="utf-8",
     )
     (spec_dir / "screens-spec.yaml").write_text(
         'spec_id: demo:klickdummy-spec-x\nspec_version: "0.1"\nclass: bogus\n'
@@ -264,9 +266,7 @@ def test_should_cap_embedding_text_length():
     """Embedding-Text wird bei max_chars (default 4096) gecappt."""
     huge_spec = {
         "title": "x" * 10000,
-        "screens": [
-            {"title": "y" * 5000, "purpose": "z" * 5000}
-        ],
+        "screens": [{"title": "y" * 5000, "purpose": "z" * 5000}],
     }
     text = discovery_push._build_embedding_text(huge_spec, max_chars=100)
     assert len(text) == 100
@@ -274,7 +274,9 @@ def test_should_cap_embedding_text_length():
 
 
 def test_should_use_default_endpoint_from_env(monkeypatch):
-    monkeypatch.setenv("KLICKDUMMY_DISCOVERY_ENDPOINT", "https://custom.example.com/api")
+    monkeypatch.setenv(
+        "KLICKDUMMY_DISCOVERY_ENDPOINT", "https://custom.example.com/api"
+    )
     # discovery_push.DEFAULT_ENDPOINT is captured at import — re-import to test
     import importlib
 
