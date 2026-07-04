@@ -1,3 +1,8 @@
+# ci.yml — Thin-Caller auf das ADR-226-Reusable (platform ADR-266 Stufe 2b).
+# Semantik (Lint, Secret-Scan, Test+Coverage, Build+Artefakt-Scan, pip-audit)
+# lebt zentral in platform/.github/workflows/_ci-pypi.yml — Verbesserungen
+# erreichen alle Pakete in O(1). Inputs abgeleitet aus der Vorgänger-ci.yml.
+
 name: CI
 
 on:
@@ -9,18 +14,9 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-      # ruff: damit die generierten-Output-ruff-Tests (test_generated_suite_is_ruff_format_clean,
-      # _passes_ruff_check_e402) in CI LAUFEN statt zu skippen (Adopter-Schutz, Retro-F3).
-      # Repo-weiter Source-ruff-Gate (ruff check/format src/ tests/) ist separater Follow-up.
-      - run: pip install pytest pyyaml jsonschema ruff
-      - run: PYTHONPATH=src python -m pytest tests/ -v
+  ci:
+    uses: achimdehnert/platform/.github/workflows/_ci-pypi.yml@main
+    with:
+      python_versions: '["3.10","3.11","3.12"]'
+      install_extra: 'dev'
+      test_path: 'tests/'
