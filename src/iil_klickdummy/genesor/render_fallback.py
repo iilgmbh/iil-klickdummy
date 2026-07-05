@@ -655,6 +655,50 @@ RENDER_FALLBACK_TEMPLATE = """<!DOCTYPE html>
 """
 
 
+def _render_content_blocks(content: list) -> str:
+    """Render Content-/Marketing-Bloecke fuer route-lose Screens (KONZ-009).
+
+    Fuellt den Leer-Zustand von Screens ohne datafields. Alle Spec-Strings werden
+    via html.escape entschaerft (S-02/S-03-Haertung, #125) — kein roher Spec-String
+    ins HTML. Block-Typen bewusst auf 5 begrenzt (kein Marketing-Builder, KONZ-009 R2);
+    unbekannte Typen werden still uebersprungen. Geteilter `card`-Wrapper mit dem
+    Datenpfad (ein Wrapper, zwei Fuellungen).
+    """
+    def esc(v) -> str:
+        return html.escape(str(v)) if v is not None else ""
+
+    parts: list[str] = []
+    for block in content:
+        if not isinstance(block, dict):
+            continue
+        btype = block.get("type")
+        if btype == "hero":
+            parts.append(
+                '<div class="card">'
+                f'<h1>{esc(block.get("headline"))}</h1>'
+                f'<p style="color:#6b7280;">{esc(block.get("sub"))}</p>'
+                + (f'<button>{esc(block.get("label"))}</button>' if block.get("label") else "")
+                + "</div>"
+            )
+        elif btype == "prose":
+            parts.append(f'<div class="card"><p>{esc(block.get("text"))}</p></div>')
+        elif btype == "cta":
+            parts.append(f'<div class="card"><button>{esc(block.get("label"))}</button></div>')
+        elif btype == "plan_table":
+            rows = "".join(
+                f"<tr><td>{esc(it)}</td></tr>"
+                for it in (block.get("items") or [])
+            )
+            parts.append(f'<div class="card"><table>{rows}</table></div>')
+        elif btype == "media":
+            parts.append(
+                '<div class="card" style="text-align:center;color:#6b7280;'
+                f'padding:40px;border:1px dashed #d1d5db;">🖼 {esc(block.get("label")) or "Media"}</div>'
+            )
+        # unbekannter Typ: still uebersprungen (KONZ-009 R2 — kein Scope-Creep)
+    return "".join(parts)
+
+
 def generate_render_fallback(
     record: dict,
     out_dir: Path,
@@ -836,11 +880,15 @@ def generate_render_fallback(
             content_blocks.append(
                 f'<div class="card"><h3>📊 {html.escape(ename)}</h3>{panel}</div>'
             )
-        # ohne Entity-Tabellen: Hinweis
+        # ohne Entity-Tabellen: Content-Bloecke (KONZ-009) ODER Hinweis
         if not entity_panels:
-            content_blocks.append(
-                '<p style="color:#6b7280;font-size:13px;text-align:center;padding:40px;">Keine Daten-Entities für diesen Screen deklariert.</p>'
-            )
+            content = s.get("content") or []
+            if content:
+                content_blocks.append(_render_content_blocks(content))
+            else:
+                content_blocks.append(
+                    '<p style="color:#6b7280;font-size:13px;text-align:center;padding:40px;">Keine Daten-Entities für diesen Screen deklariert.</p>'
+                )
 
         # Workflow-Buttons aus next_screens (Screen-zu-Screen-Navigation)
         next_screens = s.get("next_screens") or []

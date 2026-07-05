@@ -78,3 +78,64 @@ def test_template_should_have_mobile_breakpoint(tmp_path):
     html = _render(tmp_path)
     assert "@media (max-width: 768px)" in html
     assert "focus-visible" in html
+
+
+# --- KONZ-009: Content-Screen-Typ -------------------------------------------
+
+def _render_spec(tmp_path, spec: dict) -> str:
+    record = {
+        "spec_id": spec["spec_id"],
+        "path": tmp_path / "screens-spec.yaml",
+        "data": spec,
+        "repo": "test-repo",
+        "kd": spec["spec_id"],
+    }
+    return lineage.generate_render_fallback(record, tmp_path).read_text()
+
+
+def test_content_screen_should_render_blocks_instead_of_empty_hint(tmp_path):
+    spec = {
+        "spec_id": "content-kd",
+        "spec_version": "0.1",
+        "title": "Content-Test",
+        "class": "mock",
+        "off_ramp": {"unit": "per-screen", "rule": "test"},
+        "screens": [
+            {
+                "id": "landing",
+                "title": "Landing",
+                "personas": ["besucher"],
+                "off_route": True,
+                "content": [
+                    {"type": "hero", "headline": "Willkommen bei DriftTales", "sub": "Reise-Story", "label": "Jetzt starten"},
+                    {"type": "prose", "text": "Deine Reise wird zur Geschichte."},
+                ],
+            },
+        ],
+    }
+    html_out = _render_spec(tmp_path, spec)
+    assert "Willkommen bei DriftTales" in html_out
+    assert "Deine Reise wird zur Geschichte." in html_out
+    # der Leer-Hinweis darf für diesen Screen NICHT erscheinen
+    assert "Keine Daten-Entities für diesen Screen deklariert." not in html_out
+
+
+def test_content_screen_should_escape_spec_strings(tmp_path):
+    spec = {
+        "spec_id": "xss-kd",
+        "spec_version": "0.1",
+        "title": "XSS-Test",
+        "class": "mock",
+        "off_ramp": {"unit": "per-screen", "rule": "test"},
+        "screens": [
+            {
+                "id": "landing",
+                "title": "Landing",
+                "personas": ["besucher"],
+                "content": [{"type": "hero", "headline": "<script>alert(1)</script>"}],
+            },
+        ],
+    }
+    html_out = _render_spec(tmp_path, spec)
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html_out
+    assert "<script>alert(1)</script>" not in html_out
