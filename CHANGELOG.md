@@ -5,6 +5,19 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.31.0] — 2026-07-05
+
+### Added — KONZ-009: Content-Screen-Typ im Renderer
+
+- **`content:`-Block-Feld am Screen** (`hero`/`prose`/`cta`/`media`/`plan_table`) —
+  Screens ohne `datafields` (Landing/Pricing/Onboarding) rendern jetzt echte
+  Content-/Marketing-Blöcke statt „Keine Daten-Entities…". Ermöglicht UX-e2e-Journey-KDs
+  vom kalten Besucher bis zum Value-Moment. Additiv, opt-in; Feld `experimental` bis
+  ADR-211-Amendment. Alle Spec-Strings `html.escape` (S-02/S-03-Härtung).
+- **`off_route: bool`** — Vorwärts-Marker für route-lose Content-Screens.
+- Renderer: `_render_content_blocks()` am bestehenden Leer-Fallback-Hook; geteilter
+  `card`-Wrapper mit dem Datenpfad. Konzept: KONZ-iil-klickdummy-009 (#130), Impl: #132.
+
 ## [1.30.1] — 2026-07-03
 
 ### Added — KONZ-008 M3: Zwei-Kanal-Input (Struktur-Kanal)
