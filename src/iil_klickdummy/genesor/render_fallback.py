@@ -664,6 +664,7 @@ def _render_content_blocks(content: list) -> str:
     unbekannte Typen werden still uebersprungen. Geteilter `card`-Wrapper mit dem
     Datenpfad (ein Wrapper, zwei Fuellungen).
     """
+
     def esc(v) -> str:
         return html.escape(str(v)) if v is not None else ""
 
@@ -675,19 +676,24 @@ def _render_content_blocks(content: list) -> str:
         if btype == "hero":
             parts.append(
                 '<div class="card">'
-                f'<h1>{esc(block.get("headline"))}</h1>'
+                f"<h1>{esc(block.get('headline'))}</h1>"
                 f'<p style="color:#6b7280;">{esc(block.get("sub"))}</p>'
-                + (f'<button>{esc(block.get("label"))}</button>' if block.get("label") else "")
+                + (
+                    f"<button>{esc(block.get('label'))}</button>"
+                    if block.get("label")
+                    else ""
+                )
                 + "</div>"
             )
         elif btype == "prose":
             parts.append(f'<div class="card"><p>{esc(block.get("text"))}</p></div>')
         elif btype == "cta":
-            parts.append(f'<div class="card"><button>{esc(block.get("label"))}</button></div>')
+            parts.append(
+                f'<div class="card"><button>{esc(block.get("label"))}</button></div>'
+            )
         elif btype == "plan_table":
             rows = "".join(
-                f"<tr><td>{esc(it)}</td></tr>"
-                for it in (block.get("items") or [])
+                f"<tr><td>{esc(it)}</td></tr>" for it in (block.get("items") or [])
             )
             parts.append(f'<div class="card"><table>{rows}</table></div>')
         elif btype == "media":

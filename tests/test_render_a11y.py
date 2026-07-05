@@ -82,6 +82,7 @@ def test_template_should_have_mobile_breakpoint(tmp_path):
 
 # --- KONZ-009: Content-Screen-Typ -------------------------------------------
 
+
 def _render_spec(tmp_path, spec: dict) -> str:
     record = {
         "spec_id": spec["spec_id"],
@@ -107,7 +108,12 @@ def test_content_screen_should_render_blocks_instead_of_empty_hint(tmp_path):
                 "personas": ["besucher"],
                 "off_route": True,
                 "content": [
-                    {"type": "hero", "headline": "Willkommen bei DriftTales", "sub": "Reise-Story", "label": "Jetzt starten"},
+                    {
+                        "type": "hero",
+                        "headline": "Willkommen bei DriftTales",
+                        "sub": "Reise-Story",
+                        "label": "Jetzt starten",
+                    },
                     {"type": "prose", "text": "Deine Reise wird zur Geschichte."},
                 ],
             },

@@ -66,7 +66,9 @@ import pathlib  # noqa: E402
 import iil_klickdummy  # noqa: E402
 
 _REAL_SCHEMA = (
-    pathlib.Path(iil_klickdummy.__file__).parent / "schemas" / "screens-spec.schema.json"
+    pathlib.Path(iil_klickdummy.__file__).parent
+    / "schemas"
+    / "screens-spec.schema.json"
 )
 
 _CONTENT_SPEC = textwrap.dedent(
