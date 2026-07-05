@@ -91,6 +91,11 @@ halb-automatisch. Konzept: `docs/konzepte/KONZ-iil-klickdummy-008.md`.
 - **`kind`-Feld** (`parity_acceptance.kind ∈ executable | behavioral-manual | nfr-out-of-band`,
   Default `executable`) — klassifiziert, was das Gate fordert; Verhaltens-/NFR-Checks sind
   sichtbar getaggt statt still übersprungen (kein Schein-Grün). (PR #121)
+  **Adopter-Migration:** Bestehende Specs ohne `kind`-Feld erhalten den Default
+  `executable` — wer `klickdummy-parity-gate` bereits nutzt und Checks hat, die
+  tatsächlich nur verhaltensbeschreibend/NFR sind, muss diese Screens einmalig auf
+  `kind: behavioral-manual`/`kind: nfr-out-of-band` umstellen, sonst färbt das Gate
+  neu rot (Session-Retro 2026-07-03, EF-5).
 - **`klickdummy-parity-gate`** — Phase A rot, wenn ein `executable`-Check skipped ist ODER
   `fragile_selectors>0`; `behavioral-manual`/`nfr-out-of-band` ausgenommen. Nutzt das
   vorhandene Manifest, kein neues Wahrheitsfeld. (PR #121)
