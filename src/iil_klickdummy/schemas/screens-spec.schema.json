@@ -144,6 +144,27 @@
               }
             }
           },
+          "content": {
+            "type": "array",
+            "description": "EXPERIMENTAL (KONZ-009): Content-/Marketing-Bloecke fuer route-lose Screens (Landing/Pricing). Wird gerendert, wenn der Screen keine datafields/Entities hat. Bloecke bewusst auf 5 Typen begrenzt (kein Marketing-Builder).",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "additionalProperties": true,
+              "properties": {
+                "type":     { "type": "string", "enum": ["hero", "prose", "cta", "media", "plan_table"] },
+                "headline": { "type": "string" },
+                "sub":      { "type": "string" },
+                "text":     { "type": "string" },
+                "label":    { "type": "string" },
+                "items":    { "type": "array" }
+              }
+            }
+          },
+          "off_route": {
+            "type": "boolean",
+            "description": "EXPERIMENTAL (KONZ-009): Screen hat bewusst keine App-Route (Content-Screen). Vorwaerts-Marker; heute kein Code-Gate konsumiert ihn (check_i1 ist schema-only)."
+          },
           "target_mocks": { "type": "array", "items": { "type": "string" } },
           "parity_acceptance": {
             "type": "array",

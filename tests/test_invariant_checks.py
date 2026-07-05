@@ -59,6 +59,67 @@ def test_i1_should_fail_on_entry_without_colon():
     assert check_i1.main(["just-a-path-no-colon"]) == 1
 
 
+# --- KONZ-009: Content-Screen gegen das ECHTE Schema ------------------------
+
+import pathlib  # noqa: E402
+
+import iil_klickdummy  # noqa: E402
+
+_REAL_SCHEMA = (
+    pathlib.Path(iil_klickdummy.__file__).parent
+    / "schemas"
+    / "screens-spec.schema.json"
+)
+
+_CONTENT_SPEC = textwrap.dedent(
+    """\
+    spec_id: "test:content-conformance"
+    spec_version: "0.1.0"
+    spec_date: "2026-07-05"
+    class: mock
+    adr:
+      local: "test:ADR-001"
+      conforms_to: "platform:ADR-211"
+    grounding:
+      konzept: "test"
+      pilot: "test"
+    off_ramp:
+      policy: "test"
+      unit: per-screen
+      rule: "test"
+      doppelquell_grenze: prod-release
+      parity_runner: "make test"
+    personas:
+      besucher: {label: "Besucher", rolle: "Erstkontakt", sieht: [landing]}
+    screens:
+      - id: landing
+        title: "Landing"
+        next_screens: [ende]
+        off_route: true
+        content:
+          - {type: hero, headline: "Willkommen", sub: "x", label: "Start"}
+      - id: ende
+        title: "Ende"
+        back_screen: landing
+    """
+)
+
+
+def _real_pair(tmp_path, spec_text: str) -> str:
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(spec_text, encoding="utf-8")
+    return f"{spec}:{_REAL_SCHEMA}"
+
+
+def test_i1_should_pass_content_screen_against_real_schema(tmp_path):
+    assert check_i1.main([_real_pair(tmp_path, _CONTENT_SPEC)]) == 0
+
+
+def test_i1_should_fail_content_block_with_unknown_type(tmp_path):
+    bad = _CONTENT_SPEC.replace("type: hero", "type: carousel")  # nicht im Enum
+    assert check_i1.main([_real_pair(tmp_path, bad)]) == 1
+
+
 # ---------------------------------------------------------------- I3 helpers
 
 
