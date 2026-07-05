@@ -146,7 +146,7 @@
           },
           "content": {
             "type": "array",
-            "description": "EXPERIMENTAL (KONZ-009): Content-/Marketing-Bloecke fuer route-lose Screens (Landing/Pricing). Wird gerendert, wenn der Screen keine datafields/Entities hat. Bloecke bewusst auf 5 Typen begrenzt (kein Marketing-Builder).",
+            "description": "Content-/Marketing-Bloecke fuer route-lose Screens (Landing/Pricing). Wird gerendert, wenn der Screen keine datafields/Entities hat. Bloecke bewusst auf 5 Typen begrenzt (kein Marketing-Builder). Ratifiziert: platform:ADR-211 Rev 23 (KONZ-009).",
             "items": {
               "type": "object",
               "required": ["type"],
@@ -163,7 +163,7 @@
           },
           "off_route": {
             "type": "boolean",
-            "description": "EXPERIMENTAL (KONZ-009): Screen hat bewusst keine App-Route (Content-Screen). Vorwaerts-Marker; heute kein Code-Gate konsumiert ihn (check_i1 ist schema-only)."
+            "description": "Screen hat bewusst keine App-Route (Content-Screen). Vorwaerts-Marker; heute kein Code-Gate konsumiert ihn (check_i1 ist schema-only). Ratifiziert: platform:ADR-211 Rev 23 (KONZ-009)."
           },
           "target_mocks": { "type": "array", "items": { "type": "string" } },
           "parity_acceptance": {
