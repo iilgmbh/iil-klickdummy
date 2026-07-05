@@ -5,6 +5,14 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.31.1] — 2026-07-05
+
+### Changed
+
+- **Content-Screen-Typ ratifiziert** — `content:`/`off_route` sind nicht mehr
+  `EXPERIMENTAL`; Schema-Beschreibungen verweisen auf **platform:ADR-211 Rev 23**
+  (KONZ-009, gemergt). Reine Doku-Angleichung, kein Verhaltens-/Schema-Bruch.
+
 ## [1.31.0] — 2026-07-05
 
 ### Added — KONZ-009: Content-Screen-Typ im Renderer
