@@ -164,3 +164,56 @@ def test_should_include_non_conforming_spec_in_fleet_scan_but_warn(capsys, tmp_p
     assert len(kds) == 1  # NICHT ausgeschlossen
     err = capsys.readouterr().err
     assert "Schema-Verstoß" in err
+
+
+def test_should_warn_but_not_exclude_meiki_convention_spec(capsys, tmp_path):
+    """Zweite Aufrufstelle in find_all_repos_specs (meiki-Konvention,
+    docs/01-architektur/mockups/<name>-klickdummy/screens-spec.yaml) — Retro
+    2026-07-06 Befund 9: nur die Standard-Konvention war end-to-end getestet."""
+    from iil_klickdummy.genesor import scan
+    from iil_klickdummy.genesor.config import GenesorConfig, set_cfg
+
+    kd_dir = (
+        tmp_path
+        / "meikirepo"
+        / "docs"
+        / "01-architektur"
+        / "mockups"
+        / "broken-klickdummy"
+    )
+    kd_dir.mkdir(parents=True)
+    (kd_dir / "screens-spec.yaml").write_text(
+        "title: unvollständig\n", encoding="utf-8"
+    )
+
+    set_cfg(GenesorConfig(repos_root=tmp_path))
+    try:
+        results = scan.find_all_repos_specs()
+    finally:
+        set_cfg(GenesorConfig())
+
+    kds = [r for r in results if r.get("kd") == "broken"]
+    assert len(kds) == 1  # NICHT ausgeschlossen
+    err = capsys.readouterr().err
+    assert "Schema-Verstoß" in err
+
+
+def test_should_warn_but_not_exclude_via_find_specs(capsys, tmp_path, monkeypatch):
+    """Dritte Aufrufstelle: find_specs() (mockups/*-klickdummy/, repo-lokal via
+    MOCKUPS_DIR) — Retro 2026-07-06 Befund 9."""
+    from iil_klickdummy.genesor import scan
+
+    mockups = tmp_path / "mockups"
+    kd_dir = mockups / "broken-klickdummy"
+    kd_dir.mkdir(parents=True)
+    (kd_dir / "screens-spec.yaml").write_text(
+        "title: unvollständig\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(scan, "MOCKUPS_DIR", mockups)
+
+    results = scan.find_specs()
+
+    assert len(results) == 1  # NICHT ausgeschlossen
+    assert results[0][0] == "broken"
+    err = capsys.readouterr().err
+    assert "Schema-Verstoß" in err

@@ -62,7 +62,8 @@ except ImportError:
 
 # validate_spec/_load_schema sind nach read_model.py gewandert (AD-6/#103):
 # genesor/scan.py braucht denselben Validierungs-Helfer, ohne ihn zu duplizieren.
-from .read_model import _load_schema, validate_spec  # noqa: E402,F401
+from .read_model import validate_spec  # noqa: E402
+from .read_model import _load_schema  # noqa: E402,F401 (Re-Export, s. test_gen_e2e.py M28-3-Cache-Test)
 
 
 # -- Helpers ------------------------------------------------------------------

@@ -15,11 +15,16 @@ sind **trigger-gegatet** — erst wenn KONZ-003 §13 Postgres-Trigger (b) feuert
 from __future__ import annotations
 
 import json
+import sys
 from functools import lru_cache
 from importlib.resources import files
 from typing import TypedDict
 
-import jsonschema
+try:
+    import jsonschema
+except ImportError:
+    print("FAIL (setup): jsonschema fehlt. pip install jsonschema")
+    sys.exit(2)
 
 # ---------------------------------------------------------------------------
 # Spec-Schema-Validierung (geteilt zwischen gen_e2e.load_spec und
