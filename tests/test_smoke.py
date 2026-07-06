@@ -247,6 +247,19 @@ def test_v11_registry_render_browser_html(tmp_path):
     assert "__KLICKDUMMIES_JSON__" not in html  # Template-Marker ersetzt
 
 
+def test_should_escape_repo_label_in_rendered_html(tmp_path):
+    """EF-7 (Session-Retro 2026-07-03): repo_label (z.B. Verzeichnisname) landet roh in
+    HTML-Textknoten (<title>, <code>) — ohne Escape brich ein `</code><script>`-Segment
+    aus dem Element aus (Self-XSS via Repo-Verzeichnisnamen, gleiche Fehlerklasse wie S-01)."""
+    from iil_klickdummy import registry
+
+    out = tmp_path / "browser.html"
+    registry.render_browser_html([], out, repo_label="</code><script>alert(1)</script>")
+    html = out.read_text(encoding="utf-8")
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
 def test_version_consistency():
     """__version__ ist Single-Source via importlib.metadata — kein Mismatch zu pyproject."""
     import iil_klickdummy

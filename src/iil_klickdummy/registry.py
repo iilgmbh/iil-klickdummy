@@ -23,6 +23,7 @@ import pathlib
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from html import escape as html_escape
 from importlib.resources import files
 
 try:
@@ -435,7 +436,7 @@ def render_browser_html(
     ]
     html = tmpl_text.replace("__KLICKDUMMIES_JSON__", _embed_json(data))
     html = html.replace("__STORIES_JSON__", _embed_json(stories or []))
-    html = html.replace("__REPO_LABEL__", repo_label)
+    html = html.replace("__REPO_LABEL__", html_escape(repo_label))
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")
     write_stories_manifest(output.parent, klickdummies, stories or [])
@@ -478,7 +479,8 @@ def render_cross_repo_browser_html(
     html = tmpl_text.replace("__KLICKDUMMIES_JSON__", _embed_json(data))
     html = html.replace("__STORIES_JSON__", _embed_json(stories or []))
     html = html.replace(
-        "__REPO_LABEL__", f"cross-repo · {base_label} · {len(data)} Klickdummies"
+        "__REPO_LABEL__",
+        html_escape(f"cross-repo · {base_label} · {len(data)} Klickdummies"),
     )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html, encoding="utf-8")
