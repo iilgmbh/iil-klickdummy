@@ -5,6 +5,20 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+### Fixed
+
+- **Retro-Nachtrag 2026-07-06 (Befunde 6/7/9/10):** `read_model.py` guardet den
+  `jsonschema`-Import jetzt wieder (fatal mit freundlicher Setup-Meldung statt
+  rohem Traceback) — betrifft insbesondere den Direkt-Source-Checkout-Aufruf
+  aus `iil-pet-portal/scripts/regen-genesor-main.sh`. `gen_e2e.py`s
+  Re-Export-Import von `_load_schema` ist jetzt präzise auf `noqa: F401`
+  gescoped (nur der tatsächlich unbenutzte Name, `validate_spec` braucht die
+  Ausnahme nicht). 3 fehlende Regressionstests ergänzt: `_warn_schema_violations`
+  über die meiki-Konvention und `find_specs()` (vorher nur 1 von 3
+  Aufrufstellen end-to-end getestet), sowie `render_cross_repo_browser_html`
+  gegen einen bösartigen `base_label` (vorher nur `render_browser_html`
+  regressionsgetestet).
+
 ### Security
 
 - **AD-6 (Issue #103, Session-Retro 2026-07-03):** `genesor/scan.py` validiert

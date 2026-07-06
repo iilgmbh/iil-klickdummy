@@ -378,6 +378,21 @@ def test_v13_cross_repo_render(tmp_path):
     assert "github.com/iilgmbh/test-repo" in html  # Cross-Repo-GitHub-Links
 
 
+def test_should_escape_base_label_in_cross_repo_html(tmp_path):
+    """EF-7-Nachtrag (Retro 2026-07-06, Befund 10): render_browser_html hatte einen
+    Regressionstest für den Escape-Fix, render_cross_repo_browser_html (zweite,
+    ebenfalls gepatchte Stelle) nicht."""
+    from iil_klickdummy import registry
+
+    out = tmp_path / "cross.html"
+    registry.render_cross_repo_browser_html(
+        [], out, base_label="</code><script>alert(1)</script>"
+    )
+    html = out.read_text(encoding="utf-8")
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
 def test_v13_version_bumped():
     """Smoke-Test, dass v1.3.x installiert."""
     import iil_klickdummy
