@@ -16,7 +16,7 @@ pip install "iil-klickdummy>=1.29,<2.0"
 **Fallback / Dev:** via Git-URL
 
 ```bash
-pip install "iil-klickdummy @ git+https://github.com/iilgmbh/iil-klickdummy.git@v1.29.0"
+pip install "iil-klickdummy @ git+https://github.com/iilgmbh/iil-klickdummy.git@v1.31.1"
 ```
 
 **Workspace-Pattern (Development):**
