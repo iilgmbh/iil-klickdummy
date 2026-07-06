@@ -14,7 +14,55 @@ sind **trigger-gegatet** — erst wenn KONZ-003 §13 Postgres-Trigger (b) feuert
 
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from importlib.resources import files
 from typing import TypedDict
+
+import jsonschema
+
+# ---------------------------------------------------------------------------
+# Spec-Schema-Validierung (geteilt zwischen gen_e2e.load_spec und
+# genesor/scan.py — Session-Retro 2026-07-03 AD-6/Issue #103: der
+# genesor-Scan-Pfad validierte Specs bisher gar nicht gegen
+# screens-spec.schema.json, nur `yaml.safe_load`. Ursprünglich in gen_e2e.py
+# (B-1, M28-3); hierher verschoben, damit beide Aufrufer denselben
+# Validierungs-Helfer nutzen statt ihn zu duplizieren.
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def _load_schema() -> dict:
+    """Gebündeltes Screens-Spec-Schema (Single Source of Truth für Validierung).
+
+    Gecacht (M28-3): das Schema ist ein unveränderliches Paket-Asset; ohne Cache
+    las jeder `validate_spec`-Call es neu von Disk."""
+    text = (files("iil_klickdummy") / "schemas" / "screens-spec.schema.json").read_text(
+        encoding="utf-8"
+    )
+    return json.loads(text)
+
+
+def validate_spec(spec: dict) -> list[str]:
+    """Validiert eine Spec gegen ``screens-spec.schema.json``.
+
+    Gibt eine Liste von Fehler-Strings zurück (leer = konform). Die Spec ist
+    eine **Vertrauensgrenze**: ihre Werte landen in generiertem Python
+    (Kommentare, Docstrings, Locator-Ausdrücke) bzw. in gerendertem HTML.
+    Ohne Validierung konnte ein bösartiges/kaputtes Feld strukturell
+    durchrutschen (B-1). Escaping an den Senken (``gen_suite``, ``render_uc``,
+    ``lineage``) ist die zweite, unabhängige Verteidigungslinie — diese
+    Funktion macht Verstöße zusätzlich *sichtbar*.
+    """
+    schema = _load_schema()
+    return [
+        f"{'/'.join(str(p) for p in e.absolute_path) or '(root)'}: {e.message}"
+        for e in sorted(
+            jsonschema.Draft7Validator(schema).iter_errors(spec),
+            key=lambda x: list(x.absolute_path),
+        )
+    ]
+
 
 # ---------------------------------------------------------------------------
 # UC-Export (genesor/export.py → uc-export.json)

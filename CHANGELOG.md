@@ -5,6 +5,19 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+### Security
+
+- **AD-6 (Issue #103, Session-Retro 2026-07-03):** `genesor/scan.py` validiert
+  Specs jetzt gegen `screens-spec.schema.json` (geteilter Helfer `validate_spec`,
+  nach `read_model.py` verschoben, von `gen_e2e.load_spec` wiederverwendet) —
+  vorher nur `yaml.safe_load` ohne jede Prüfung. Bewusst **nicht-fatal**: eine
+  nicht-konforme Spec wird nur als `WARN` auf stderr sichtbar, aber nie aus dem
+  Fleet-Scan ausgeschlossen (ein harter Abbruch hätte die Cross-Repo-Lineage bei
+  der ersten kaputten Spec irgendeines Repos gerissen — dasselbe Risiko wie
+  M28-2/#122). Die Sink-Härtung aus PR #125 (`html.escape`/`_safe_seg`) bleibt
+  die eigentliche Verteidigungslinie gegen S-02/S-03; dies macht Verstöße
+  zusätzlich sichtbar.
+
 ## [1.31.1] — 2026-07-05
 
 ### Changed

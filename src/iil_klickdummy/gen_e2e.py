@@ -53,8 +53,6 @@ import pathlib
 import re
 import sys
 from datetime import date
-from functools import lru_cache
-from importlib.resources import files
 
 try:
     import yaml
@@ -62,11 +60,9 @@ except ImportError:
     print("FAIL (setup): PyYAML fehlt. pip install pyyaml")
     sys.exit(2)
 
-try:
-    import jsonschema
-except ImportError:
-    print("FAIL (setup): jsonschema fehlt. pip install jsonschema")
-    sys.exit(2)
+# validate_spec/_load_schema sind nach read_model.py gewandert (AD-6/#103):
+# genesor/scan.py braucht denselben Validierungs-Helfer, ohne ihn zu duplizieren.
+from .read_model import _load_schema, validate_spec  # noqa: E402,F401
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -76,37 +72,6 @@ def ident(s: str) -> str:
     """Python-sicherer Bezeichner-Fragment (für Testfunktionsnamen)."""
     out = re.sub(r"[^0-9a-zA-Z]+", "_", str(s)).strip("_").lower()
     return out or "x"
-
-
-@lru_cache(maxsize=1)
-def _load_schema() -> dict:
-    """Gebündeltes Screens-Spec-Schema (Single Source of Truth für Validierung).
-
-    Gecacht (M28-3): das Schema ist ein unveränderliches Paket-Asset; ohne Cache
-    las jeder `validate_spec`-Call es neu von Disk."""
-    text = (files("iil_klickdummy") / "schemas" / "screens-spec.schema.json").read_text(
-        encoding="utf-8"
-    )
-    return json.loads(text)
-
-
-def validate_spec(spec: dict) -> list[str]:
-    """Validiert eine Spec gegen ``screens-spec.schema.json``.
-
-    Gibt eine Liste von Fehler-Strings zurück (leer = konform). Die Spec ist
-    eine **Vertrauensgrenze**: ihre Werte landen in generiertem Python
-    (Kommentare, Docstrings, Locator-Ausdrücke). Ohne Validierung konnte ein
-    bösartiges/kaputtes Feld strukturell durchrutschen (B-1). Escaping in
-    ``gen_suite`` ist die zweite, unabhängige Verteidigungslinie.
-    """
-    schema = _load_schema()
-    return [
-        f"{'/'.join(str(p) for p in e.absolute_path) or '(root)'}: {e.message}"
-        for e in sorted(
-            jsonschema.Draft7Validator(schema).iter_errors(spec),
-            key=lambda x: list(x.absolute_path),
-        )
-    ]
 
 
 def load_spec(path: pathlib.Path) -> dict:

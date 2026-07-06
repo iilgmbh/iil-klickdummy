@@ -10,6 +10,21 @@ import sys
 import yaml
 from pathlib import Path
 from .config import MOCKUP_PRIO_NAMES, _FRONTMATTER_RE, _base_prefix, get_cfg
+from ..read_model import validate_spec
+
+
+def _warn_schema_violations(spec_path: Path, data: dict) -> None:
+    """Warnt (stderr) bei Schema-Verstoessen, schliesst die KD NIE aus (AD-6/#103).
+
+    Bewusst nicht-fatal: der genesor-Scan laeuft fleet-weit ueber alle Repos;
+    ein `sys.exit` bei der ersten nicht-konformen Spec wuerde die Cross-Repo-
+    Lineage fuer alle Repos gleichzeitig reissen (M28-2-Risiko). Die Sink-
+    Haertung (html.escape/`_safe_seg` in render_uc.py/lineage.py, PR #125)
+    bleibt die eigentliche Verteidigungslinie; das hier macht Verstoesse nur
+    zusaetzlich sichtbar.
+    """
+    for err in validate_spec(data):
+        print(f"WARN: {spec_path}: Schema-Verstoß: {err}", file=sys.stderr)
 
 
 # Paket-Elternverzeichnis (src/ im Repo bzw. site-packages/ installiert) — diese
@@ -252,6 +267,7 @@ def find_specs() -> list[tuple[str, Path, dict]]:
         except yaml.YAMLError as exc:
             print(f"WARN: {spec_path}: YAML-Parse-Fehler: {exc}", file=sys.stderr)
             continue
+        _warn_schema_violations(spec_path, data)
         out.append((kd_name, spec_path, data))
     return out
 
@@ -322,6 +338,7 @@ def find_all_repos_specs() -> list[dict]:
                 data = yaml.safe_load(spec_path.read_text("utf-8")) or {}
             except yaml.YAMLError:
                 continue
+            _warn_schema_violations(spec_path, data)
             data = _normalize_spec_aliases(data)
             adr_local = (data.get("adr", {}) or {}).get("local")
             extra = adr_meta.get(adr_local, {}) if adr_local else {}
@@ -347,6 +364,7 @@ def find_all_repos_specs() -> list[dict]:
                 data = yaml.safe_load(spec_path.read_text("utf-8")) or {}
             except yaml.YAMLError:
                 continue
+            _warn_schema_violations(spec_path, data)
             data = _normalize_spec_aliases(data)
             adr_local = (data.get("adr", {}) or {}).get("local")
             extra = adr_meta.get(adr_local, {}) if adr_local else {}
