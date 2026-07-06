@@ -4,7 +4,35 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-07-02, Session 2 — abgeschlossen)
+## ⚡ Aktueller Stand (2026-07-05/06, Session Retro + Hardening — abgeschlossen)
+
+**Der 2026-07-02-Stand unten war zu Session-Beginn bereits veraltet** (Release v1.30.0
+längst publiziert, mittlerweile v1.31.1 aktiv) — dieser Abschnitt ist der reale Ist-Stand.
+
+- **v1.30.0 bis v1.31.1 alle publiziert** (nicht nur v1.30.0 wie zuvor im Handover
+  geplant): KONZ-008 (KD-Co-Creation-Loop), KONZ-009 (Content-Screen-Typ, jetzt ratifiziert,
+  nicht mehr experimental). `pyproject.toml` aktuell `1.31.1`.
+- **Security-Backlog komplett abgearbeitet:** #103 (AD-6), #105 (S-02), #106 (S-03) alle
+  geschlossen (PR #125, #136, #139). AD-6-Fix zieht jetzt auch `registry.discover_klickdummies`
+  nach (PR #139) — `klickdummy_sync.py` bewusst zurückgestellt als **Issue #138** (Zero-Dependency-
+  Standalone-Script, `jsonschema` dort einzuführen wäre eine Architektur-Entscheidung).
+- **EF-5/EF-7-Nachträge aus Retro 2026-07-03 abgeschlossen** (PR #135) + **Retro-Hardening-
+  Nachtrag** (PR #137: jsonschema-Import-Guard wiederhergestellt, 2 fehlende Test-Aufrufstellen
+  ergänzt, Cross-Repo-Escape-Regressionstest nachgezogen).
+- **S13 Stufe 2 ist NICHT mehr Teil dieses Repos** — der Live-Parity-Job lebt in risk-hub
+  (dort weiterentwickelt: risk-hub #282/#285/#314, hermetischer Worktree-Merge-Fix). Aus
+  iil-klickdummy-Sicht erledigt/ausgelagert, Prio 3 unten daher entfernt.
+- **Session-Retro 2026-07-06** (`platform/docs/retros/session-retro-2026-07-06-iil-klickdummy-2752dc.md`,
+  PR #966) fand 14 Befunde (main-tree-guard-Wiederholung, PYTHONPATH-Worktree-Verwechslung,
+  verwaiste Remote-Branches nach `--delete-branch`, unvollständige Testabdeckung) — alle
+  actionable Items umgesetzt (PR #137/#139) oder als Memory verankert (`main-tree-guard-cross-
+  repo-lesson`, `genesor-fix-scope-check-against-known-memory`).
+- **Cross-Repo-Nebenprodukt (platform):** KD-Pipeline-Skills (`kd-scout`/`klickdummy`/`kd-review`)
+  bekamen ein einheitliches "KD-Referenz"-Feldschema (Spec/Lokal/GitHub/iil.pet, PR #965) +
+  `doctor.py`-Präventions-Check (PR #972) + KONZ-platform-013 (Shared-Fragment-Include-Konzept,
+  PR #971, T2, `review_by: 2026-10-06`) — betrifft alle Skill-Konsumenten, nicht nur dieses Repo.
+
+## ⚡ Aktueller Stand (2026-07-02, Session 2 — abgeschlossen, historisch)
 
 Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PRs gemergt/merge-fertig:
 
@@ -103,13 +131,17 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | **Release v1.30.0 publizieren**: PR #117 mergen → Tag `v1.30.0` → `/release` (PyPI). Erst damit landen S-01-Renderer-Fix (#101), gen_e2e-RCE (#102) + Härtungen (#104) bei den Adoptern (v1.29.0 wurde nie getaggt). Gegated: Publish braucht User-Freigabe | `[Sonnet]` |
-| 2 | **Security-Backlog abarbeiten**: #103 (genesor-Validierungspfad = Wurzel S-02/S-03) zuerst; dann #105 (render_uc HTML-Sanitize), #107 (Publish-Actions SHA-Pinning), #108 (Publish-Smoke gegen Wheel) | `[Sonnet]` |
-| 3 | **S13 Stufe 2 Abschluss**: Grün-Quote des informational-Jobs `klickdummy-parity-renderer2-live` messen; bei Stabilität `continue-on-error` entfernen + required check + README-Update (DoD aus risk-hub#278 — Blocker behoben, COMPLETED 2026-06-24) | `[Sonnet]` |
-| 4 | Outline-Capture der Sessions 2026-06-12/13/14 nachholen (Outline-MCP seit 2026-07-02 als `outline-knowledge` auf User-Scope registriert; Inhalt in pgvector `session:iil-klickdummy:20260612`) | `[/fast]` |
-| 5 | Qualitäts-Backlog: #110 (ruff-Gate + 11 Bestandsfehler), #109 (genesor-Tests), #112 (Makefile/CONTRIBUTING) — gate-frei, gut für Sonnet/Queue | `[Sonnet]` |
-| 6 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+| 1 | **Issue #138 entscheiden**: `klickdummy_sync.py` — soll `jsonschema` als Dependency für das Zero-Dependency-Standalone-Sync-Script eingeführt werden, ein handgerollter dependency-freier Check, oder bewusst so bleiben (niedrigeres Risikoprofil, GitHub sanitized Issue-Bodies)? Design-Entscheidung, kein Kleinfix | `[Sonnet/Opus]` |
+| 2 | **Qualitäts-Backlog Rest**: #109 (genesor-Tests, 13 Module ohne Tests), #110 (CLI-Fehlerzweige ungetestet), #111 (ruff-Gate + 11 Bestandsfehler), #112 (Makefile/CONTRIBUTING) — gate-frei, gut für Sonnet/Queue | `[Sonnet]` |
+| 3 | **Publish-Härtung**: #107 (Actions SHA-Pinning, OIDC-Supply-Chain), #108 (Publish-Smoke gegen Wheel statt src/) | `[Sonnet]` |
+| 4 | **Restliches Qualitäts-Backlog**: #113 (7 Spec-YAML-Loader konsolidieren), #114 (Kleinteiliges), #115 (Determinismus `date.today()`), #116 (Schema-Descriptions) | `[Sonnet]` |
+| 5 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
 
+> **Erledigt 2026-07-05/06:** Security-Backlog komplett (#103/#105/#106 geschlossen, PR #125/#136/#139)
+> · Release v1.30.0–v1.31.1 publiziert · Retro-Hardening (PR #137) · Session-Retro 2026-07-06
+> (platform-PR #966) · KD-Referenz-Pipeline-Konvention + Präventions-Tooling (platform-PR #965/#971/#972).
+> S13 Stufe 2 nicht mehr Teil dieses Repos (ausgelagert nach risk-hub). Details s. „Aktueller Stand
+> (2026-07-05/06)".
 > **Erledigt 2026-07-02 (Session 2):** ehem. Prio 3 *KONZ-007 REC-1/REC-2* (#91→#97, #92→#98) · klickdummy-browser-Redesign + S-01-Fix (#100/#101) · gen_e2e-RCE-Härtung (#102/#104) · Quick Wins (#99). Issue-Backlog #103/#105–#116 angelegt. Details s. „Aktueller Stand (2026-07-02, Session 2)".
 > **Erledigt 2026-06-30:** ehem. Prio 3 *F23* — via KONZ-007 (PR #89/#90, v1.29.0) + ADR-211 Rev 22.
 > **Erledigt 2026-06-24:** ehem. Prio 1 *UX-Test-Rollout* — komplett, alle Repos sauber.
