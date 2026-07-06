@@ -1,8 +1,13 @@
-"""genesor-Security-Sink-Fixes (Retro 2026-07-03, SI-3): S-02 raw-HTML + S-03 Path-Traversal.
+"""genesor-Security-Sink-Fixes (Retro 2026-07-03, SI-3): S-02 raw-HTML + S-03 Path-Traversal
++ AD-6/#103 (weiche Schema-Validierung im genesor-Scan-Pfad).
 
-Der genesor-Scan validiert Specs NICHT gegen das Schema (anders als der gen_e2e-Pfad),
-darum werden die zwei konkreten Sinks direkt gehärtet: `description`-Freitext (→ Markdown → HTML)
-und `screens[].id` (→ Output-Dateiname).
+Die zwei konkreten Sinks sind direkt gehärtet: `description`-Freitext (→ Markdown → HTML)
+und `screens[].id` (→ Output-Dateiname) — das bleibt die primäre Verteidigungslinie,
+unabhängig von der Spec-Konformität. AD-6/#103 ergänzt eine *weiche* Schema-Validierung
+im genesor-Scan (`find_specs`/`find_all_repos_specs`): nicht-konforme Specs werden auf
+stderr sichtbar (WARN), aber NIE ausgeschlossen — ein fataler Abbruch würde die
+fleet-weite Cross-Repo-Lineage bei der ersten nicht-konformen Spec irgendeines Repos
+reißen (dasselbe Regressionsrisiko wie M28-2, #122).
 """
 
 from __future__ import annotations
@@ -81,3 +86,81 @@ def test_impl_brief_html_has_no_raw_script_from_description():
     )
     assert "<script>alert" not in html_out
     assert "&lt;script&gt;" in html_out
+
+
+# -- AD-6/#103: weiche Schema-Validierung im genesor-Scan-Pfad -----------------
+
+
+def test_should_warn_on_schema_violation_without_raising(capsys):
+    from pathlib import Path
+    from iil_klickdummy.genesor.scan import _warn_schema_violations
+
+    _warn_schema_violations(Path("/fake/screens-spec.yaml"), {"title": "unvollständig"})
+    err = capsys.readouterr().err
+    assert "WARN" in err
+    assert "Schema-Verstoß" in err
+    assert "/fake/screens-spec.yaml" in err
+
+
+def test_should_not_warn_on_conforming_spec(capsys):
+    from pathlib import Path
+    from iil_klickdummy.genesor.scan import _warn_schema_violations
+
+    conforming = {
+        "spec_id": "repo:spec-test",
+        "spec_version": "0.1",
+        "spec_date": "2026-06-01",
+        "adr": {"local": "repo:ADR-001", "conforms_to": "platform:ADR-211"},
+        "class": "mock",
+        "grounding": {"konzept": "-", "pilot": "-"},
+        "off_ramp": {
+            "policy": "-",
+            "unit": "per-screen",
+            "rule": "-",
+            "doppelquell_grenze": "prod-release",
+            "parity_runner": "-",
+        },
+        "personas": {"u": {"label": "U", "rolle": "u", "sieht": []}},
+        "screens": [
+            {
+                "id": "s1",
+                "title": "S1",
+                "personas": ["u"],
+                "purpose": "-",
+                "off_ramp_status": "static",
+                "parity_acceptance": [
+                    {
+                        "id": "s1.v",
+                        "check": "visible c",
+                        "assert": {"action": "visible", "selector": "[data-testid=x]"},
+                    }
+                ],
+            }
+        ],
+    }
+    _warn_schema_violations(Path("/fake/screens-spec.yaml"), conforming)
+    assert capsys.readouterr().err == ""
+
+
+def test_should_include_non_conforming_spec_in_fleet_scan_but_warn(capsys, tmp_path):
+    """Fleet-weiter Scan darf bei einer kaputten Spec NICHT abbrechen oder sie
+    ausschließen (M28-2-Risiko) — nur warnen. Die KD bleibt in der Ergebnisliste."""
+    from iil_klickdummy.genesor import scan
+    from iil_klickdummy.genesor.config import GenesorConfig, set_cfg
+
+    kd_dir = tmp_path / "myrepo" / "klickdummy" / "broken-kd"
+    kd_dir.mkdir(parents=True)
+    (kd_dir / "screens-spec.yaml").write_text(
+        "title: unvollständig\n", encoding="utf-8"
+    )
+
+    set_cfg(GenesorConfig(repos_root=tmp_path))
+    try:
+        results = scan.find_all_repos_specs()
+    finally:
+        set_cfg(GenesorConfig())
+
+    kds = [r for r in results if r.get("kd") == "broken-kd"]
+    assert len(kds) == 1  # NICHT ausgeschlossen
+    err = capsys.readouterr().err
+    assert "Schema-Verstoß" in err
