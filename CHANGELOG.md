@@ -18,6 +18,12 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
   Aufrufstellen end-to-end getestet), sowie `render_cross_repo_browser_html`
   gegen einen bösartigen `base_label` (vorher nur `render_browser_html`
   regressionsgetestet).
+- **`klickdummy_sync.py` Mindest-Sanity-Check (Issue #138):** eine Spec ohne
+  `spec_id`/`screens` wird jetzt sichtbar übersprungen (`SKIP ... Pflichtfelder
+  fehlen`) statt kommentarlos ein GitHub-Issue mit leerem Titel zu erzeugen.
+  Bewusst **keine** `jsonschema`-Validierung — das Script bleibt Zero-Extra-
+  Dependency (vendored in Consumer-Repos); dasselbe Präsenz-Check-Prinzip wie
+  `registry.py._load_spec` nutzt bereits.
 
 ### Security
 
