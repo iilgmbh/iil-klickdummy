@@ -32,6 +32,13 @@ except ImportError:
     print("FAIL (setup): PyYAML fehlt. pip install pyyaml")
     sys.exit(2)
 
+# AD-6/#103-Nachtrag (Retro 2026-07-06, Befund 8): discover_klickdummies liest
+# screens-spec.yaml bisher ohne jede Schema-Validierung, genau wie der
+# genesor-Scan-Pfad vor PR #136. Gleicher Helfer, gleiches Prinzip: warnen,
+# nie ausschließen — _load_spec() bedient AUCH discover_stories() (anderes
+# Schema), darum sitzt die Validierung an der Aufrufstelle, nicht im Loader.
+from .read_model import validate_spec  # noqa: E402
+
 
 @dataclass
 class KlickdummyMeta:
@@ -87,6 +94,8 @@ def discover_klickdummies(repo_root: pathlib.Path) -> list[KlickdummyMeta]:
         spec = _load_spec(spec_path)
         if not spec or "spec_id" not in spec:
             continue
+        for err in validate_spec(spec):
+            print(f"WARN: {spec_path}: Schema-Verstoß: {err}", file=sys.stderr)
         rel = spec_path.relative_to(repo_root)
         name = rel.parent.name
         # shell.html im gleichen Verzeichnis?
