@@ -160,6 +160,51 @@ def test_should_genesor_sync_canonical_source_be_importable_with_correct_interfa
     assert "buerger" in names
 
 
+def test_should_skip_klickdummy_sync_spec_missing_required_fields(
+    tmp_path, capsys, monkeypatch
+):
+    """klickdummy_sync.py main() (Issue #138): eine Spec ohne spec_id/screens wird
+    sichtbar uebersprungen statt ein Issue mit leerem Titel zu erzeugen — Mindest-
+    Sanity-Check ohne jsonschema-Dependency (Script bleibt Zero-Extra-Dependency)."""
+    import importlib.util
+    import sys
+
+    src_path = (
+        files("iil_klickdummy") / "snippets" / "genesor-sync" / "klickdummy_sync.py"
+    )
+    module_file = tmp_path / "klickdummy_sync_2.py"
+    module_file.write_text(src_path.read_text())
+    spec = importlib.util.spec_from_file_location("klickdummy_sync_guard", module_file)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    repo_dir = tmp_path / "repo"
+    (repo_dir / "klickdummy" / "broken-kd").mkdir(parents=True)
+    (repo_dir / "klickdummy" / "broken-kd" / "screens-spec.yaml").write_text(
+        "title: Kaputt\n"  # kein spec_id, keine screens
+    )
+    (repo_dir / "klickdummy" / "ok-kd").mkdir(parents=True)
+    (repo_dir / "klickdummy" / "ok-kd" / "screens-spec.yaml").write_text(
+        "spec_id: repo:klickdummy-spec-ok-kd\ntitle: OK\nscreens: [{id: s1}]\n"
+    )
+    mod.ROOT = repo_dir
+    monkeypatch.setattr(mod, "REPO", "iilgmbh/iil-klickdummy")
+
+    calls = []
+    monkeypatch.setattr(
+        mod, "upsert_issue", lambda *a, **kw: (calls.append(a[0]), None)[1]
+    )
+    monkeypatch.setattr(mod, "add_to_project", lambda *a, **kw: None)
+    monkeypatch.setattr(sys, "argv", ["klickdummy_sync.py", "--dry-run"])
+
+    rc = mod.main()
+
+    assert rc == 0
+    assert calls == ["ok-kd"]  # NUR die valide Spec erreicht upsert_issue
+    err = capsys.readouterr().err
+    assert "SKIP broken-kd: Pflichtfelder fehlen" in err
+
+
 def test_widget_js_v05_features():
     """Widget v0.5 must have all v0.2-v0.4 features + GitHub-Direct-API."""
     js = (

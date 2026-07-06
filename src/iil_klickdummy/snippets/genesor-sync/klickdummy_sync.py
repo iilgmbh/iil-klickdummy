@@ -350,6 +350,17 @@ def main() -> int:
         except yaml.YAMLError as e:
             print(f"SKIP {kd_name}: YAML-Parse-Fehler: {e}", file=sys.stderr)
             continue
+        # Mindest-Sanity-Check (Issue #138): keine volle jsonschema-Validierung
+        # (dieses Script bleibt bewusst Zero-Extra-Dependency, s. Docstring) —
+        # nur dieselbe Pflichtfeld-Praesenzpruefung wie registry.py._load_spec
+        # nutzt, damit eine leere/kaputte Spec nicht ein Issue mit leerem Titel
+        # erzeugt statt sichtbar uebersprungen zu werden.
+        if not data.get("spec_id") or not data.get("screens"):
+            print(
+                f"SKIP {kd_name}: Pflichtfelder fehlen (spec_id/screens) — {spec_path}",
+                file=sys.stderr,
+            )
+            continue
         issue_num = upsert_issue(kd_name, spec_path, data, dry_run=args.dry_run)
         if issue_num and not args.dry_run:
             add_to_project(issue_num, dry_run=args.dry_run)
