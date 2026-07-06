@@ -21,6 +21,13 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ### Security
 
+- **AD-6-Nachtrag (Retro 2026-07-06, Befund 8):** `registry.discover_klickdummies`
+  validiert Specs jetzt ebenfalls weich gegen `screens-spec.schema.json` (warnt
+  auf stderr, schließt die KD nie aus) — bisher deckte der AD-6-Fix (PR #136)
+  nur den genesor-Scan-Pfad, nicht das `klickdummy-browser`-Tool. Bewusst NICHT
+  angefasst: `klickdummy_sync.py` (Zero-Dependency-Standalone-Script, vendored
+  in Consumer-Repos — Schema-Validierung dort wäre eine Architektur-Entscheidung,
+  s. Issue #138).
 - **AD-6 (Issue #103, Session-Retro 2026-07-03):** `genesor/scan.py` validiert
   Specs jetzt gegen `screens-spec.schema.json` (geteilter Helfer `validate_spec`,
   nach `read_model.py` verschoben, von `gen_e2e.load_spec` wiederverwendet) —

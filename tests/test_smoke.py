@@ -222,6 +222,29 @@ def test_v11_registry_discover_empty_repo(tmp_path):
     assert result == []
 
 
+def test_should_warn_but_not_exclude_non_conforming_kd(capsys, tmp_path):
+    """AD-6/#103-Nachtrag (Retro 2026-07-06, Befund 8): discover_klickdummies
+    warnt jetzt bei Schema-Verstoß, schließt die KD aber nicht aus — analog
+    zum genesor-Scan-Pfad (scan.py::_warn_schema_violations)."""
+    import yaml
+
+    from iil_klickdummy import registry
+
+    kd_dir = tmp_path / "klickdummy" / "broken-kd"
+    kd_dir.mkdir(parents=True)
+    (kd_dir / "screens-spec.yaml").write_text(
+        yaml.safe_dump({"spec_id": "repo:klickdummy-spec-broken-kd"}),
+        encoding="utf-8",
+    )
+
+    result = registry.discover_klickdummies(tmp_path)
+
+    assert len(result) == 1  # NICHT ausgeschlossen
+    assert result[0].name == "broken-kd"
+    err = capsys.readouterr().err
+    assert "Schema-Verstoß" in err
+
+
 def test_v11_registry_render_browser_html(tmp_path):
     from iil_klickdummy import registry
 
