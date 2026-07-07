@@ -5,6 +5,8 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.32.0] — 2026-07-07
+
 ### Added
 
 - **`klickdummy-gen-sitemap`** (extrahiert aus risk-hub `scripts/gen_kd_sitemap.py`,
