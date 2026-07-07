@@ -70,6 +70,43 @@ def test_generate_builds_parent_child_tree_and_flags_orphan(tmp_path):
     assert lonely["parent"] is None and lonely["role"] != "root"
 
 
+def test_rerun_without_content_change_is_byte_identical(tmp_path):
+    """Determinismus-Regression: ein zweiter Lauf ohne Spec-Änderung darf
+    screens-spec.yaml NICHT verändern (spec_date darf nicht auf 'heute'
+    weiterdrehen) — sonst driftet die SHA256 in abhängigen generierten
+    Dateien (klickdummy-gen-e2e) bei jedem CI-Rerun ohne echten Grund."""
+    from iil_klickdummy import gen_sitemap
+
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    first = (kd_root / "sitemap" / "screens-spec.yaml").read_text()
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    second = (kd_root / "sitemap" / "screens-spec.yaml").read_text()
+
+    assert first == second
+
+
+def test_rerun_preserves_original_spec_date_even_with_new_content(tmp_path):
+    from iil_klickdummy import gen_sitemap
+
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    first_spec = yaml.safe_load((kd_root / "sitemap" / "screens-spec.yaml").read_text())
+
+    # Neuer Knoten dazu — Baum ändert sich, aber spec_date der Sitemap selbst bleibt.
+    _write_spec(kd_root, "hub2", _root_spec("acme:klickdummy-spec-hub2", "Hub2"))
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    second_spec = yaml.safe_load(
+        (kd_root / "sitemap" / "screens-spec.yaml").read_text()
+    )
+
+    assert second_spec["spec_date"] == first_spec["spec_date"]
+
+
 def test_generate_writes_all_artifacts_with_repo_name_not_hardcoded(tmp_path):
     from iil_klickdummy import gen_sitemap
 

@@ -303,10 +303,28 @@ def generate(
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_text(_render_sitemap(tree, name), encoding="utf-8")
     (out_dir / "screens-spec.yaml").write_text(
-        _render_sitemap_spec(name, adr_local, datetime.date.today().isoformat()),
+        _render_sitemap_spec(
+            name, adr_local, _stable_spec_date(out_dir / "screens-spec.yaml")
+        ),
         encoding="utf-8",
     )
     return tree
+
+
+def _stable_spec_date(existing_spec_path: pathlib.Path) -> str:
+    """Determinismus (ADR-211 §Executable-Parity-Bridge): ein Rerun ohne bewusste
+    Content-Änderung darf `spec_date` NICHT auf 'heute' weiterdrehen — das ließe die
+    Spec-SHA256 in abhängigen generierten Dateien (z.B. `klickdummy-gen-e2e`-Output)
+    bei jedem CI-Lauf driften, ohne dass sich real etwas geändert hat. Erhält das
+    Datum aus der bestehenden Datei, falls vorhanden; nur bei Erstanlage 'heute'."""
+    if existing_spec_path.exists():
+        try:
+            existing = yaml.safe_load(existing_spec_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            existing = None
+        if isinstance(existing, dict) and existing.get("spec_date"):
+            return str(existing["spec_date"])
+    return datetime.date.today().isoformat()
 
 
 def main(argv: list[str]) -> int:

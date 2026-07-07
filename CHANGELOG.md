@@ -5,6 +5,21 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.32.1] — 2026-07-07
+
+### Fixed
+
+- **`klickdummy-gen-sitemap` Determinismus-Bug** (gefunden bei der ersten
+  echten Adoption in risk-hub, `klickdummy-parity-drift` schlug rot):
+  `spec_date` wurde bei **jedem** Lauf auf `datetime.date.today()` gesetzt,
+  auch ohne inhaltliche Änderung — das ließ die Spec-SHA256 im abhängigen
+  `klickdummy-gen-e2e`-Output bei jedem CI-Rerun driften (ADR-211
+  §Executable-Parity-Bridge verlangt Determinismus, kein Zeitstempel-Rauschen).
+  Fix: `spec_date` wird aus einer bestehenden `sitemap/screens-spec.yaml`
+  übernommen, wenn vorhanden — nur bei Erstanlage `heute`. Zwei Regressions-
+  tests ergänzt (byte-identischer Rerun; Datum bleibt stabil auch wenn sich
+  der KD-Baum ändert).
+
 ## [1.32.0] — 2026-07-07
 
 ### Added
