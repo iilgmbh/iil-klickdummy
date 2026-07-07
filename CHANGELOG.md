@@ -5,6 +5,21 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+### Added
+
+- **`klickdummy-gen-sitemap`** (extrahiert aus risk-hub `scripts/gen_kd_sitemap.py`,
+  Rev 13): repo-agnostischer Sitemap-/`kd-tree.json`-Generator. CLI:
+  `klickdummy-gen-sitemap <repo_root> <adr_local> [repo_name]`. Baut die KD-Baum-
+  Hierarchie aus `kd_children`, rendert `klickdummy/sitemap/index.html` +
+  `screens-spec.yaml` (ADR-211 I1) + `klickdummy/_shared/kd-tree.{json,js}`.
+  Repo-Name/ADR-Referenz sind jetzt Parameter statt hartkodiert (risk-hub hatte
+  "risk-hub" + `risk-hub:ADR-046` fest verdrahtet) — folgt der Extraktions-
+  Konvention aus Rev 15 (`gen_stories_manifest.py`-Vorbild). Motivation: risk-hub-
+  Sitemap war 6 Wochen alt und fehlte die halbe DSB-KD-Welle, weil das Skript nur
+  repo-lokal existierte und niemand zuverlässig daran dachte, es neu laufen zu
+  lassen — Cross-Repo-Verfügbarkeit ist Vorbedingung für das geplante CI-Freshness-
+  Gate (ADR-211 Amendment, separater platform-PR).
+
 ### Fixed
 
 - **Retro-Nachtrag 2026-07-06 (Befunde 6/7/9/10):** `read_model.py` guardet den
