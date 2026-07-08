@@ -39,10 +39,22 @@ jobs:
         run: pip install --upgrade build
       - name: Build wheel + sdist
         run: python -m build
-      - name: Smoke tests
+      - name: Smoke tests (gegen gebautes Wheel, nicht src/)
         run: |
-          pip install pytest pyyaml jsonschema
-          PYTHONPATH=src python -m pytest tests/ -q
+          # PYTHONPATH=src testete bisher nur den Quellbaum — ein package-data-
+          # Fehler (schemas/, snippets/; pyproject.toml [tool.setuptools.package-data])
+          # wäre erst beim Adopter aufgefallen (T-04, Issue #108). Echtes Wheel
+          # installieren + Package-Data-Zugriff verifizieren, dann Tests dagegen laufen.
+          pip install dist/*.whl
+          pip install pytest pytest-cov
+          python -c "
+          import iil_klickdummy
+          from importlib.resources import files
+          schema = files('iil_klickdummy.schemas').joinpath('screens-spec.schema.json')
+          assert schema.is_file(), 'package-data missing from wheel: screens-spec.schema.json'
+          print('OK: wheel package-data present:', schema)
+          "
+          python -m pytest tests/ -q
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: dist
