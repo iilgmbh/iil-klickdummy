@@ -7,32 +7,34 @@
   "required": ["screen", "category", "text", "spec_id", "spec_version", "klickdummy_class", "timestamp"],
   "additionalProperties": false,
   "properties": {
-    "screen": { "type": ["string", "null"] },
-    "persona": { "type": ["string", "null"] },
-    "verfahren": { "type": ["string", "null"] },
-    "feedback_scope": { "type": "string", "enum": ["app", "klickdummy-tool"], "default": "app" },
+    "screen": { "type": ["string", "null"], "description": "Screen-ID (aus `data-screen` des aktiven `<section>`), auf dem das Feedback abgegeben wurde. `null` wenn außerhalb eines Screens." },
+    "persona": { "type": ["string", "null"], "description": "Aktuell gewählte Persona (aus `data-persona` am `<body>`), falls der Klickdummy einen Persona-Switcher hat." },
+    "verfahren": { "type": ["string", "null"], "description": "Optional: Fachverfahren-Kontext (aus `data-verfahren` am `<body>`) für Klickdummies, die mehrere Fachverfahren bündeln." },
+    "feedback_scope": { "type": "string", "enum": ["app", "klickdummy-tool"], "default": "app", "description": "Ob sich das Feedback auf die Fachanwendung (`app`, Default) oder auf das Klickdummy-Werkzeug selbst (`klickdummy-tool`, z. B. Widget-Bug) bezieht." },
     "category": { "type": "string", "description": "Repo-konfigurierbar via KLICKDUMMY_CATEGORIES; Default 5: bug|feature|ux|spec|ki" },
-    "text": { "type": "string", "minLength": 1 },
-    "related_screens": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "text": { "type": "string", "minLength": 1, "description": "Der eigentliche Feedback-Text (Pflichtfeld, mind. 1 Zeichen)." },
+    "related_screens": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Optional: weitere Screen-IDs, die vom Feedback mitbetroffen sind (User-Auswahl im Widget)." },
     "related_actions": {
       "type": "array",
+      "description": "Optional: konkrete Aktionen/Buttons, auf die sich das Feedback bezieht.",
       "items": {
         "type": "object",
         "required": ["label"],
-        "properties": { "label": { "type": "string" }, "target": { "type": ["string", "null"] } }
+        "properties": { "label": { "type": "string", "description": "Anzeigename der betroffenen Aktion." }, "target": { "type": ["string", "null"], "description": "Optionales Ziel der Aktion (z. B. Ziel-Screen-ID oder URL)." } }
       },
       "default": []
     },
-    "dom_snapshot": { "type": ["string", "null"] },
-    "spec_id": { "type": "string" },
-    "spec_version": { "type": "string" },
-    "klickdummy_class": { "type": "string", "enum": ["mock", "stub-demo", "story", "spec-demo"] },
-    "user_agent": { "type": ["string", "null"] },
+    "dom_snapshot": { "type": ["string", "null"], "description": "Optional, nur wenn User die Snapshot-Checkbox aktiviert: bereinigtes HTML (ohne `<script>`/`<style>`/`onclick`) des aktiven Screens, auf 8192 Zeichen gekappt — Kontext für UI-Feedback ohne Screenshot." },
+    "spec_id": { "type": "string", "description": "`spec_id` der Ursprungs-Spec (aus `window.KLICKDUMMY_SPEC.id`) — verankert das Feedback am richtigen Klickdummy." },
+    "spec_version": { "type": "string", "description": "`spec_version` zum Zeitpunkt des Feedbacks (aus `window.KLICKDUMMY_SPEC.version`) — zeigt, gegen welchen Spec-Stand das Feedback gilt." },
+    "klickdummy_class": { "type": "string", "enum": ["mock", "stub-demo", "story", "spec-demo"], "description": "I2-Klasse des Klickdummies zum Zeitpunkt des Feedbacks (aus `window.KLICKDUMMY_SPEC.klickdummy_class`)." },
+    "user_agent": { "type": ["string", "null"], "description": "Optional: `navigator.userAgent` des Feedback-Gebers — Diagnose bei browserspezifischen UI-Problemen." },
     "viewport": {
       "type": "object",
-      "properties": { "w": { "type": "integer" }, "h": { "type": "integer" } }
+      "description": "Optional: Fenstergröße zum Zeitpunkt des Feedbacks — Diagnose bei responsive/Layout-Problemen.",
+      "properties": { "w": { "type": "integer", "description": "Viewport-Breite in Pixel." }, "h": { "type": "integer", "description": "Viewport-Höhe in Pixel." } }
     },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "url": { "type": "string" }
+    "timestamp": { "type": "string", "format": "date-time", "description": "ISO-8601-Zeitpunkt der Feedback-Abgabe (clientseitig erzeugt)." },
+    "url": { "type": "string", "description": "Optional: die volle Browser-URL, unter der das Feedback abgegeben wurde." }
   }
 }
