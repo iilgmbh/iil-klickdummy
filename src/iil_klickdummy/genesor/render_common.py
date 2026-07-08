@@ -7,10 +7,33 @@ einzige Anpassungen: _cfg→get_cfg() (Importbindung) und __file__-Pfadtiefe.
 from __future__ import annotations
 
 import html
+import re
+from datetime import date
 from pathlib import Path
 from ..gen_e2e import is_fragile_selector, render_assertion
 from .config import SKIN_LIBRARY_REL, _skin_url
 from .scan import detect_org
+
+# Maschinenlesbarer Marker fürs "Build:"-Datum in generierten HTML-Artefakten.
+BUILD_DATE_MARKER_RE = re.compile(r"<!-- build-date:(\d{4}-\d{2}-\d{2}) -->")
+
+
+def stable_build_date(existing_html_path: Path) -> str:
+    """Determinismus (S-04, Issue #115): ein Rerun ohne inhaltliche Änderung
+    darf das eingebettete "Build:"-Datum NICHT auf 'heute' weiterdrehen — das
+    erzeugt sonst tägliches Diff-Rauschen im Auto-Publish-Pfad, obwohl sich
+    nichts geändert hat (analog zu `gen_sitemap._stable_spec_date`, PR #145).
+    Liest das Datum aus dem `<!-- build-date:YYYY-MM-DD -->`-Marker der
+    vorhandenen Datei, falls vorhanden; nur bei Erstanlage 'heute'."""
+    if existing_html_path.exists():
+        try:
+            existing = existing_html_path.read_text(encoding="utf-8")
+        except OSError:
+            existing = ""
+        m = BUILD_DATE_MARKER_RE.search(existing)
+        if m:
+            return m.group(1)
+    return date.today().isoformat()
 
 
 # Kanonisches Feedback-Widget (widget.js, PAT-Modal + GitHub-direct) — wird in den

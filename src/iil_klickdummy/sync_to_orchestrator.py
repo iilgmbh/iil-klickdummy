@@ -36,7 +36,6 @@ import os
 import pathlib
 import re
 import sys
-from datetime import datetime, timezone
 
 from .registry import discover_klickdummies, discover_versions
 
@@ -104,7 +103,6 @@ def klickdummy_entry(km, org: str, repo: str, repo_root: pathlib.Path) -> dict:
         f"## Versions-History\n{versions_block}\n\n"
         f"## Sync-Quelle\n"
         f"- Repo: `{org}/{repo}`\n"
-        f"- Sync-Zeit: {datetime.now(timezone.utc).isoformat()}\n"
     )
     tags = [
         "klickdummy",

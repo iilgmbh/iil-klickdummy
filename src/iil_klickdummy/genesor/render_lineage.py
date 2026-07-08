@@ -52,6 +52,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <header>
   <h1>🌐 Klickdummy-Lineage · meiki-hub</h1>
   <span class="meta">{stats_inline} · auto-generated {date}</span>
+  <!-- build-date:{date} -->
 </header>
 
 <main>
@@ -177,7 +178,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 
 def build_html(
-    mermaid_text: str, specs: list[tuple[str, Path, dict]], contracts: dict
+    mermaid_text: str,
+    specs: list[tuple[str, Path, dict]],
+    contracts: dict,
+    build_date: str | None = None,
 ) -> str:
     from datetime import date
 
@@ -203,7 +207,7 @@ def build_html(
     return HTML_TEMPLATE.format(
         mermaid=mermaid_text,
         kd_options=kd_options,
-        date=date.today().isoformat(),
+        date=build_date or date.today().isoformat(),
         stats_inline=stats_inline,
         stats_full=stats_full,
     )
@@ -362,10 +366,17 @@ def generate_per_repo_lineages(records: list[dict], out_dir: Path) -> list[Path]
 
 
 def build_screen_lineage_html(
-    repo: str, kd_name: str, spec_data: dict, profile: str, style: dict
+    repo: str,
+    kd_name: str,
+    spec_data: dict,
+    profile: str,
+    style: dict,
+    build_date: str | None = None,
 ) -> str:
     """Standalone HTML-Page mit eingebettetem Mermaid-Screen-Lineage."""
     from datetime import date
+
+    resolved_date = build_date or date.today().isoformat()
 
     mermaid_body = emit_screen_lineage(spec_data)
     screens = spec_data.get("screens") or []
@@ -420,8 +431,9 @@ def build_screen_lineage_html(
   </table>
 </div>
 <p style="color:#9ca3af;font-size:11px;margin-top:14px;">
-  Auto-generiert aus <code>{html.escape(repo)}/klickdummy/{html.escape(kd_name)}/screens-spec.yaml</code>. Build: {date.today().isoformat()}.
+  Auto-generiert aus <code>{html.escape(repo)}/klickdummy/{html.escape(kd_name)}/screens-spec.yaml</code>. Build: {resolved_date}.
 </p>
+<!-- build-date:{resolved_date} -->
 </main>
 <script>
   mermaid.initialize({{

@@ -1323,7 +1323,10 @@ document.querySelectorAll('th.sortable').forEach(th => {
 
 
 def build_genesor_html(
-    records: list[dict], uc_coverage: dict | None = None, n_ucs: int = 0
+    records: list[dict],
+    uc_coverage: dict | None = None,
+    n_ucs: int = 0,
+    build_date: str | None = None,
 ) -> str:
     """Cross-Repo Übersichts-HTML — klickbare Tabelle mit Detail-Panel pro KD.
 
@@ -1332,6 +1335,8 @@ def build_genesor_html(
     """
     from datetime import date
     from collections import defaultdict
+
+    resolved_date = build_date or date.today().isoformat()
 
     # KD-ADR-Registry für Dangling-Ref-Check (F3)
     kd_registry = build_kd_registry(records)
@@ -1391,7 +1396,8 @@ def build_genesor_html(
 
     return (
         _GENESOR_HEAD
-        + f"""    <div class="sub">Cross-Repo · auto-generiert · {date.today().isoformat()} · Stufe 1a (statisch)</div>
+        + f"""    <div class="sub">Cross-Repo · auto-generiert · {resolved_date} · Stufe 1a (statisch)</div>
+    <!-- build-date:{resolved_date} -->
     <div class="sub" style="margin-top:4px;"><a href="./coverage.html" style="color:#06c;text-decoration:none;">📊 UC ↔ KD Coverage</a> · {n_ucs} Use Cases erfasst</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;color:#fff;">

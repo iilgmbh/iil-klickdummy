@@ -94,6 +94,7 @@ from .genesor.render_common import (  # noqa: E402,F401
     build_skin_switcher_html,
     build_trace_strip,
     skin_library,
+    stable_build_date,
 )
 from .genesor.render_fallback import (  # noqa: E402,F401
     RENDER_FALLBACK_TEMPLATE,
@@ -390,15 +391,17 @@ def main() -> int:
         if not rec:
             print(f"❌ KD nicht gefunden: {repo_a}:{kd_a}")
             return 1
-        brief_md = build_impl_brief(rec, screen_a)
+        out_dir = _cfg.genesor_out / "impl-brief"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_file = out_dir / f"{repo_a}-{kd_a}-{screen_a}.md"
+        brief_md = build_impl_brief(
+            rec, screen_a, build_date=stable_build_date(out_file)
+        )
         if brief_md is None:
             print(
                 f"❌ Screen '{screen_a}' hat kein `implementation_brief`-Block ODER existiert nicht"
             )
             return 1
-        out_dir = _cfg.genesor_out / "impl-brief"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_file = out_dir / f"{repo_a}-{kd_a}-{screen_a}.md"
         out_file.write_text(brief_md, encoding="utf-8")
         print(f"✓ {out_file} ({len(brief_md)} chars)")
         return 0
@@ -491,8 +494,13 @@ def main() -> int:
                 f"Single-Repo · gefundene Klickdummies: {len(specs)} · Contracts: {len(contracts)}"
             )
             mermaid_text = emit_mermaid(specs, contracts)
-            html_text = build_html(mermaid_text, specs, contracts)
             OUT_DIR.mkdir(parents=True, exist_ok=True)
+            html_text = build_html(
+                mermaid_text,
+                specs,
+                contracts,
+                build_date=stable_build_date(OUT_DIR / "index.html"),
+            )
             (OUT_DIR / "lineage.mmd").write_text(mermaid_text, encoding="utf-8")
             (OUT_DIR / "index.html").write_text(html_text, encoding="utf-8")
             print(f"✓ {OUT_DIR / 'lineage.mmd'}")
@@ -555,10 +563,6 @@ def main() -> int:
                 if not isinstance(s, dict) or not s.get("implementation_brief"):
                     continue
                 sid = s.get("id")
-                brief_md = build_impl_brief(rec, sid)
-                if not brief_md:
-                    continue
-                impl_briefs_dir.mkdir(parents=True, exist_ok=True)
                 # S-03: sid/repo/kd file-sicher machen (Path-Traversal-Schutz).
                 # sid bleibt für den Render (build_impl_brief*) unverändert — dort
                 # wird es via html.escape ausgegeben (S-02-Pfad).
@@ -566,16 +570,26 @@ def main() -> int:
                     f"{_safe_seg(rec['repo'])}-{_safe_seg(rec['kd'])}-{_safe_seg(sid)}"
                 )
                 out_file = impl_briefs_dir / f"{fseg}.md"
+                html_out_file = _cfg.genesor_out / f"impl-brief-{fseg}.html"
+                brief_build_date = stable_build_date(out_file)
+                brief_md = build_impl_brief(rec, sid, build_date=brief_build_date)
+                if not brief_md:
+                    continue
+                impl_briefs_dir.mkdir(parents=True, exist_ok=True)
                 out_file.write_text(brief_md, encoding="utf-8")
                 # HTML-Render daneben (CD aus doc-profile)
                 profile_ib = read_doc_profile(_cfg.repos_root / rec["repo"])
                 style_ib = _DOMAIN_STYLES.get(profile_ib, _DOMAIN_STYLES["default"])
                 html_out_ib = build_impl_brief_html(
-                    brief_md, rec["repo"], rec["kd"], sid, profile_ib, style_ib
+                    brief_md,
+                    rec["repo"],
+                    rec["kd"],
+                    sid,
+                    profile_ib,
+                    style_ib,
+                    build_date=stable_build_date(html_out_file),
                 )
-                (_cfg.genesor_out / f"impl-brief-{fseg}.html").write_text(
-                    html_out_ib, encoding="utf-8"
-                )
+                html_out_file.write_text(html_out_ib, encoding="utf-8")
                 n_briefs += 1
         if n_briefs:
             print(f"✓ {n_briefs} Implementation-Brief(s) in {impl_briefs_dir}/")
@@ -592,12 +606,16 @@ def main() -> int:
             kd_kd = rec["kd"]
             profile_sl = read_doc_profile(_cfg.repos_root / repo_kd)
             style_sl = _DOMAIN_STYLES.get(profile_sl, _DOMAIN_STYLES["default"])
+            sl_out_file = _cfg.genesor_out / f"screen-lineage-{repo_kd}-{kd_kd}.html"
             html_out_sl = build_screen_lineage_html(
-                repo_kd, kd_kd, d, profile_sl, style_sl
+                repo_kd,
+                kd_kd,
+                d,
+                profile_sl,
+                style_sl,
+                build_date=stable_build_date(sl_out_file),
             )
-            (_cfg.genesor_out / f"screen-lineage-{repo_kd}-{kd_kd}.html").write_text(
-                html_out_sl, encoding="utf-8"
-            )
+            sl_out_file.write_text(html_out_sl, encoding="utf-8")
             n_screen_lineage += 1
         if n_screen_lineage:
             print(f"✓ {n_screen_lineage} Screen-Lineage-Pages in {_cfg.genesor_out}/")
@@ -608,8 +626,11 @@ def main() -> int:
         # UC-Coverage (ADR-211 Rev 16 §UC-Coverage) — cross-repo Heatmap
         ucs = find_all_repos_ucs()
         coverage = build_uc_coverage(ucs, records)
-        coverage_html = build_coverage_html(ucs, records, coverage)
-        (_cfg.genesor_out / "coverage.html").write_text(coverage_html, encoding="utf-8")
+        coverage_out_file = _cfg.genesor_out / "coverage.html"
+        coverage_html = build_coverage_html(
+            ucs, records, coverage, build_date=stable_build_date(coverage_out_file)
+        )
+        coverage_out_file.write_text(coverage_html, encoding="utf-8")
         n_realized = sum(1 for v in coverage["uc_realized_count"].values() if v > 0)
         n_cells = sum(len(v) for v in coverage["matrix"].values())
         print(
@@ -634,12 +655,16 @@ def main() -> int:
         for u in ucs:
             ucs_by_repo.setdefault(u["repo"], []).append(u)
         for repo_name, ucs_for_repo in ucs_by_repo.items():
+            uc_idx_out_file = _cfg.genesor_out / f"uc-{repo_name}.html"
             uc_idx_html = build_repo_uc_index_html(
-                repo_name, ucs_for_repo, coverage, kds=records, validation=uc_findings
+                repo_name,
+                ucs_for_repo,
+                coverage,
+                kds=records,
+                validation=uc_findings,
+                build_date=stable_build_date(uc_idx_out_file),
             )
-            (_cfg.genesor_out / f"uc-{repo_name}.html").write_text(
-                uc_idx_html, encoding="utf-8"
-            )
+            uc_idx_out_file.write_text(uc_idx_html, encoding="utf-8")
             print(
                 f"✓ {_cfg.genesor_out / ('uc-' + repo_name + '.html')} ({len(ucs_for_repo)} UCs)"
             )
@@ -651,8 +676,14 @@ def main() -> int:
         print(f"✓ {_cfg.genesor_out / 'uc-export.json'} ({len(export_json)} chars)")
 
         # Genesor-Übersicht
-        genesor_html = build_genesor_html(records, uc_coverage=coverage, n_ucs=len(ucs))
-        (_cfg.genesor_out / "index.html").write_text(genesor_html, encoding="utf-8")
+        genesor_out_file = _cfg.genesor_out / "index.html"
+        genesor_html = build_genesor_html(
+            records,
+            uc_coverage=coverage,
+            n_ucs=len(ucs),
+            build_date=stable_build_date(genesor_out_file),
+        )
+        genesor_out_file.write_text(genesor_html, encoding="utf-8")
         print(f"✓ {_cfg.genesor_out / 'index.html'}")
 
         # ---- Smoke-Test (Standard nach jeder --genesor-Run) ------------------
