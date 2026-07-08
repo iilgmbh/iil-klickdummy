@@ -15,6 +15,7 @@ DEFAULT_REPOS = [
     "pptx-hub",
     "dev-hub",
     "ttz-hub",
+    "iil-klickdummy",
 ]
 LEGACY_PATTERN = re.compile(r"mock-prototyp|demo-render")
 INCLUDE_EXT = {".yaml", ".yml", ".json", ".md", ".html", ".py"}
@@ -25,8 +26,19 @@ EXCLUDE_PATH_PARTS = {
     "build",
     "dist",
     "_archiv",
+    # Test-Fixtures konstruieren absichtlich Fake-Legacy-Text (z. B.
+    # test_analyse_reste.py), sind aber keine echten Drift-Treffer in
+    # Produktions-Specs — mit iil-klickdummy im Self-Scan (A-05) sonst
+    # ein garantierter False-Positive.
+    "tests",
 }
-EXCLUDE_FILES_SUFFIX = ("feedback-log.md",)
+EXCLUDE_FILES_SUFFIX = (
+    "feedback-log.md",
+    # inventory.py definiert LEGACY_PATTERN/INTENTIONAL_LINE_PATTERNS mit den
+    # Such-Strings als Regex-Literalen — Selbst-Scan sonst garantierter
+    # False-Positive auf die eigene Musterdefinition (A-05).
+    "inventory.py",
+)
 INTENTIONAL_LINE_PATTERNS = [
     re.compile(r"LEGACY\s*=\s*\{"),
     re.compile(r'"mock-prototyp"\s*:\s*"mock"'),

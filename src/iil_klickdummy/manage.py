@@ -171,6 +171,7 @@ def cmd_status(args) -> int:
 
     print("== klickdummy-manage status ==", file=sys.stderr)
     healthy = 0
+    warned_kds = 0
     warnings: list[str] = []
     for org, repo, km in triples:
         topic = _spec_topic(base / repo / km.path)
@@ -195,11 +196,12 @@ def cmd_status(args) -> int:
         if not msgs:
             healthy += 1
             continue
+        warned_kds += 1
         warnings.append(f"  {org}/{repo}:{km.name} (v{km.spec_version})")
         for m in msgs:
             warnings.append(f"    {m}")
     print(f"  Healthy:  {healthy}", file=sys.stderr)
-    print(f"  Warnings: {(len(warnings) // 2) if warnings else 0}", file=sys.stderr)
+    print(f"  Warnings: {warned_kds}", file=sys.stderr)
     if warnings:
         print()
         for w in warnings:

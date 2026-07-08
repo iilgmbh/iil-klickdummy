@@ -52,6 +52,30 @@ def local_adr_set(root: pathlib.Path) -> set[str]:
     return out
 
 
+def _code_block_mask(lines: list[str], suffix: str) -> list[bool]:
+    """True je Zeile, wenn sie in einem Markdown-Fence (```) oder HTML
+    <pre>/<code>-Block liegt — Ausnahme (c): Schema-Beispielzeilen in
+    Doku-Code-Blöcken sind keine echten Cross-Repo-Refs."""
+    mask = [False] * len(lines)
+    if suffix == ".md":
+        fenced = False
+        for i, line in enumerate(lines):
+            if line.strip().startswith("```"):
+                fenced = not fenced
+                mask[i] = True  # Fence-Zeile selbst zählt als "im Block"
+                continue
+            mask[i] = fenced
+    elif suffix == ".html":
+        depth = 0
+        open_re = re.compile(r"<(?:pre|code)\b", re.IGNORECASE)
+        close_re = re.compile(r"</(?:pre|code)>", re.IGNORECASE)
+        for i, line in enumerate(lines):
+            mask[i] = depth > 0 or bool(open_re.search(line))
+            depth += len(open_re.findall(line)) - len(close_re.findall(line))
+            depth = max(depth, 0)
+    return mask
+
+
 def check_file(path: pathlib.Path, local: set[str]) -> list[tuple[int, str, str]]:
     """Gibt (zeilen_nr, treffer, hinweis)-Liste zurück; leer = ok."""
     findings: list[tuple[int, str, str]] = []
@@ -59,7 +83,11 @@ def check_file(path: pathlib.Path, local: set[str]) -> list[tuple[int, str, str]
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return findings
-    for lineno, line in enumerate(text.splitlines(), start=1):
+    lines = text.splitlines()
+    in_code_block = _code_block_mask(lines, path.suffix)
+    for lineno, line in enumerate(lines, start=1):
+        if in_code_block[lineno - 1]:
+            continue  # (c) Code-/Pre-Block-Ausnahme
         for m in ADR_PATTERN.finditer(line):
             adr = m.group("adr")
             prefix = m.group("prefix")
