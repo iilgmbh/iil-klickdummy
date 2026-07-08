@@ -55,11 +55,15 @@ def main(argv: list[str]) -> int:
         if src.is_file():
             dst.parent.mkdir(parents=True, exist_ok=True)
             if args.symlink:
-                # Resolve the underlying filesystem path of the package resource
-                with files("iil_klickdummy").joinpath("snippets") as base_path:
-                    rel = Path(str(src)).relative_to(base_path)
-                    real = Path(str(base_path)) / rel
-                    dst.symlink_to(real)
+                # Resolve the underlying filesystem path of the package resource.
+                # `Path` as its own context manager is a no-op deprecated since
+                # 3.12 (removed 3.13) — no `as_file()` extraction needed here
+                # since this package ships unzipped, so `base_path` is already
+                # a real filesystem Path.
+                base_path = files("iil_klickdummy").joinpath("snippets")
+                rel = Path(str(src)).relative_to(base_path)
+                real = Path(str(base_path)) / rel
+                dst.symlink_to(real)
             else:
                 dst.write_bytes(src.read_bytes())
             print(f"  ✓ {dst.relative_to(tgt)}")
