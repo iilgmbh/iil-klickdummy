@@ -4,6 +4,25 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-08, Qualitäts-Backlog + Publish-Härtung abgearbeitet)
+
+**Prio 1+2 aus der Reconciliation unten komplett erledigt** via `/issues-offen` (Skill-Cap
+5 Issues/Lauf ausgeschöpft) — 5 PRs, alle CI-grün gemergt: **#148** (#107, Actions-SHA-Pinning
+publish-pypi.yml/stale.yml), **#149** (#112, Makefile+CONTRIBUTING.md — venv-basiert, spiegelt
+`_ci-pypi.yml`), **#150** (#111, `[tool.ruff]` target-version=py310 + `filterwarnings =
+["error::DeprecationWarning"]` — die 11 Bestandsfehler aus dem Ursprungsbefund waren bereits
+anderweitig behoben, verifiziert vor der Änderung), **#151** (#109, 31 Smoke-Tests für 13
+zuvor ungetestete `genesor/`-Module), **#152** (#110, T-01/T-02/R12 CLI-Fehlerzweige +
+`main_cli()`-Invocation-Tests — deckte dabei einen echten Bug auf: `install_snippets.py`s
+`--symlink`-Pfad nutzte ein deprecated `Path`-als-Context-Manager-Pattern, das mit #150s neuem
+`filterwarnings`-Gate hart gebrochen wäre; im selben PR gefixt, Kombi-Testlauf verifiziert).
+
+**Noch offen (nächster `/issues-offen`-Lauf, Cap erreicht):** #108 (Publish-Smoke gegen Wheel),
+#113 (7 YAML-Loader konsolidieren — Precondition erst NACH #95-#99 prüfen), #114
+(Kleinteiliges), #115 (Determinismus `date.today()`), #116 (Schema-Descriptions).
+
+Volle Suite nach allen 5 Merges: 261/261 grün, `ruff check`+`format` clean (main @ `a7ffd0b`).
+
 ## ⚡ Aktueller Stand (2026-07-08, Session-Start Reconciliation)
 
 **Drift gefunden (Phase-2.6-Guard):** die 2026-07-05/06-Prio-1 ("Issue #138 entscheiden") war
@@ -147,10 +166,11 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | **Qualitäts-Backlog Rest**: #109 (genesor-Tests, 13 Module ohne Tests), #110 (CLI-Fehlerzweige ungetestet), #111 (ruff-Gate + 11 Bestandsfehler), #112 (Makefile/CONTRIBUTING) — gate-frei, gut für Sonnet/Queue | `[Sonnet]` |
-| 2 | **Publish-Härtung**: #107 (Actions SHA-Pinning, OIDC-Supply-Chain), #108 (Publish-Smoke gegen Wheel statt src/) | `[Sonnet]` |
-| 3 | **Restliches Qualitäts-Backlog**: #113 (7 Spec-YAML-Loader konsolidieren), #114 (Kleinteiliges), #115 (Determinismus `date.today()`), #116 (Schema-Descriptions) | `[Sonnet]` |
-| 4 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+| 1 | **Restliches Qualitäts-Backlog**: #108 (Publish-Smoke gegen Wheel statt src/), #113 (7 Spec-YAML-Loader konsolidieren — Precondition #95-#99-Merge-Status vor Beginn prüfen), #114 (Kleinteiliges), #115 (Determinismus `date.today()`), #116 (Schema-Descriptions) — gate-frei, gut für Sonnet/Queue, `/issues-offen` Cap 5/Lauf | `[Sonnet]` |
+| 2 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+
+> **Erledigt 2026-07-08:** #107/#109/#110/#111/#112 (PR #148-152) — Details s. „Aktueller Stand
+> (2026-07-08, Qualitäts-Backlog + Publish-Härtung abgearbeitet)".
 
 > **Erledigt 2026-07-06/07:** Issue #138 entschieden (klickdummy_sync.py bleibt Zero-Dependency,
 > PR #142) · `klickdummy-gen-sitemap` extrahiert + released (PR #143/#144, v1.32.0) · Determinismus-
