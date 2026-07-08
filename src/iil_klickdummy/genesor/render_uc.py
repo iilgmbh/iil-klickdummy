@@ -56,6 +56,7 @@ def build_repo_uc_index_html(
     coverage: dict,
     kds: list[dict] | None = None,
     validation: dict[str, list[dict]] | None = None,
+    build_date: str | None = None,
 ) -> str:
     """Pro-Repo UC-Index — Tabelle aller UCs des Repos mit Persona/Status/Coverage.
 
@@ -64,6 +65,8 @@ def build_repo_uc_index_html(
     UND lineage-<repo>.html aus verlinkt.
     """
     from datetime import date
+
+    resolved_date = build_date or date.today().isoformat()
 
     ucs_sorted = sorted(ucs_for_repo, key=lambda u: u["uc_id"])
     real_count = coverage["uc_realized_count"]
@@ -272,8 +275,9 @@ def build_repo_uc_index_html(
   <tbody>{"".join(rows) or '<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:24px;">Noch keine UCs in diesem Repo. Generator: <code>python3 scripts/klickdummy_lineage.py --gen-uc-skeletons</code></td></tr>'}</tbody>
 </table>
 <p style="color:#9ca3af;font-size:11px;margin-top:14px;">
-  UCs liegen unter <code>docs/use-cases/</code>. Frontmatter: <code>uc_id, name, primaer_akteur, related_screens</code> (ADR-211 Rev 16). Build: {date.today().isoformat()}
+  UCs liegen unter <code>docs/use-cases/</code>. Frontmatter: <code>uc_id, name, primaer_akteur, related_screens</code> (ADR-211 Rev 16). Build: {resolved_date}
 </p>
+<!-- build-date:{resolved_date} -->
 <script>
   // ?kd=<kd-name> Filter (Workshop 2026-05-26 #2)
   (function() {{
@@ -299,7 +303,9 @@ def build_repo_uc_index_html(
 """
 
 
-def build_coverage_html(ucs: list[dict], kds: list[dict], coverage: dict) -> str:
+def build_coverage_html(
+    ucs: list[dict], kds: list[dict], coverage: dict, build_date: str | None = None
+) -> str:
     """Cross-Repo UC × KD Coverage-Heatmap. ADR-211 Rev 15 §UC-Coverage.
 
     Zellen: Anzahl realized Screens pro (UC, KD). Klick auf Zelle zeigt die
@@ -382,6 +388,8 @@ def build_coverage_html(ucs: list[dict], kds: list[dict], coverage: dict) -> str
     n_cells = sum(len(v) for v in matrix.values())
 
     from datetime import date
+
+    resolved_date = build_date or date.today().isoformat()
 
     return f"""<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -473,13 +481,16 @@ def build_coverage_html(ucs: list[dict], kds: list[dict], coverage: dict) -> str
   <ul>{"".join(f"<li>{html.escape(n)}</li>" for n in no_realized) or "<li>—</li>"}</ul>
   <h3>UCs mit nicht-auflösbaren Refs ({len(uc_unresolved)})</h3>
   <ul>{"".join(unres_lines) or "<li>—</li>"}</ul>
-  <p style="margin-top:14px;">Coverage gemäß ADR-211 Rev 15 §UC-Coverage. Refs-Format: <code>&lt;prefix&gt;:ADR-NNN#screen-id</code>. Build: {date.today().isoformat()}</p>
+  <p style="margin-top:14px;">Coverage gemäß ADR-211 Rev 15 §UC-Coverage. Refs-Format: <code>&lt;prefix&gt;:ADR-NNN#screen-id</code>. Build: {resolved_date}</p>
+  <!-- build-date:{resolved_date} -->
 </div>
 </body></html>
 """
 
 
-def build_impl_brief(record: dict, screen_id: str) -> str | None:
+def build_impl_brief(
+    record: dict, screen_id: str, build_date: str | None = None
+) -> str | None:
     """Implementation-Brief für 1 Screen — LLM-Prompt-tauglich.
 
     Pilot ADR-211 Rev 17 §Implementation-Bridge (Variante 3, lokaler Pilot
@@ -494,6 +505,8 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
     """
     import yaml as _yaml
     from datetime import date
+
+    resolved_date = build_date or date.today().isoformat()
 
     repo = record["repo"]
     kd_name = record["kd"]
@@ -743,9 +756,10 @@ def build_impl_brief(record: dict, screen_id: str) -> str | None:
 
     return f"""# Implementation-Brief — `{repo}:{kd_name}#{screen_id}`
 
-> Auto-generiert via `klickdummy_lineage.py --gen-impl-brief` ({date.today().isoformat()})
+> Auto-generiert via `klickdummy_lineage.py --gen-impl-brief` ({resolved_date})
 > Pattern-Quelle: `ausschreibungs-hub:docs/analysen/implementation-brief-konzept.md` (Variante 3, Pilot)
 > Konformität: `platform:ADR-211` Rev 16
+<!-- build-date:{resolved_date} -->
 
 ## 1. Klickdummy-Kontext
 
@@ -876,11 +890,19 @@ Pro Datei ein Code-Block mit Pfad im Header (`# apps/{tech.get("django_app", "su
 
 
 def build_impl_brief_html(
-    brief_md: str, repo: str, kd_name: str, screen_id: str, profile: str, style: dict
+    brief_md: str,
+    repo: str,
+    kd_name: str,
+    screen_id: str,
+    profile: str,
+    style: dict,
+    build_date: str | None = None,
 ) -> str:
     """Implementation-Brief Markdown → HTML mit CD + Genesor-Topbar + Side-Nav."""
     import markdown as _md
     from datetime import date
+
+    resolved_date = build_date or date.today().isoformat()
 
     body_html = _md.markdown(
         brief_md,
@@ -922,7 +944,8 @@ def build_impl_brief_html(
   <a href="./uc-{html.escape(repo)}.html?kd={html.escape(kd_name)}">📋 UCs</a>
   <a href="./impl-brief/{html.escape(repo)}-{html.escape(kd_name)}-{html.escape(screen_id)}.md">📄 Raw .md</a>
   <a href="./index.html">🌱 Genesor</a>
-  <span class="badge">profile {html.escape(profile)} · {date.today().isoformat()}</span>
+  <span class="badge">profile {html.escape(profile)} · {resolved_date}</span>
+  <!-- build-date:{resolved_date} -->
 </header>
 <main>
 {body_html}
