@@ -56,3 +56,13 @@ iil_klickdummy = [
     "snippets/browser/*",
     "snippets/genesor-sync/*",
 ]
+
+[tool.ruff]
+# py310, nicht py312: requires-python >= 3.10, CI matrixt 3.10/3.11/3.12 —
+# ruff darf keine 3.11+/3.12-only-Syntax vorschlagen (Memory lineage-py-312-only-parse).
+target-version = "py310"
+src = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]
