@@ -4,6 +4,22 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-08, Session-Start Reconciliation)
+
+**Drift gefunden (Phase-2.6-Guard):** die 2026-07-05/06-Prio-1 ("Issue #138 entscheiden") war
+längst erledigt, aber nie aus der Tabelle entfernt — Issue #138 CLOSED am 2026-07-06 via
+**PR #142** ("Mindest-Sanity-Check statt jsonschema-Dependency"), lokales Memory
+`genesor-fix-scope-check-against-known-memory` markierte das bereits ✅. Zusätzlich fehlten
+4 seither gemergte PRs:
+
+- **PR #142** (#138): `klickdummy_sync.py` bleibt bewusst Zero-Dependency — Präsenz-Check statt
+  `jsonschema`-Validierung (SKIP statt leeres Issue bei fehlenden Pflichtfeldern).
+- **PR #143/#144**: `klickdummy-gen-sitemap` — repo-agnostischer KD-Sitemap-Generator (extrahiert
+  aus risk-hub `gen_kd_sitemap.py`), **v1.32.0** released.
+- **PR #145**: `spec_date`-Determinismus-Fix (`klickdummy-gen-sitemap` setzte bei jedem Lauf
+  `heute`, brach Spec-SHA256-Stabilität für `gen_e2e`) — **v1.32.1** released.
+- **PR #146**: `handoff-banner-gate` als reusable-workflow-Caller.
+
 ## ⚡ Aktueller Stand (2026-07-05/06, Session Retro + Hardening — abgeschlossen)
 
 **Der 2026-07-02-Stand unten war zu Session-Beginn bereits veraltet** (Release v1.30.0
@@ -131,12 +147,14 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | **Issue #138 entscheiden**: `klickdummy_sync.py` — soll `jsonschema` als Dependency für das Zero-Dependency-Standalone-Sync-Script eingeführt werden, ein handgerollter dependency-freier Check, oder bewusst so bleiben (niedrigeres Risikoprofil, GitHub sanitized Issue-Bodies)? Design-Entscheidung, kein Kleinfix | `[Sonnet/Opus]` |
-| 2 | **Qualitäts-Backlog Rest**: #109 (genesor-Tests, 13 Module ohne Tests), #110 (CLI-Fehlerzweige ungetestet), #111 (ruff-Gate + 11 Bestandsfehler), #112 (Makefile/CONTRIBUTING) — gate-frei, gut für Sonnet/Queue | `[Sonnet]` |
-| 3 | **Publish-Härtung**: #107 (Actions SHA-Pinning, OIDC-Supply-Chain), #108 (Publish-Smoke gegen Wheel statt src/) | `[Sonnet]` |
-| 4 | **Restliches Qualitäts-Backlog**: #113 (7 Spec-YAML-Loader konsolidieren), #114 (Kleinteiliges), #115 (Determinismus `date.today()`), #116 (Schema-Descriptions) | `[Sonnet]` |
-| 5 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+| 1 | **Qualitäts-Backlog Rest**: #109 (genesor-Tests, 13 Module ohne Tests), #110 (CLI-Fehlerzweige ungetestet), #111 (ruff-Gate + 11 Bestandsfehler), #112 (Makefile/CONTRIBUTING) — gate-frei, gut für Sonnet/Queue | `[Sonnet]` |
+| 2 | **Publish-Härtung**: #107 (Actions SHA-Pinning, OIDC-Supply-Chain), #108 (Publish-Smoke gegen Wheel statt src/) | `[Sonnet]` |
+| 3 | **Restliches Qualitäts-Backlog**: #113 (7 Spec-YAML-Loader konsolidieren), #114 (Kleinteiliges), #115 (Determinismus `date.today()`), #116 (Schema-Descriptions) | `[Sonnet]` |
+| 4 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
 
+> **Erledigt 2026-07-06/07:** Issue #138 entschieden (klickdummy_sync.py bleibt Zero-Dependency,
+> PR #142) · `klickdummy-gen-sitemap` extrahiert + released (PR #143/#144, v1.32.0) · Determinismus-
+> Fix `spec_date` (PR #145, v1.32.1) · handoff-banner-gate als reusable-workflow-Caller (PR #146).
 > **Erledigt 2026-07-05/06:** Security-Backlog komplett (#103/#105/#106 geschlossen, PR #125/#136/#139)
 > · Release v1.30.0–v1.31.1 publiziert · Retro-Hardening (PR #137) · Session-Retro 2026-07-06
 > (platform-PR #966) · KD-Referenz-Pipeline-Konvention + Präventions-Tooling (platform-PR #965/#971/#972).
