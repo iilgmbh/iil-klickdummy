@@ -38,6 +38,7 @@ from datetime import date
 
 import yaml
 
+from .read_model import load_spec_yaml
 from .registry import (
     discover_cross_repo,
     discover_versions,
@@ -51,8 +52,11 @@ from .registry import (
 
 
 def _load_spec_yaml(spec_path: pathlib.Path) -> dict:
+    """A-04: Lesen/Parsen konsolidiert in read_model.load_spec_yaml; dieser
+    Wrapper behält den lokalen Soft-Fail-Vertrag (leeres dict statt Exception,
+    fürs Topic-Browsing/-Listing nicht fatal)."""
     try:
-        return yaml.safe_load(spec_path.read_text(encoding="utf-8")) or {}
+        return load_spec_yaml(spec_path) or {}
     except (OSError, yaml.YAMLError):
         return {}
 

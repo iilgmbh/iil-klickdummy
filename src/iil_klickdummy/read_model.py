@@ -15,16 +15,47 @@ sind **trigger-gegatet** — erst wenn KONZ-003 §13 Postgres-Trigger (b) feuert
 from __future__ import annotations
 
 import json
+import pathlib
 import sys
 from functools import lru_cache
 from importlib.resources import files
 from typing import TypedDict
 
 try:
+    import yaml
+except ImportError:
+    print("FAIL (setup): PyYAML fehlt. pip install pyyaml")
+    sys.exit(2)
+
+try:
     import jsonschema
 except ImportError:
     print("FAIL (setup): jsonschema fehlt. pip install jsonschema")
     sys.exit(2)
+
+# ---------------------------------------------------------------------------
+# Spec-YAML-Loader (A-04, Issue #113): 7 Module (check_i1/i2/i3, manage,
+# gen_e2e, extract_requirements, registry) hatten je eine fast-identische
+# Ad-hoc-Loader-Funktion mit sichtbarer Fehlerbehandlungs-Drift — u. a. hatte
+# extract_requirements.py GAR KEIN yaml.YAMLError-Handling (A-01), obwohl der
+# eigene Docstring-Kontrakt "Exit: 1" das voraussetzt. Diese Funktion bündelt
+# nur das Lesen+Parsen (kein Error-Handling) — jeder Aufrufer entscheidet
+# weiterhin selbst über seinen Fail-Modus (fatal exit / soft {}-Fallback /
+# eigene Fehlermeldung), das bleibt bewusst bei den Aufrufern.
+# ---------------------------------------------------------------------------
+
+
+def load_spec_yaml(path: pathlib.Path | str):
+    """Liest eine Spec-Datei und parsed sie als YAML (`.yaml`/`.yml`) oder
+    JSON (jede andere Extension, z. B. ein `<spec>:<schema>`-Schema-Pfad).
+    Wirft `yaml.YAMLError`/`json.JSONDecodeError`/`OSError` unverändert an
+    den Aufrufer durch — kein Silent-Fallback hier."""
+    p = pathlib.Path(path)
+    text = p.read_text(encoding="utf-8")
+    if p.suffix in (".yaml", ".yml"):
+        return yaml.safe_load(text)
+    return json.loads(text)
+
 
 # ---------------------------------------------------------------------------
 # Spec-Schema-Validierung (geteilt zwischen gen_e2e.load_spec und

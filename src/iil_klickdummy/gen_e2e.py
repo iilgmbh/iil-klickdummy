@@ -64,6 +64,7 @@ except ImportError:
 # genesor/scan.py braucht denselben Validierungs-Helfer, ohne ihn zu duplizieren.
 from .read_model import validate_spec  # noqa: E402
 from .read_model import _load_schema  # noqa: E402,F401 (Re-Export, s. test_gen_e2e.py M28-3-Cache-Test)
+from .read_model import load_spec_yaml  # noqa: E402 (A-04: konsolidierter Loader)
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -80,7 +81,7 @@ def load_spec(path: pathlib.Path) -> dict:
         print(f"FAIL: Spec fehlt: {path}")
         sys.exit(1)
     try:
-        spec = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        spec = load_spec_yaml(path) or {}
     except yaml.YAMLError as exc:
         print(f"FAIL: Spec-YAML ungültig ({path}): {exc}")
         sys.exit(1)

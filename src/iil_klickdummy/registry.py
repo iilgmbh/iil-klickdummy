@@ -38,6 +38,7 @@ except ImportError:
 # nie ausschließen — _load_spec() bedient AUCH discover_stories() (anderes
 # Schema), darum sitzt die Validierung an der Aufrufstelle, nicht im Loader.
 from .read_model import validate_spec  # noqa: E402
+from .read_model import load_spec_yaml  # noqa: E402 (A-04: konsolidierter Loader)
 
 
 @dataclass
@@ -64,7 +65,7 @@ class VersionInfo:
 
 def _load_spec(path: pathlib.Path) -> dict:
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return load_spec_yaml(path) or {}
     except (OSError, yaml.YAMLError):
         return {}
 
