@@ -4,7 +4,23 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-07-08, Qualitäts-Backlog + Publish-Härtung abgearbeitet)
+## ⚡ Aktueller Stand (2026-07-08, Qualitäts-Backlog VOLLSTÄNDIG — 0 offene Issues)
+
+**Zweiter `/issues-offen`-Lauf schließt den Backlog ab** — alle 5 verbliebenen Issues erledigt,
+5 weitere PRs, alle CI-grün gemergt: **#154** (#108, Wheel-Smoke-Test statt `PYTHONPATH=src`),
+**#155** (#114, A-02 manage-Warnings-Zähler + A-03 check_i4-Code-Block-Ausnahme + A-05
+inventory-Self-Scan — deckte dabei auf, dass die bestehenden Self-Scan-Exclusions die eigene
+`LEGACY_PATTERN`-Definition gar nicht abdeckten, mitgefixt), **#156** (#115, S-04 `date.today()`
+in 7 genesor-Render-Funktionen + S-05 sync_to_orchestrator-Timestamp — `build_date`-Parameter +
+`stable_build_date()`-Helper analog PR #145), **#157** (#116, Schema-Descriptions für alle
+Top-Level-Pflichtfelder + komplettes feedback-payload-Schema), **#158** (#113, 7 YAML-Loader auf
+`read_model.load_spec_yaml()` konsolidiert — schließt dabei A-01 mit, `extract_requirements.py`
+hatte gar kein `yaml.YAMLError`-Handling).
+
+`gh issue list --state open` → **0 offene Issues** im Repo. Volle Suite nach allen 10 Merges
+dieser Session: **288/288 grün**, `ruff check`+`format` clean (main @ `fd2fb1b`).
+
+## ⚡ Aktueller Stand (2026-07-08, Qualitäts-Backlog + Publish-Härtung abgearbeitet, Teil 1)
 
 **Prio 1+2 aus der Reconciliation unten komplett erledigt** via `/issues-offen` (Skill-Cap
 5 Issues/Lauf ausgeschöpft) — 5 PRs, alle CI-grün gemergt: **#148** (#107, Actions-SHA-Pinning
@@ -166,11 +182,11 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | **Restliches Qualitäts-Backlog**: #108 (Publish-Smoke gegen Wheel statt src/), #113 (7 Spec-YAML-Loader konsolidieren — Precondition #95-#99-Merge-Status vor Beginn prüfen), #114 (Kleinteiliges), #115 (Determinismus `date.today()`), #116 (Schema-Descriptions) — gate-frei, gut für Sonnet/Queue, `/issues-offen` Cap 5/Lauf | `[Sonnet]` |
-| 2 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13) | `[Opus]` |
+| 1 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). Einzige verbleibende Prio — kein offenes Issue im Repo. | `[Opus]` |
 
-> **Erledigt 2026-07-08:** #107/#109/#110/#111/#112 (PR #148-152) — Details s. „Aktueller Stand
-> (2026-07-08, Qualitäts-Backlog + Publish-Härtung abgearbeitet)".
+> **Erledigt 2026-07-08:** komplettes Qualitäts-/Publish-Backlog #107–#116 (10 PRs: #148-158,
+> zwei `/issues-offen`-Läufe à Cap 5) — 0 offene Issues im Repo. Details s. „Aktueller Stand
+> (2026-07-08, Qualitäts-Backlog VOLLSTÄNDIG)" + „...Teil 1".
 
 > **Erledigt 2026-07-06/07:** Issue #138 entschieden (klickdummy_sync.py bleibt Zero-Dependency,
 > PR #142) · `klickdummy-gen-sitemap` extrahiert + released (PR #143/#144, v1.32.0) · Determinismus-
