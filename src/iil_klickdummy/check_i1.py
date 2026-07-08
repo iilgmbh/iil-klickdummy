@@ -7,15 +7,7 @@ Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler (fehlende Deps)
 """
 
 from __future__ import annotations
-import json
-import pathlib
 import sys
-
-try:
-    import yaml  # PyYAML
-except ImportError:
-    print("FAIL (setup): PyYAML fehlt. pip install pyyaml")
-    sys.exit(2)
 
 try:
     import jsonschema
@@ -23,12 +15,9 @@ except ImportError:
     print("FAIL (setup): jsonschema fehlt. pip install jsonschema")
     sys.exit(2)
 
+from .read_model import load_spec_yaml
 
-def load(path: str):
-    text = pathlib.Path(path).read_text(encoding="utf-8")
-    if path.endswith((".yaml", ".yml")):
-        return yaml.safe_load(text)
-    return json.loads(text)
+load = load_spec_yaml  # A-04: konsolidierter Loader (read_model.py)
 
 
 def main(argv: list[str]) -> int:

@@ -31,6 +31,8 @@ except ImportError:
     print("FAIL (setup): PyYAML fehlt. pip install pyyaml")
     sys.exit(2)
 
+from .read_model import load_spec_yaml
+
 
 # -- Helpers ------------------------------------------------------------------
 
@@ -43,7 +45,13 @@ def load_spec(path: pathlib.Path) -> dict:
     if not path.exists():
         print(f"FAIL: Spec fehlt: {path}")
         sys.exit(1)
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    try:
+        return load_spec_yaml(path) or {}
+    except yaml.YAMLError as exc:
+        # A-01: fehlte komplett — ungueltiges YAML riss vorher einen rohen
+        # Traceback statt des dokumentierten "Exit: 1 Schema-Fehler"-Kontrakts.
+        print(f"FAIL: Spec-YAML ungültig ({path}): {exc}")
+        sys.exit(1)
 
 
 def write(

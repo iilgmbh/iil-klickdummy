@@ -13,15 +13,9 @@ Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler
 """
 
 from __future__ import annotations
-import json
-import pathlib
 import sys
 
-try:
-    import yaml
-except ImportError:
-    print("FAIL (setup): PyYAML fehlt. pip install pyyaml")
-    sys.exit(2)
+from .read_model import load_spec_yaml
 
 ALLOWED = {"mock", "stub-demo", "story", "spec-demo"}
 # Strict-Mode aktiv seit 2026-05-20 (platform:ADR-211 Rev 12 §Migration
@@ -31,12 +25,7 @@ ALLOWED = {"mock", "stub-demo", "story", "spec-demo"}
 LEGACY = {}  # Soft-Migrate vorbei
 CLASS_KEYS = ("class", "klickdummy_class")
 
-
-def load(path: str):
-    text = pathlib.Path(path).read_text(encoding="utf-8")
-    if path.endswith((".yaml", ".yml")):
-        return yaml.safe_load(text)
-    return json.loads(text)
+load = load_spec_yaml  # A-04: konsolidierter Loader (read_model.py)
 
 
 def main(argv: list[str]) -> int:
