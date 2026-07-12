@@ -5,6 +5,38 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+Sammeleintrag für PR #148–#158 (gemergt 2026-07-08, `/issues-offen`-Backlog-Session).
+Versions-Bump bewusst zurückgestellt — Entscheidung (Patch/Minor) obliegt einem
+Menschen; Einträge sind SemVer-kategorisiert, damit die Entscheidung später ohne
+erneute Diff-Sichtung getroffen werden kann.
+
+### Fixed
+
+- `manage.py`-Warnings-Zähler, `check_i4.py`-Code-Block-Ausnahme, `inventory.py`-Self-Scan (A-02/A-03/A-05, #155)
+- `date.today()`-Determinismus in 7 genesor-Render-Funktionen + `sync_to_orchestrator.py`-Timestamp brach Sync-Idempotenz (S-04/S-05, #156)
+- `install_snippets.py`-Deprecation-Pfad (im Zuge der CLI-Fehlerzweig-Tests, #152)
+- `extract_requirements.py`-Fehlerbehandlung bei ungültigem YAML (im Zuge der Loader-Konsolidierung, #158)
+
+### Changed
+
+- 7 unabhängige Spec-YAML-Loader zu einem konsolidiert (A-01, #158)
+- Publish-Smoke-Test läuft gegen das gebaute Wheel statt `PYTHONPATH=src` (fängt Packaging-Bugs früher, #154)
+
+### Added
+
+- `Makefile` + `CONTRIBUTING.md` als kanonischer Test-/Lint-Einstieg (#149)
+- 31 Smoke-Tests für 13 zuvor ungetestete `genesor/`-Module (#151)
+- CLI-Fehlerzweig- + `main_cli()`-Entry-Point-Tests (T-01/T-02/R12, #152)
+- Schema-Descriptions für Top-Level-Pflichtfelder + feedback-payload-Kernfelder (D-6, #157)
+
+### Security
+
+- Third-Party-Actions in `publish-pypi.yml`/`stale.yml` auf Commit-SHA gepinnt (#148)
+
+### CI
+
+- `[tool.ruff]` + `pytest`-`filterwarnings`-Gate ergänzt (#150)
+
 ## [1.32.1] — 2026-07-07
 
 ### Fixed
