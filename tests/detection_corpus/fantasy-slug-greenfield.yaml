@@ -1,0 +1,20 @@
+description: >
+  Negativ-Kontrolle: ein Fantasie-Slug, der in keiner Datei vorkommt, muss
+  ohne Treffer durchlaufen (sonst wäre der Detektor nutzlos streng und würde
+  jede echte Greenfield-Anlage blockieren).
+slug: quantenkuehlschrank-verwaltung
+files:
+  src/dsb/models.py: |
+    from django.db import models
+
+    class Beauftragter(models.Model):
+        name = models.CharField(max_length=100)
+  src/dsb/urls.py: |
+    from django.urls import path
+    from . import views
+
+    app_name = "dsb"
+    urlpatterns = [
+        path("", views.index, name="index"),
+    ]
+expect_hit: false

@@ -1,0 +1,15 @@
+description: >
+  Bekannter Blindfleck (Issue #161): Ordnername != fachlicher Name
+  (`gefahrstoff-kataster` vs. `src/gefahrstoffe`). L2 (App-Name-Introspektion)
+  greift hier NICHT, weil der Ordner- und App-Name vom Slug abweicht — L1
+  (case-insensitiver Slug-Grep, Separator-tolerant) muss den Treffer trotzdem
+  liefern, weil der fachliche Begriff im Model-Klassennamen (CamelCase, ohne
+  Trennzeichen) vorkommt.
+slug: gefahrstoff-kataster
+files:
+  src/gefahrstoffe/models.py: |
+    from django.db import models
+
+    class GefahrstoffKataster(models.Model):
+        name = models.CharField(max_length=100)
+expect_hit: true
