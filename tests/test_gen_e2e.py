@@ -959,6 +959,86 @@ def test_should_reject_trailing_newline_in_title_via_schema(tmp_path):
     assert not any("title" in e for e in gen_e2e.validate_spec(ok))
 
 
+def _minimal_screen():
+    return {
+        "id": "s",
+        "title": "Screen",
+        "parity_acceptance": [
+            {
+                "id": "s.v",
+                "check": "visible c",
+                "assert": {"action": "visible", "selector": "[data-testid=x]"},
+            }
+        ],
+    }
+
+
+def test_should_accept_sister_of_referencing_klickdummy_spec_slug():
+    """Issue #165: `sister_of` erlaubte bisher nur `<repo>:ADR-NNN` — real
+    referenzieren Specs (risk-hub/explosionsschutz) Schwester-Specs direkt via
+    `<repo>:klickdummy-spec-<slug>` (ohne eigene ADR)."""
+    from iil_klickdummy import gen_e2e
+
+    spec = _conform(
+        {
+            "spec_id": "repo:x",
+            "spec_version": "0.1",
+            "spec_date": "2026-06-01",
+            "adr": {
+                "local": "repo:ADR-001",
+                "conforms_to": "platform:ADR-211",
+                "sister_of": ["risk-hub:klickdummy-spec-ex-schutz-konzept"],
+            },
+            "class": "mock",
+            "screens": [_minimal_screen()],
+        }
+    )
+    assert not any("sister_of" in e for e in gen_e2e.validate_spec(spec))
+
+
+def test_should_still_accept_sister_of_referencing_adr():
+    """Rückwärtskompatibilität: die ursprüngliche `<repo>:ADR-NNN`-Form bleibt
+    gültig, das Pattern wurde erweitert, nicht ersetzt."""
+    from iil_klickdummy import gen_e2e
+
+    spec = _conform(
+        {
+            "spec_id": "repo:x",
+            "spec_version": "0.1",
+            "spec_date": "2026-06-01",
+            "adr": {
+                "local": "repo:ADR-001",
+                "conforms_to": "platform:ADR-211",
+                "sister_of": ["other-repo:ADR-099"],
+            },
+            "class": "mock",
+            "screens": [_minimal_screen()],
+        }
+    )
+    assert not any("sister_of" in e for e in gen_e2e.validate_spec(spec))
+
+
+def test_should_reject_sister_of_with_invalid_format():
+    """Weder ADR- noch Slug-Form — z.B. fehlendes Repo-Präfix — bleibt abgelehnt."""
+    from iil_klickdummy import gen_e2e
+
+    spec = _conform(
+        {
+            "spec_id": "repo:x",
+            "spec_version": "0.1",
+            "spec_date": "2026-06-01",
+            "adr": {
+                "local": "repo:ADR-001",
+                "conforms_to": "platform:ADR-211",
+                "sister_of": ["not-a-valid-reference"],
+            },
+            "class": "mock",
+            "screens": [_minimal_screen()],
+        }
+    )
+    assert any("sister_of" in e for e in gen_e2e.validate_spec(spec))
+
+
 def test_should_reject_non_identifier_login_fixture_via_schema(tmp_path):
     """AD-5: ein login_fixture, das kein gültiger Python-Bezeichner ist, wird
     fail-closed im Schema abgelehnt (statt still via ident() gecoerct)."""

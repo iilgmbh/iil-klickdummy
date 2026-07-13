@@ -23,8 +23,8 @@
         "conforms_to": { "type": "string", "pattern": "^platform:ADR-[0-9]{3}$", "description": "Die org-weite Rahmen-ADR, der dieser Klickdummy folgt — für dieses Schema faktisch immer `platform:ADR-211`." },
         "sister_of": {
           "type": "array",
-          "description": "Optional: Schwester-Implementierungen desselben Fachthemas in anderen Repos/Modulen (z. B. Modul-Dummy im selben Repo, oder dieselbe Fachlichkeit in einem anderen Produkt-Repo).",
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:ADR-[0-9]{3}$" }
+          "description": "Optional: Schwester-Implementierungen desselben Fachthemas in anderen Repos/Modulen (z. B. Modul-Dummy im selben Repo, oder dieselbe Fachlichkeit in einem anderen Produkt-Repo). Referenz entweder auf eine ADR (`<repo>:ADR-NNN`) oder direkt auf eine andere Klickdummy-Spec (`<repo>:klickdummy-spec-<slug>`, analog `spec_id` — Issue #165: risk-hub/explosionsschutz referenziert Schwester-Specs ohne eigene ADR).",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:(ADR-[0-9]{3}|[a-z][a-z0-9_-]*)$" }
         }
       }
     },
