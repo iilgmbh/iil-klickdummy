@@ -4,6 +4,49 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-13, /issues-offen-Lauf — 4 PRs gemergt, 2 offen, cross-repo Migration)
+
+**`/issues-offen`-Lauf schließt #160/#161/#163 vollständig, #162 als Baustein ab** — 4 PRs
+gemergt (Self-Approval, da `main` keinen Branch-Protection-Review erzwingt und GitHub
+Self-Approval technisch blockiert — User-Freigabe eingeholt):
+**#166** (#160, `gen_e2e`-Manifest-Determinismus, dritte `date.today()`-Instanz nach #145/#156),
+**#167** (#163, klickdummy-sync Duplikat-Keys — rglob-Worktree-Filter + Versions-Dedup),
+**#168** (#161, neuer Auto-Brownfield-Detektor `klickdummy-detect`, L1 Slug-Grep + L2 Django-
+Introspektion via `from_django.discover_app_dirs`), **#169** (#162, Parity-Gate-Snippet-Baustein
+`gates.mk` + reusable Workflow — Canary in ausschreibungs-hub deckte dabei 2 echte Bugs auf,
+in-PR nachgefixt: Bootstrapping-Paradox `klickdummy-install` kann nicht in `gates.mk` selbst
+stehen, `snippets/*`-package-data-Glob fehlte im gebauten Wheel).
+
+**Aus dem Canary entstanden, noch offen:**
+- **#171** (Issue #170): `gen_sitemap.py`s Selbstreferenz-Skip-Guard griff nie (Namens-Mismatch
+  `index.screens-spec.yaml` vs. real `screens-spec.yaml`) — Idempotenz-Sprung 0→1 Knoten bei
+  Sitemap-Erstanlage. CI grün, wartet auf Merge.
+- **#172** (Issue #165, Teil): `adr.sister_of` erlaubt jetzt auch `<repo>:klickdummy-spec-<slug>`
+  neben `<repo>:ADR-NNN`. CI grün, wartet auf Merge.
+
+**Issue #165 (Schema-WARN-Sammel-Issue, 623 Verstöße/6 Repos) bleibt offen** — nur der
+`sister_of`-Teilaspekt ist hier gefixt (PR #172). Die dominante Klasse (Kurzform-Strings in
+`datafields`/`parity_acceptance`) wurde stattdessen **cross-repo in writing-hub** gefixt
+(nicht in diesem Repo, da es eine Content-Migration in den Adopter-Specs ist, kein
+iil-klickdummy-Code-Change): [writing-hub#201](https://github.com/achimdehnert/writing-hub/pull/201)
+(243 Items automatisiert konvertiert, ruamel.yaml Round-Trip, 34 zusammengesetzte Namen bewusst
+nicht angefasst) + [writing-hub#202](https://github.com/achimdehnert/writing-hub/issues/202)
+(fehlende Pflichtfelder, Folge-Issue). Zusätzlich [design-hub#36](https://github.com/achimdehnert/design-hub/issues/36)
+und [nl2iot-hub#3](https://github.com/iilgmbh/nl2iot-hub/issues/3) (fehlende Pflichtfelder,
+je repo-lokal). **pg-hub noch offen** — Remote zeigt auf eine bisher unbekannte Org
+(`bahn-sqf/pg-hub`), Scope-Checkpoint an den User gestellt, keine Antwort erhalten — nicht
+angefasst, kein Issue dort angelegt.
+
+**Wichtiger Werkzeug-Fund unterwegs:** `gen_e2e.py:407` (`pa.get("id", ...)`) würde bei einem
+bloßen String-Item in `parity_acceptance` mit `AttributeError` crashen — die ursprünglich in
+Issue #165 erwogene Option "Schema aufweichen, Kurzform-Strings direkt erlauben" ist deshalb
+**keine reine Schema-Änderung**, sondern bräuchte koordinierte Consumer-Anpassungen. Deshalb
+Migration statt Lockerung gewählt.
+
+**Nächste Schritte:** #171/#172 reviewen+mergen · pg-hub-Scope-Frage klären · Issue #165 ggf.
+schließen/umformulieren, sobald die Repo-Teil-Issues (#202, design-hub#36, nl2iot-hub#3,
+pg-hub-TBD) den Rest tragen.
+
 ## ⚡ Aktueller Stand (2026-07-08, Qualitäts-Backlog VOLLSTÄNDIG — 0 offene Issues)
 
 **Zweiter `/issues-offen`-Lauf schließt den Backlog ab** — alle 5 verbliebenen Issues erledigt,
@@ -182,7 +225,15 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). Einzige verbleibende Prio — kein offenes Issue im Repo. | `[Opus]` |
+| 1 | PR #171 (Issue #170) reviewen + mergen — Sitemap-Idempotenz-Fix, CI grün. | `[Sonnet]` |
+| 2 | PR #172 (Issue #165 Teil) reviewen + mergen — sister_of-Slug-Pattern, CI grün. | `[Sonnet]` |
+| 3 | pg-hub-Scope klären: Remote zeigt auf unbekannte Org `bahn-sqf/pg-hub` — User-Bestätigung ausstehend, bevor dort ein Klickdummy-Schema-Tracking-Issue angelegt wird. | `[User]` |
+| 4 | Issue #165 nach #171/#172/pg-hub-Klärung neu bewerten — evtl. schließen zugunsten der Repo-lokalen Folge-Issues (writing-hub#202, design-hub#36, nl2iot-hub#3, pg-hub-TBD). | `[Sonnet]` |
+| 5 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
+
+> **Erledigt 2026-07-13:** `/issues-offen`-Lauf — #160/#161/#163 vollständig gemergt (PR
+> #166–#168), #162 als Baustein gemergt (PR #169, Canary in ausschreibungs-hub verifiziert).
+> Details s. „Aktueller Stand (2026-07-13)" oben.
 
 > **Erledigt 2026-07-08:** komplettes Qualitäts-/Publish-Backlog #107–#116 (10 PRs: #148-158,
 > zwei `/issues-offen`-Läufe à Cap 5) — 0 offene Issues im Repo. Details s. „Aktueller Stand
