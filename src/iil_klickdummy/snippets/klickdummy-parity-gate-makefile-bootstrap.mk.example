@@ -1,0 +1,28 @@
+# Copy-paste-Baustein fuer das eigene Makefile (Issue #162).
+#
+# `klickdummy-install` bleibt bewusst LOKAL (nicht in gates.mk) — `include`
+# wird beim Make-Parsing ausgewertet, bevor irgendein Target laeuft, gates.mk
+# kann sich also nicht selbst per Target holen (Henne-Ei, per Canary in
+# ausschreibungs-hub verifiziert 2026-07-13). Diese paar Zeilen aendern sich
+# praktisch nie — die eigentliche, driftende Gate-Logik (Parity-/Sitemap-
+# Drift-Checks) bleibt DRY in gates.mk.
+#
+# Falls schon ein eigenes `klickdummy-install`-Target existiert: nur die
+# `-include`-Zeile am Ende ergaenzen (das lokale Target darf pip-Quelle/venv-
+# Name frei waehlen, solange es platform-snippets/klickdummy/ befuellt).
+
+KLICKDUMMY_VENV ?= .venv-klickdummy
+KLICKDUMMY_ADR_REF := <repo>:ADR-NNN
+
+.PHONY: klickdummy-install
+
+klickdummy-install: ## Bootstrap: venv + iil-klickdummy + Snippets (liefert u.a. gates.mk)
+	@test -d $(KLICKDUMMY_VENV) || python3 -m venv $(KLICKDUMMY_VENV)
+	@$(KLICKDUMMY_VENV)/bin/pip install --quiet --upgrade "iil-klickdummy>=1.32.1,<2.0"
+	@$(KLICKDUMMY_VENV)/bin/klickdummy-install-snippets --target ./platform-snippets/klickdummy --force
+	@echo "OK iil-klickdummy installed + snippets ready"
+
+# `-` = optionaler include (fehlt auf einem frischen Checkout vor dem ersten
+# `make klickdummy-install` — dann laeuft NUR das Bootstrap-Target, die
+# gates.mk-Targets werden erst danach sichtbar. Zweiter `make`-Aufruf s.u.).
+-include platform-snippets/klickdummy/gates.mk

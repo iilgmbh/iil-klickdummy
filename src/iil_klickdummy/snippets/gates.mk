@@ -10,36 +10,45 @@
 # #2-Parity) ist repo-spezifisch (DB/Seed) und bleibt bewusst draussen.
 #
 # --- Verwendung im Adopter-Makefile --------------------------------------
+# WICHTIG (per Canary in ausschreibungs-hub verifiziert, 2026-07-13): dieses
+# File enthaelt bewusst KEIN `klickdummy-install`-Target. `include` wird beim
+# Make-Parsing ausgewertet — BEVOR irgendein Target laeuft. Ein Bootstrap-
+# Target, das gates.mk selbst erst per `klickdummy-install-snippets` holt,
+# kann daher nicht IN gates.mk stehen (Henne-Ei: die Datei muesste sich selbst
+# erzeugen, bevor sie eingelesen wird). Auf einem frischen CI-Checkout mit
+# gitignoretem `platform-snippets/` (Standard in risk-hub UND ausschreibungs-
+# hub) bricht ein direktes `include gates.mk` mit "Datei oder Verzeichnis
+# nicht gefunden" ab, sobald `klickdummy-install` selbst darin steckt.
+#
+# Deshalb 2 Teile im Adopter-Makefile (siehe
+# klickdummy-parity-gate-makefile-bootstrap.mk.example im selben Snippet-
+# Ordner fuer die copy-paste-fertige Fassung):
+#
 #   KLICKDUMMY_ADR_REF := <repo>:ADR-NNN   # Pflicht — lokale Sitemap-ADR-Referenz
-#   include platform-snippets/klickdummy/gates.mk
+#
+#   klickdummy-install: ## Bootstrap — bleibt lokal, holt u.a. gates.mk
+#   	@test -d $(KLICKDUMMY_VENV) || python3 -m venv $(KLICKDUMMY_VENV)
+#   	@$(KLICKDUMMY_VENV)/bin/pip install --quiet --upgrade "iil-klickdummy>=1.32.1,<2.0"
+#   	@$(KLICKDUMMY_VENV)/bin/klickdummy-install-snippets --target ./platform-snippets/klickdummy --force
+#
+#   -include platform-snippets/klickdummy/gates.mk   # `-` = optional, fehlt beim allerersten Lauf
 #
 # Optionale Overrides (vor dem include setzen):
 #   KLICKDUMMY_REPO_NAME     Anzeigename fuer die Sitemap (Default: Verzeichnisname)
 #   KLICKDUMMY_VENV          venv-Pfad (Default: .venv-klickdummy)
-#   KLICKDUMMY_VERSION_SPEC  Pin-Spec fuer pip install (Default: >=1.32.1,<2.0 —
-#                            der spec_date-Determinismus-Fix S13/#145 ist Pflicht,
-#                            sonst rauscht der Parity-Drift-Gate aus dem falschen
-#                            Grund: Generator-Drift statt Spec-Drift)
 #
 # Pitfall (aus dem Issue, nicht vom Snippet automatisierbar): *.manifest.json in
 # die Adopter-.gitignore aufnehmen, sonst Pseudo-Drift (Issue #160/#156-Muster).
 # ---------------------------------------------------------------------------
 
 KLICKDUMMY_VENV ?= .venv-klickdummy
-KLICKDUMMY_VERSION_SPEC ?= >=1.32.1,<2.0
 # KLICKDUMMY_REPO_NAME bewusst ohne Default hier: klickdummy-gen-sitemap fällt
 # selbst auf den Verzeichnisnamen zurück, wenn das 3. Arg fehlt/leer ist — ein
 # Default via CURDIR hier würde bei leerem (statt fehlendem) CI-Env-Var
 # (`?=` überschreibt keine bereits gesetzte — auch leere — Umgebungsvariable)
 # in einer echten Leerstring-Übergabe enden statt im CLI-Fallback.
 
-.PHONY: klickdummy-install klickdummy-parity-drift klickdummy-sitemap klickdummy-sitemap-drift
-
-klickdummy-install: ## Einmalig: venv + iil-klickdummy + Snippets (gates.mk)
-	@test -d $(KLICKDUMMY_VENV) || python3 -m venv $(KLICKDUMMY_VENV)
-	@$(KLICKDUMMY_VENV)/bin/pip install --quiet --upgrade "iil-klickdummy$(KLICKDUMMY_VERSION_SPEC)"
-	@$(KLICKDUMMY_VENV)/bin/klickdummy-install-snippets --target ./platform-snippets/klickdummy --force
-	@echo "OK iil-klickdummy installed + snippets ready"
+.PHONY: klickdummy-parity-drift klickdummy-sitemap klickdummy-sitemap-drift
 
 klickdummy-parity-drift: ## ADR-211 S13: Executable-Parity-Suite-Drift — auto-discovers alle klickdummy/*/screens-spec.yaml
 	@echo "ADR-211 S13 - Parity-Suite-Drift: re-generieren + git diff (alle Adopter)"

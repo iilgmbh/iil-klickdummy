@@ -17,14 +17,12 @@ import yaml
 from iil_klickdummy import install_snippets
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent
-GATES_MK = REPO_ROOT / "src" / "iil_klickdummy" / "snippets" / "gates.mk"
+SNIPPETS_DIR = REPO_ROOT / "src" / "iil_klickdummy" / "snippets"
+GATES_MK = SNIPPETS_DIR / "gates.mk"
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "klickdummy-parity-gate.yml"
-CALLER_SNIPPET = (
-    REPO_ROOT
-    / "src"
-    / "iil_klickdummy"
-    / "snippets"
-    / "klickdummy-parity-gate-caller.yml.example"
+CALLER_SNIPPET = SNIPPETS_DIR / "klickdummy-parity-gate-caller.yml.example"
+BOOTSTRAP_SNIPPET = (
+    SNIPPETS_DIR / "klickdummy-parity-gate-makefile-bootstrap.mk.example"
 )
 
 
@@ -47,18 +45,38 @@ def test_should_deliver_caller_snippet_via_install_snippets(tmp_path):
     assert (target / "klickdummy-parity-gate-caller.yml.example").exists()
 
 
+def test_should_deliver_bootstrap_snippet_via_install_snippets(tmp_path):
+    target = tmp_path / "out"
+    rc = install_snippets.main(["--target", str(target)])
+    assert rc == 0
+    assert (target / "klickdummy-parity-gate-makefile-bootstrap.mk.example").exists()
+
+
 # ------------------------------------------------------- gates.mk content
 
 
 def test_gates_mk_declares_expected_targets():
     text = GATES_MK.read_text(encoding="utf-8")
     for target in (
-        "klickdummy-install",
         "klickdummy-parity-drift",
         "klickdummy-sitemap",
         "klickdummy-sitemap-drift",
     ):
         assert f"{target}:" in text, f"Target {target} fehlt in gates.mk"
+
+
+def test_gates_mk_does_not_redefine_install_target():
+    """Bootstrapping-Paradox (per Canary in ausschreibungs-hub verifiziert
+    2026-07-13): `include` wird beim Parsen ausgewertet, bevor ein Target
+    laufen kann — ein `klickdummy-install`-Target INNERHALB von gates.mk
+    kann sich selbst also nie fetchen. Muss lokal im Adopter-Makefile bleiben
+    (klickdummy-parity-gate-makefile-bootstrap.mk.example)."""
+    import re
+
+    target_defs = re.findall(
+        r"^([a-zA-Z0-9_-]+):", GATES_MK.read_text(encoding="utf-8"), re.MULTILINE
+    )
+    assert "klickdummy-install" not in target_defs
 
 
 def test_gates_mk_does_not_hardcode_self_hosted_runner():
@@ -95,12 +113,34 @@ def _run_make_dry_run(tmp_path: pathlib.Path, target: str, extra_env=None) -> st
     return result.stdout
 
 
-def test_make_dry_run_parses_klickdummy_install(tmp_path):
-    _run_make_dry_run(tmp_path, "klickdummy-install")
-
-
 def test_make_dry_run_parses_klickdummy_parity_drift(tmp_path):
     _run_make_dry_run(tmp_path, "klickdummy-parity-drift")
+
+
+def test_bootstrap_snippet_dry_run_works_on_fresh_checkout_without_gates_mk(tmp_path):
+    """Regressionstest fuer das Bootstrapping-Paradox: `klickdummy-install`
+    muss auch dann per `make -n` parsen, wenn `platform-snippets/klickdummy/
+    gates.mk` noch GAR NICHT existiert (frischer Checkout, Erstlauf) — das ist
+    genau der Fall, der mit `klickdummy-install` INNERHALB von gates.mk in
+    ausschreibungs-hub real fehlschlug (2026-07-13)."""
+    makefile = tmp_path / "Makefile"
+    bootstrap = BOOTSTRAP_SNIPPET.read_text(encoding="utf-8")
+    makefile.write_text(bootstrap, encoding="utf-8")
+    assert not (tmp_path / "platform-snippets").exists()
+
+    result = subprocess.run(
+        ["make", "-n", "-f", str(makefile), "klickdummy-install"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={"PATH": "/usr/bin:/bin"},
+        timeout=15,
+    )
+    assert result.returncode == 0, (
+        f"make -n klickdummy-install fehlgeschlagen (Bootstrap-Paradox nicht "
+        f"behoben):\nstdout={result.stdout}\nstderr={result.stderr}"
+    )
+    assert "klickdummy-install-snippets" in result.stdout
 
 
 def test_make_dry_run_parses_klickdummy_sitemap(tmp_path):
