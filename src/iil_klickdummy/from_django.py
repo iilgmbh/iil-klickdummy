@@ -136,6 +136,37 @@ def _parse_url_module(text: str) -> list[dict]:
     return entries
 
 
+_APP_SCAN_SKIP_DIRS = {
+    "node_modules",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "migrations",
+    "static",
+    "media",
+}
+
+
+def discover_app_dirs(repo_root: pathlib.Path) -> list[pathlib.Path]:
+    """Findet alle Django-App-Verzeichnisse in einem Repo (models.py oder
+    URL-Module vorhanden) — Grundlage für repo-weite Introspektion ohne
+    bekannten `--app`-Namen (Detektor-Backend L2, Issue #161). Reines
+    Pfad-Scanning, keine Django-Runtime/-Settings nötig (analog
+    `parse_urls`/`parse_models`)."""
+    out: list[pathlib.Path] = []
+    seen: set[pathlib.Path] = set()
+    for marker in ("models.py", "urls.py"):
+        for hit in sorted(repo_root.rglob(marker)):
+            app_dir = hit.parent
+            rel_parts = app_dir.relative_to(repo_root).parts
+            if any(p.startswith(".") or p in _APP_SCAN_SKIP_DIRS for p in rel_parts):
+                continue
+            if app_dir not in seen:
+                seen.add(app_dir)
+                out.append(app_dir)
+    return out
+
+
 def parse_urls(app_dir: pathlib.Path) -> tuple[str, list[dict]]:
     """(app_name, [{name, route, view, action}]) aus ALLEN URL-Modulen der App.
 

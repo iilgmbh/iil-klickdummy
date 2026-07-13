@@ -45,6 +45,7 @@ klickdummy-sync = "iil_klickdummy.sync_to_orchestrator:main_cli"
 klickdummy-manage = "iil_klickdummy.manage:main_cli"
 klickdummy-genesor = "iil_klickdummy.lineage:main_cli"
 klickdummy-from-django = "iil_klickdummy.from_django:main_cli"
+klickdummy-detect = "iil_klickdummy.detect:main_cli"
 
 [tool.setuptools.package-data]
 iil_klickdummy = [

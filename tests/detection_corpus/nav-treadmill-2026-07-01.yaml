@@ -1,0 +1,22 @@
+description: >
+  Realfall risk-hub 2026-07-01: ein Nav-Umbau über einer existierenden App
+  wurde als Greenfield behandelt, weil der Slug "dsb" nicht offensichtlich mit
+  dem App-Verzeichnis übereinstimmte — Live-Patch-Treadmill, Session
+  weitgehend aufgezehrt. L2 (Django-App-Introspektion) muss den Treffer
+  liefern, auch ohne dass jemand den exakten Ordnernamen kennt.
+slug: dsb
+files:
+  src/dsb/models.py: |
+    from django.db import models
+
+    class Beauftragter(models.Model):
+        name = models.CharField(max_length=100)
+  src/dsb/urls.py: |
+    from django.urls import path
+    from . import views
+
+    app_name = "dsb"
+    urlpatterns = [
+        path("", views.index, name="index"),
+    ]
+expect_hit: true
