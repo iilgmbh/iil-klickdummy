@@ -52,6 +52,66 @@ DEFAULT_REPOS = [
 ]
 
 
+def _is_ignored_source(rel: pathlib.Path) -> bool:
+    """Pfade unter versteckten Verzeichnissen (`.claude/worktrees/`, `.git/`, …),
+    `node_modules/` oder `klickdummy/archive/` sind keine Kanon-Quelle (Issue #163)
+    — Realfall: stale Agent-Worktree `.claude/worktrees/agent-…/docs/adr/` liefert
+    inhaltlich divergente ADR-Kopien, die per `rglob` sonst mit-gefunden werden."""
+    rel_str = "/" + rel.as_posix() + "/"
+    if any(part.startswith(".") for part in rel.parts):
+        return True
+    return "/node_modules/" in rel_str or "/klickdummy/archive/" in rel_str
+
+
+def _version_sort_key(version: str) -> tuple:
+    """Sortierschlüssel für `spec_version`-Strings — '0.2' > '0.1', '10' > '9'
+    (reiner String-Vergleich würde '10' < '9' ordnen)."""
+    parts: list[tuple[int, object]] = []
+    for seg in re.split(r"[.\-]", str(version)):
+        try:
+            parts.append((0, int(seg)))
+        except ValueError:
+            parts.append((1, seg))
+    return tuple(parts)
+
+
+def _dedup_entries(entries: list[dict]) -> list[dict]:
+    """Dedupliziert Entries nach `entry_key` (Issue #163): rglob-Duplikate (ADR-
+    Kopien in stale Agent-Worktrees) und Doppel-Emission (zwei Spec-Dateien im
+    selben KD-Verzeichnis, z.B. `screens-spec.yaml` + alte `spec.yaml`) landen
+    sonst reihenfolgeabhängig im Store (last-write-wins beim Upsert).
+
+    Präzedenz: ADR (`entry_type="decision"`) → kürzester `_source_path` gewinnt
+    (Kanon `docs/adr/` schlägt jede Kopie). Klickdummy (`entry_type="repo_context"`)
+    → höchste `_precedence_version` gewinnt. Bei inhaltlicher Divergenz zwischen
+    Kandidaten: WARN auf stderr mit beiden Pfaden — Symptom ist meist ein stale
+    Worktree (Aufräum-Hinweis auf `worktree-reaper`)."""
+    by_key: dict[str, list[dict]] = {}
+    for e in entries:
+        by_key.setdefault(e["entry_key"], []).append(e)
+
+    out: list[dict] = []
+    for key, group in by_key.items():
+        if len(group) > 1 and any(g["content"] != group[0]["content"] for g in group):
+            paths = ", ".join(g.get("_source_path", "?") for g in group)
+            print(
+                f"WARN: entry_key {key!r} inhaltlich divergent über {len(group)} "
+                f"Quellen ({paths}) — evtl. stale Worktree (worktree-reaper).",
+                file=sys.stderr,
+            )
+        if group[0].get("entry_type") == "decision":
+            winner = min(group, key=lambda g: len(g.get("_source_path", "")))
+        elif group[0].get("entry_type") == "repo_context":
+            winner = max(
+                group,
+                key=lambda g: _version_sort_key(g.get("_precedence_version", "0")),
+            )
+        else:
+            winner = group[0]
+        out.append({k: v for k, v in winner.items() if not k.startswith("_")})
+    return out
+
+
 def _detect_org(repo_root: pathlib.Path) -> str:
     """Versucht Org aus git remote URL zu lesen, sonst Repo-Name als Fallback."""
     try:
@@ -119,6 +179,8 @@ def klickdummy_entry(km, org: str, repo: str, repo_root: pathlib.Path) -> dict:
         content=content,
         tags=tags,
         agent="iil-klickdummy-sync",
+        _source_path=km.path,
+        _precedence_version=km.spec_version,
     )
 
 
@@ -166,6 +228,9 @@ def adr_entries(repo_root: pathlib.Path, org: str, repo: str) -> list[dict]:
     """Findet Klickdummy-ADRs (tags: [klickdummy] in Frontmatter) und erzeugt Entries."""
     out: list[dict] = []
     for candidate in repo_root.rglob("ADR-*.md"):
+        rel = candidate.relative_to(repo_root)
+        if _is_ignored_source(rel):
+            continue
         try:
             text = candidate.read_text(encoding="utf-8")
         except (OSError, UnicodeError):
@@ -194,6 +259,7 @@ def adr_entries(repo_root: pathlib.Path, org: str, repo: str) -> list[dict]:
                     f"klickdummy:adr:ADR-{adr_num}",
                 ],
                 agent="iil-klickdummy-sync",
+                _source_path=str(rel),
             )
         )
     return out
@@ -207,7 +273,7 @@ def sync_repo(repo_root: pathlib.Path) -> list[dict]:
         entries.append(klickdummy_entry(km, org, repo, repo_root))
     entries.extend(iteration_entries_from_feedback_log(repo_root, org, repo))
     entries.extend(adr_entries(repo_root, org, repo))
-    return entries
+    return _dedup_entries(entries)
 
 
 def main(argv: list[str]) -> int:
