@@ -1,0 +1,15 @@
+# Copy-paste-Baustein (Issue #162): Parity-/Sitemap-Drift-Gate als Job in der
+# eigenen .github/workflows/ci.yml einhängen. In eine bestehende `jobs:`-Sektion
+# einfügen (Job-Name frei waehlbar):
+#
+#   klickdummy-parity-drift:
+#     uses: iilgmbh/iil-klickdummy/.github/workflows/klickdummy-parity-gate.yml@main
+#     with:
+#       adr_ref: <repo>:ADR-NNN   # Pflicht — lokale Sitemap-ADR-Referenz
+#
+# Voraussetzung: `include platform-snippets/klickdummy/gates.mk` im Makefile
+# (siehe gates.mk im selben Snippet-Ordner) UND `KLICKDUMMY_ADR_REF` davor
+# gesetzt (das reusable Workflow reicht `adr_ref` als Env-Var durch).
+#
+# Kein `runs-on: self-hosted` — Default ist `ubuntu-latest`. Nur überschreiben
+# (`with: runs_on: self-hosted`), wenn das eigene Repo das wirklich braucht.
