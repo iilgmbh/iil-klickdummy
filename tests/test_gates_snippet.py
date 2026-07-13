@@ -52,6 +52,47 @@ def test_should_deliver_bootstrap_snippet_via_install_snippets(tmp_path):
     assert (target / "klickdummy-parity-gate-makefile-bootstrap.mk.example").exists()
 
 
+def test_all_top_level_snippet_files_are_shipped_in_built_wheel(tmp_path):
+    """Regression (Canary-Fund, ausschreibungs-hub 2026-07-13): pyproject.toml
+    [tool.setuptools.package-data] listete nur Unterordner-Globs
+    (snippets/<subdir>/*) — Top-Level-Dateien direkt unter snippets/ (gates.mk,
+    *.example) fielen beim echten `pip install git+https://...` (baut ein
+    Wheel) heraus, obwohl sie im Source-Tree lagen und jeder EDITABLE-Install-
+    Test (wie alle anderen Tests dieser Datei) sie brav fand. Baut hier
+    deshalb ein echtes Wheel und prüft dessen Inhalt statt den Source-Tree."""
+    import sys
+    import zipfile
+
+    dist_dir = tmp_path / "dist"
+    result = subprocess.run(
+        [sys.executable, "-m", "build", "--wheel", "--outdir", str(dist_dir)],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, (
+        f"wheel build fehlgeschlagen:\n{result.stdout}\n{result.stderr}"
+    )
+
+    wheels = list(dist_dir.glob("*.whl"))
+    assert len(wheels) == 1, f"erwartet genau 1 Wheel, gefunden: {wheels}"
+    with zipfile.ZipFile(wheels[0]) as z:
+        names = set(z.namelist())
+
+    top_level_files = {f.name for f in SNIPPETS_DIR.iterdir() if f.is_file()}
+    assert top_level_files, (
+        "keine Top-Level-Dateien unter snippets/ gefunden — Testannahme prüfen"
+    )
+    missing = {
+        f for f in top_level_files if f"iil_klickdummy/snippets/{f}" not in names
+    }
+    assert not missing, (
+        f"Top-Level-Snippet-Dateien fehlen im gebauten Wheel: {missing} — "
+        f"'snippets/*'-Glob in pyproject.toml [tool.setuptools.package-data] prüfen"
+    )
+
+
 # ------------------------------------------------------- gates.mk content
 
 
