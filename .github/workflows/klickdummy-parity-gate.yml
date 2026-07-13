@@ -1,0 +1,61 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║  REUSABLE WORKFLOW: Klickdummy Parity-/Sitemap-Drift-Gate (ADR-211 S13/S14)║
+# ║  Usage: uses: iilgmbh/iil-klickdummy/.github/workflows/klickdummy-parity-  ║
+# ║         gate.yml@main                                                     ║
+# ║  Issue #162 — Stufe 1 (Spec<->Suite-Drift + Sitemap-Freshness) als         ║
+# ║  ausrollbarer Baustein, Gegenstueck zu snippets/gates.mk (Makefile-Seite). ║
+# ║  Stufe 2 (Live-Renderer-#2-Parity) ist repo-spezifisch und bleibt draussen.║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+name: Klickdummy Parity-Drift-Gate (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      adr_ref:
+        description: 'Lokale Sitemap-ADR-Referenz, z.B. <repo>:ADR-046 (KLICKDUMMY_ADR_REF)'
+        required: true
+        type: string
+      repo_name:
+        description: 'Anzeigename fuer die Sitemap (Default: Repo-Verzeichnisname)'
+        required: false
+        default: ''
+        type: string
+      python_version:
+        required: false
+        default: '3.12'
+        type: string
+      runs_on:
+        description: >-
+          Runner-Label. Kein Default auf self-hosted (Pitfall aus Issue #162:
+          risk-hub nutzt self-hosted, Adopter i.d.R. GitHub-Runner).
+        required: false
+        default: 'ubuntu-latest'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  klickdummy-parity-drift:
+    name: "Klickdummy Parity-/Sitemap-Drift (ADR-211 S13/S14)"
+    runs-on: ${{ inputs.runs_on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install klickdummy toolchain
+        run: make klickdummy-install
+
+      - name: Parity-Suite-Drift-Gate (re-gen + git diff)
+        run: make klickdummy-parity-drift
+
+      - name: Sitemap-Freshness-Drift-Gate (re-gen + git diff)
+        env:
+          KLICKDUMMY_ADR_REF: ${{ inputs.adr_ref }}
+          KLICKDUMMY_REPO_NAME: ${{ inputs.repo_name }}
+        run: make klickdummy-sitemap-drift

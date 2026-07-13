@@ -77,15 +77,26 @@ def test_check_i2_strict_mode():
 
 
 def test_snippets_resource():
+    # snippets/ mischt Unterordner (feedback-widget/, issue-template/, …) UND
+    # Top-Level-Dateien (gates.mk, Issue #162) — rekursiv sammeln statt eine
+    # feste 2-Ebenen-Struktur anzunehmen.
     snippets = files("iil_klickdummy") / "snippets"
     names = []
-    for d in snippets.iterdir():
-        for f in d.iterdir():
-            names.append(f.name)
+
+    def _collect(entry):
+        if entry.is_file():
+            names.append(entry.name)
+        else:
+            for child in entry.iterdir():
+                _collect(child)
+
+    for entry in snippets.iterdir():
+        _collect(entry)
     assert "widget.js" in names
     assert "klickdummy-feedback.md" in names
     assert "inject-widget.html" in names
     assert "screens-spec-template.yaml" in names
+    assert "gates.mk" in names
 
 
 def test_should_genesor_sync_canonical_source_be_importable_with_correct_interface(
