@@ -4,6 +4,53 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-13, KD-Rollout-Pilot — frist-hub + trading-hub, Session-Retro)
+
+**Klickdummy-Prozess-Frage beantwortet + Pilot gefahren:** User fragte, ob JEDES App-Repo
+den `/kd-scout → /klickdummy → /kd-review`-Prozess automatisch durchläuft und ob ein
+repo-weites KD-Sitemap-Index automatisch entsteht — Antwort: nein zu beiden (Skills sind
+user-level installiert = überall aufrufbar, aber nicht automatisch angewendet; `klickdummy-
+gen-sitemap` existiert, ist aber opt-in, keine Repo im Fleet hatte bisher tatsächlich einen
+`sitemap/index.html` generiert). Korrigierte Bestandsaufnahme: nur 8 von 22 Django-Apps
+(`platform/scripts/repo-registry.yaml`) hatten überhaupt einen KD — Top-Level-`klickdummy/`-
+Scan hatte frist-hub (nutzt `docs/klickdummy/`) fälschlich als fehlend gezählt.
+
+**Pilot 1 — frist-hub, Wohngeld-Fristen:** `/kd-scout` fand: die 2 realen Wohngeld-Fristen
+aus `wohngeld.py` (Widerspruch §84 SGG, Mitwirkung §60/66 SGB I) waren bereits in der
+BRMS-Matrix/Worklist abgebildet — die echte Lücke war, dass `fristdetail` immer denselben
+statischen Fall zeigte, egal welche Worklist-Zeile geklickt wurde. **PR #41** (Iter. 27,
+umschaltbares 2. Fallbeispiel) + **PR #42** (Iter. 28, kd-review-Fund: Tab-Aktiv-Zustand
+sichtbar machen) — beide gemergt, CI grün.
+
+**Pilot 2 — trading-hub, Kill-Switch/Risk-Limits:** Erstadoption `iil-klickdummy` (kein
+vorheriges KD-Setup). Klasse `mock`, 2 Screens brownfield aus `kill_switch()`/
+`risk_settings()`-Views extrahiert — Kill-Switch-Beispiel schlägt eine 2-stufige sichtbare
+Bestätigung (mit Trade-/Strategie-Zahlen) statt des heutigen nativen `confirm()`-Dialogs
+vor. **PR #139** gemergt (ADR-409). **Kritischer Nachfund:** trading-hub hat Auto-Deploy-
+on-Merge (`deploy.yml`) — der PR-#139-Merge löste unangekündigt einen echten Production-
+Deploy aus (erfolgreich, aber vorher nicht als Prod-Schritt erkannt/kommuniziert).
+
+**Session-Retro (`platform#1128`, gemergt) — Footprint `deep`:** 8 unabhängig falsifizierte
+Befunde (3 Sonnet-Finder + 3 Sonnet-Skeptiker, alle SURVIVES), Phase-5-Meta-Review
+durchlaufen. Zentraler Fund: der undisclosed Prod-Deploy ist die **8. Instanz** des bereits
+mehrfach gate-pflichtigen Musters `scope-checkpoint-not-durably-recorded`
+(`retro_kpis.py`). Follow-ups alle abgearbeitet:
+- **PR #143** (trading-hub) — CI-Gate für Klickdummy-I1-I3 nachgezogen (fehlte bei
+  Erstadoption), gemergt, Deploy erfolgreich verifiziert.
+- **Issue #176** (iil-klickdummy) — Rollout-Queue für die verbleibenden 14 Django-Apps
+  ohne KD, priorisiert nach Aktivität.
+- **3 CC-Memory-Einträge verankert:** `prod-deploy-preflight-before-merge-approval`
+  (🌀 drift, vor JEDER Merge-Freigabe Auto-Deploy-Workflows prüfen + explizit benennen),
+  `trading-hub-auto-deploy-on-merge` (Fakt), `klickdummy-adoption-needs-ci-gate` (Fakt).
+- `/kd-review` nachträglich für trading-hub gefahren (war bei PR #139 übersprungen worden,
+  Retro-Befund #4) — 5 UX-Findings dokumentiert (P1: kein Teilfehler-Zustand, rohe
+  Tailwind-Farben statt `--pui-*`-Token; P2/P3 kleiner), keine davon blockierend.
+
+**Nächste Schritte:** Issue #176 abarbeiten (organisch, nicht Big-Bang — nächstes Mal
+einziehen, wenn ohnehin an einem der 14 Repos gearbeitet wird). `/klickdummy`-Skill Step 8
+könnte um "CI-Job-Verdrahtung bei Erstadoption" ergänzt werden (noch nicht umgesetzt,
+Memory `klickdummy-adoption-needs-ci-gate` hält das fest).
+
 ## ⚡ Aktueller Stand (2026-07-13, Session-Start-Folgesession — #171/#172 gemergt, Issue #165 geschlossen)
 
 **#171 + #172 gemergt** (`2e126a9`, `6a13609`), Worktrees per `worktree-reaper.py --apply`
@@ -239,7 +286,16 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). Einzige verbleibende Prio, kein offenes Issue. | `[Opus]` |
+| 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Klickdummy-Rollout-Queue — 14 verbleibende Django-Apps, organisch abarbeiten (nächstes Mal einziehen, wenn ohnehin an einem der Repos gearbeitet wird). | `[Sonnet/Opus je Repo]` |
+| 2 | `/klickdummy`-Skill Step 8 um "CI-Job-Verdrahtung bei Erstadoption" ergänzen (Memory `klickdummy-adoption-needs-ci-gate`, aus trading-hub-Lücke). | `[Sonnet]` |
+| 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
+
+> **Erledigt 2026-07-13 (KD-Rollout-Pilot):** frist-hub-Pilot (PR #41/#42), trading-hub-
+> Erstadoption (PR #139, ADR-409) + Nachzieh-CI-Gate (PR #143). Session-Retro
+> [platform#1128](https://github.com/achimdehnert/platform/pull/1128) — kritischer Fund:
+> undisclosed Prod-Deploy via Klickdummy-Merge (trading-hub Auto-Deploy-on-Merge), 8.
+> Instanz von `scope-checkpoint-not-durably-recorded`. Details s. „Aktueller Stand
+> (2026-07-13, KD-Rollout-Pilot)" oben.
 
 > **Erledigt 2026-07-13 (Folgesession):** PR #171 + #172 gemergt (`2e126a9`, `6a13609`),
 > Worktrees aufgeräumt. pg-hub-Scope-Frage geklärt (User-Bestätigung) — Tracking-Issue
