@@ -52,7 +52,6 @@ import json
 import pathlib
 import re
 import sys
-from datetime import date
 
 try:
     import yaml
@@ -551,7 +550,6 @@ def main(argv: list[str]) -> int:
         "spec_sha256": hashlib.sha256(spec_path.read_bytes()).hexdigest(),
         "generator": "klickdummy-gen-e2e",
         "generator_version": _gen_version(),
-        "generated": date.today().isoformat(),
         "base_url_env": "SPEC_RENDERER_BASE_URL",
         "out_file": out.name,
         "parity_checks": total,
