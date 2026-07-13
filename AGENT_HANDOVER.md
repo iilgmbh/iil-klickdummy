@@ -4,6 +4,20 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-13, Session-Start-Folgesession — #171/#172 gemergt, Issue #165 geschlossen)
+
+**#171 + #172 gemergt** (`2e126a9`, `6a13609`), Worktrees per `worktree-reaper.py --apply`
+aufgeräumt. **pg-hub-Scope-Frage geklärt** (User-Bestätigung: `bahn-sqf/pg-hub` ist im Scope) —
+Tracking-Issue [bahn-sqf/pg-hub#7](https://github.com/bahn-sqf/pg-hub/issues/7) angelegt (110
+Verstöße, `pocket-governance-db` 83 + `pocket-governance` 27, Migrationsmuster analog
+writing-hub#201). Damit haben alle Verstoß-Klassen aus #165 ein eigenes Tracking-Artefakt —
+**Issue #165 geschlossen** zugunsten der Repo-Teil-Issues (writing-hub#201/#202, design-hub#36,
+nl2iot-hub#3, bahn-sqf/pg-hub#7, risk-hub-Fall bereits per #172 gefixt).
+
+**Offen:** KONZ-003 Empf-3 S2/S3 (Repository-Port + Multi-Adapter) bleibt einzige Prio,
+trigger-gated auf zweiten Live-Konsumenten von `uc-export.json` — kein offenes Issue nötig,
+bis der Trigger eintritt.
+
 ## ⚡ Aktueller Stand (2026-07-13, /issues-offen-Lauf — 4 PRs gemergt, 2 offen, cross-repo Migration)
 
 **`/issues-offen`-Lauf schließt #160/#161/#163 vollständig, #162 als Baustein ab** — 4 PRs
@@ -225,15 +239,17 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | PR #171 (Issue #170) reviewen + mergen — Sitemap-Idempotenz-Fix, CI grün. | `[Sonnet]` |
-| 2 | PR #172 (Issue #165 Teil) reviewen + mergen — sister_of-Slug-Pattern, CI grün. | `[Sonnet]` |
-| 3 | pg-hub-Scope klären: Remote zeigt auf unbekannte Org `bahn-sqf/pg-hub` — User-Bestätigung ausstehend, bevor dort ein Klickdummy-Schema-Tracking-Issue angelegt wird. | `[User]` |
-| 4 | Issue #165 nach #171/#172/pg-hub-Klärung neu bewerten — evtl. schließen zugunsten der Repo-lokalen Folge-Issues (writing-hub#202, design-hub#36, nl2iot-hub#3, pg-hub-TBD). | `[Sonnet]` |
-| 5 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
+| 1 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). Einzige verbleibende Prio, kein offenes Issue. | `[Opus]` |
 
-> **Erledigt 2026-07-13:** `/issues-offen`-Lauf — #160/#161/#163 vollständig gemergt (PR
+> **Erledigt 2026-07-13 (Folgesession):** PR #171 + #172 gemergt (`2e126a9`, `6a13609`),
+> Worktrees aufgeräumt. pg-hub-Scope-Frage geklärt (User-Bestätigung) — Tracking-Issue
+> [bahn-sqf/pg-hub#7](https://github.com/bahn-sqf/pg-hub/issues/7) angelegt. Issue #165
+> geschlossen (alle Verstoß-Klassen haben jetzt eigenes Tracking-Artefakt). Details s.
+> „Aktueller Stand (2026-07-13, Session-Start-Folgesession)" oben.
+
+> **Erledigt 2026-07-13 (Vorlauf):** `/issues-offen`-Lauf — #160/#161/#163 vollständig gemergt (PR
 > #166–#168), #162 als Baustein gemergt (PR #169, Canary in ausschreibungs-hub verifiziert).
-> Details s. „Aktueller Stand (2026-07-13)" oben.
+> Details s. „Aktueller Stand (2026-07-13, /issues-offen-Lauf)" oben.
 
 > **Erledigt 2026-07-08:** komplettes Qualitäts-/Publish-Backlog #107–#116 (10 PRs: #148-158,
 > zwei `/issues-offen`-Läufe à Cap 5) — 0 offene Issues im Repo. Details s. „Aktueller Stand
