@@ -32,8 +32,15 @@ def _load_specs(kd_root: pathlib.Path) -> list[dict[str, Any]]:
     for p in sorted(kd_root.rglob("*.screens-spec.yaml")) + sorted(
         kd_root.rglob("screens-spec.yaml")
     ):
-        # Sitemap-Spec selbst überspringen (würde sich rekursiv listen)
-        if p.name == "index.screens-spec.yaml":
+        # Sitemap-Spec selbst überspringen (würde sich rekursiv listen, Issue
+        # #170): `generate()` schreibt sie nach `<kd_root>/sitemap/screens-
+        # spec.yaml` — der alte Guard prüfte auf den nie geschriebenen
+        # Dateinamen "index.screens-spec.yaml" und griff dadurch nie. Symptom:
+        # die allererste Generierung (sitemap/ existiert noch nicht) zählt
+        # sich selbst nicht mit, die zweite (Datei jetzt vorhanden) schon —
+        # ein einmaliger Idempotenz-Sprung, der den Drift-Gate fälschlich rot
+        # färbt, sobald der Erst-Stand committed wurde.
+        if p.parent.name == "sitemap" and p.name == "screens-spec.yaml":
             continue
         try:
             data = yaml.safe_load(p.read_text(encoding="utf-8"))

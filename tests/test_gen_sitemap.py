@@ -89,6 +89,43 @@ def test_rerun_without_content_change_is_byte_identical(tmp_path):
     assert first == second
 
 
+def test_sitemap_does_not_include_itself_as_a_node(tmp_path):
+    """Regression #170: der Skip-Guard in `_load_specs()` prüfte auf den nie
+    geschriebenen Dateinamen "index.screens-spec.yaml" — die real erzeugte
+    Datei heißt "screens-spec.yaml" unter `sitemap/`. Griff dadurch nie: der
+    ERSTE Lauf zählt die Sitemap noch nicht mit (existiert ja noch nicht),
+    der ZWEITE (Datei jetzt vorhanden) zählte sie faelschlich als
+    zusätzlichen Knoten — ein einmaliger Idempotenz-Sprung, der den
+    Sitemap-Freshness-Drift-Gate nach dem allerersten Commit faelschlich rot
+    faerbt (Canary-Fund, ausschreibungs-hub 2026-07-13)."""
+    from iil_klickdummy import gen_sitemap
+
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+
+    tree1 = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    assert set(tree1["nodes"]) == {"acme:klickdummy-spec-hub"}
+
+    # Zweiter Lauf: klickdummy/sitemap/screens-spec.yaml existiert jetzt bereits.
+    tree2 = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    assert set(tree2["nodes"]) == {"acme:klickdummy-spec-hub"}
+    assert tree1 == tree2
+
+
+def test_sitemap_stays_empty_across_reruns_with_no_real_specs(tmp_path):
+    """Regression #170 (exakt der Canary-Fall in ausschreibungs-hub,
+    2026-07-13): ohne echte Klickdummy-Specs muss die Sitemap über beliebig
+    viele Reruns leer bleiben, statt sich selbst zu 'entdecken', sobald
+    sitemap/ einmal existiert."""
+    from iil_klickdummy import gen_sitemap
+
+    tree1 = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    assert tree1["nodes"] == {}
+
+    tree2 = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    assert tree2["nodes"] == {}
+
+
 def test_rerun_preserves_original_spec_date_even_with_new_content(tmp_path):
     from iil_klickdummy import gen_sitemap
 
