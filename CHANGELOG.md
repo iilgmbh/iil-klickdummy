@@ -5,10 +5,11 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
-Sammeleintrag für PR #148–#158 (gemergt 2026-07-08, `/issues-offen`-Backlog-Session).
-Versions-Bump bewusst zurückgestellt — Entscheidung (Patch/Minor) obliegt einem
-Menschen; Einträge sind SemVer-kategorisiert, damit die Entscheidung später ohne
-erneute Diff-Sichtung getroffen werden kann.
+Sammeleintrag für PR #148–#158 (gemergt 2026-07-08) + PR #166–#172 (gemergt 2026-07-13,
+`/issues-offen`-Lauf gegen den cross-repo Schema-WARN-Sammel-Issue #165). Versions-Bump
+bewusst zurückgestellt — Entscheidung (Patch/Minor) obliegt einem Menschen; Einträge sind
+SemVer-kategorisiert, damit die Entscheidung später ohne erneute Diff-Sichtung getroffen
+werden kann.
 
 ### Fixed
 
@@ -16,11 +17,16 @@ erneute Diff-Sichtung getroffen werden kann.
 - `date.today()`-Determinismus in 7 genesor-Render-Funktionen + `sync_to_orchestrator.py`-Timestamp brach Sync-Idempotenz (S-04/S-05, #156)
 - `install_snippets.py`-Deprecation-Pfad (im Zuge der CLI-Fehlerzweig-Tests, #152)
 - `extract_requirements.py`-Fehlerbehandlung bei ungültigem YAML (im Zuge der Loader-Konsolidierung, #158)
+- `gen_e2e`-Manifest `date.today()`-Determinismus, dritte Instanz desselben Musters nach #145/#156 (#160, #166)
+- `klickdummy-sync` Duplikat-Keys — `adr_entries()` fand ADR-Kopien in versteckten Worktree-Verzeichnissen mit; Versions-Doppelemission bei zwei Spec-Dateien im selben KD-Verzeichnis (#163, #167)
+- `gen_sitemap.py`s Selbstreferenz-Skip-Guard griff nie (Namens-Mismatch `index.screens-spec.yaml` vs. real geschriebenem `screens-spec.yaml`) — Idempotenz-Sprung 0→1 Knoten bei Sitemap-Erstanlage (#170, #171)
+- `adr.sister_of`-Pattern zu eng — erlaubte nur `<repo>:ADR-NNN`, jetzt auch `<repo>:klickdummy-spec-<slug>` (#165 Teil, #172)
 
 ### Changed
 
 - 7 unabhängige Spec-YAML-Loader zu einem konsolidiert (A-01, #158)
 - Publish-Smoke-Test läuft gegen das gebaute Wheel statt `PYTHONPATH=src` (fängt Packaging-Bugs früher, #154)
+- `pyproject.toml` package-data: `snippets/*`-Glob ergänzt — Top-Level-Dateien direkt unter `snippets/` fehlten im gebauten Wheel, obwohl jede editable-install-basierte lokale Prüfung sie fand (#162, #169)
 
 ### Added
 
@@ -28,6 +34,8 @@ erneute Diff-Sichtung getroffen werden kann.
 - 31 Smoke-Tests für 13 zuvor ungetestete `genesor/`-Module (#151)
 - CLI-Fehlerzweig- + `main_cli()`-Entry-Point-Tests (T-01/T-02/R12, #152)
 - Schema-Descriptions für Top-Level-Pflichtfelder + feedback-payload-Kernfelder (D-6, #157)
+- Neues CLI `klickdummy-detect` — Auto-Brownfield-Existenzdetektor (L1 Slug-Grep über `src/`, L2 Django-App-/Routen-Introspektion via neue `from_django.discover_app_dirs()`), inkl. wachsendem Detection-Corpus für künftige False-Negative-Fälle (#161, #168)
+- `gates.mk` + reusable GitHub-Actions-Workflow `klickdummy-parity-gate.yml` — ausrollbarer Parity-/Sitemap-Drift-Gate-Baustein für Adopter-Repos, Bootstrap-Target bewusst NICHT im `include`-baren Snippet (Bootstrapping-Paradox, `include` wird beim Parsen ausgewertet) (#162, #169)
 
 ### Security
 
