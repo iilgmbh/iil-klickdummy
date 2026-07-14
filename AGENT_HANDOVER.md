@@ -286,13 +286,26 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Klickdummy-Rollout-Queue — 14 verbleibende Django-Apps, organisch abarbeiten (nächstes Mal einziehen, wenn ohnehin an einem der Repos gearbeitet wird). | `[Sonnet/Opus je Repo]` |
+| 1 | research-hub-Deploy hängt fest — 2× in Folge Docker-Buildx lautlos gekillt (Runner-RAM-Erschöpfung `prod-server`, 467Mi frei/22Gi, Swap voll). Buildx-Cleanup allein reicht nicht. Architekturfrage offen: separater CI-Runner statt Prod-Host-Mitnutzung. Run: https://github.com/achimdehnert/research-hub/actions/runs/29346411576 | `[Opus, Infra-ADR]` |
+| 2 | [billing-hub#28](https://github.com/achimdehnert/billing-hub/pull/28) + [recruiting-hub#15](https://github.com/achimdehnert/recruiting-hub/pull/15) mergen (beide klickdummy-Rollout, beide Auto-Deploy) — zurückgestellt bis Runner-Lage klar ist. | `[Sonnet]` |
 | 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
 
-> **Erledigt 2026-07-14:** `/klickdummy`-Skill Step 8 um "CI-Job-Verdrahtung bei
-> Erstadoption" ergänzt — [platform#1131](https://github.com/achimdehnert/platform/pull/1131)
-> (offen, Merge steht aus). Memory `klickdummy-adoption-needs-ci-gate` bleibt als
-> durable Regel bestehen (gilt für künftige Erstadoptionen, kein Einmal-Task mehr).
+> **Erledigt 2026-07-14 (KD-Rollout-Abschluss + Session-Retro):** 12 weitere Repos klickdummy-
+> adoptiert (dev-hub, weltenhub, dms-hub, cad-hub, research-hub, coach-hub, pptx-hub, billing-hub,
+> 137-hub, recruiting-hub, wedding-hub, onboarding-hub), 5 Bugs vor Commit selbst gefunden
+> (Playwright-Test). `/klickdummy`-Skill Step 8 (CI-Job-Verdrahtung bei Erstadoption) umgesetzt —
+> [platform#1131](https://github.com/achimdehnert/platform/pull/1131), **gemergt**. Memory
+> `klickdummy-adoption-needs-ci-gate` bleibt als durable Regel bestehen (künftige Erstadoptionen).
+> Deep-Tier Session-Retro [platform#1148](https://github.com/achimdehnert/platform/pull/1148)
+> gemergt — Kernfund: tax-hub#67 mit falscher Root Cause angelegt (18. Instanz
+> `claim-before-cheapest-check`, gate-pflichtig). 12 Demo-Guard-Tracking-Issues angelegt
+> (`?demo=on`-Prod-Guard fehlt bisher überall). [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176)
+> auf tatsächlichen Merge-Stand korrigiert — 8/13 PRs gemergt (dms-hub#8, research-hub#48,
+> coach-hub#42, pptx-hub#40, onboarding-hub#10 + trading-hub/tax-hub/dev-hub aus Vorsession);
+> 4 PRs CI-blockiert (weltenhub#42, cad-hub#44, 137-hub#69, wedding-hub#34, nicht klickdummy-
+> bezogen); research-hub-Deploy blockiert durch Runner-RAM-Erschöpfung (s. Prio 1). dms-hub#11
+> neu: pre-existing „nie erfolgreich deployed"-Registry-Lücke (GHCR-Pull-Access-Denied),
+> separates Infra-Thema.
 
 > **Erledigt 2026-07-13 (KD-Rollout-Pilot):** frist-hub-Pilot (PR #41/#42), trading-hub-
 > Erstadoption (PR #139, ADR-409) + Nachzieh-CI-Gate (PR #143). Session-Retro
