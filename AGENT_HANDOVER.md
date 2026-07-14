@@ -48,8 +48,8 @@ mehrfach gate-pflichtigen Musters `scope-checkpoint-not-durably-recorded`
 
 **Nächste Schritte:** Issue #176 abarbeiten (organisch, nicht Big-Bang — nächstes Mal
 einziehen, wenn ohnehin an einem der 14 Repos gearbeitet wird). `/klickdummy`-Skill Step 8
-könnte um "CI-Job-Verdrahtung bei Erstadoption" ergänzt werden (noch nicht umgesetzt,
-Memory `klickdummy-adoption-needs-ci-gate` hält das fest).
+wurde 2026-07-14 um "CI-Job-Verdrahtung bei Erstadoption" ergänzt
+([platform#1131](https://github.com/achimdehnert/platform/pull/1131), Merge steht aus).
 
 ## ⚡ Aktueller Stand (2026-07-13, Session-Start-Folgesession — #171/#172 gemergt, Issue #165 geschlossen)
 
@@ -287,8 +287,12 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 | Prio | Task | Tier |
 |---|---|---|
 | 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Klickdummy-Rollout-Queue — 14 verbleibende Django-Apps, organisch abarbeiten (nächstes Mal einziehen, wenn ohnehin an einem der Repos gearbeitet wird). | `[Sonnet/Opus je Repo]` |
-| 2 | `/klickdummy`-Skill Step 8 um "CI-Job-Verdrahtung bei Erstadoption" ergänzen (Memory `klickdummy-adoption-needs-ci-gate`, aus trading-hub-Lücke). | `[Sonnet]` |
 | 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
+
+> **Erledigt 2026-07-14:** `/klickdummy`-Skill Step 8 um "CI-Job-Verdrahtung bei
+> Erstadoption" ergänzt — [platform#1131](https://github.com/achimdehnert/platform/pull/1131)
+> (offen, Merge steht aus). Memory `klickdummy-adoption-needs-ci-gate` bleibt als
+> durable Regel bestehen (gilt für künftige Erstadoptionen, kein Einmal-Task mehr).
 
 > **Erledigt 2026-07-13 (KD-Rollout-Pilot):** frist-hub-Pilot (PR #41/#42), trading-hub-
 > Erstadoption (PR #139, ADR-409) + Nachzieh-CI-Gate (PR #143). Session-Retro
