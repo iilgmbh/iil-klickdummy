@@ -284,6 +284,60 @@ def test_should_build_genesor_html_render_row_for_spec_kd(tmp_path):
     assert "<table" in html
 
 
+def _genesor_record(tmp_path):
+    return {
+        "org": "achimdehnert",
+        "repo": "test-repo",
+        "kd": "test-kd",
+        "path": tmp_path / "test-repo" / "klickdummy" / "test-kd" / "screens-spec.yaml",
+        "data": {
+            "class": "mock",
+            "spec_role": "default",
+            "screens": [],
+            "personas": {},
+            "adr": {"local": "test-repo:ADR-001"},
+            "off_ramp": {},
+        },
+        "kind": "spec",
+    }
+
+
+def test_should_link_to_repo_sitemap_when_generated(tmp_path):
+    """Cross-Link genesor -> klickdummy-gen-sitemap-Output (nur wenn im
+    Ingest-Checkout tatsächlich vorhanden, sonst kein toter Link)."""
+    from iil_klickdummy.genesor.config import GenesorConfig, get_cfg, set_cfg
+    from iil_klickdummy.genesor.render_genesor import build_genesor_html
+
+    sitemap_dir = tmp_path / "test-repo" / "klickdummy" / "sitemap"
+    sitemap_dir.mkdir(parents=True)
+    (sitemap_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+
+    default = get_cfg()
+    try:
+        set_cfg(GenesorConfig(repos_root=tmp_path))
+        html = build_genesor_html([_genesor_record(tmp_path)])
+    finally:
+        set_cfg(default)
+
+    assert "Repo-Sitemap" in html
+    assert "/test-repo/klickdummy/sitemap/index.html" in html
+
+
+def test_should_not_link_to_repo_sitemap_when_not_generated(tmp_path):
+    """Kein Sitemap-Verzeichnis im Checkout -> kein toter Link im Output."""
+    from iil_klickdummy.genesor.config import GenesorConfig, get_cfg, set_cfg
+    from iil_klickdummy.genesor.render_genesor import build_genesor_html
+
+    default = get_cfg()
+    try:
+        set_cfg(GenesorConfig(repos_root=tmp_path))
+        html = build_genesor_html([_genesor_record(tmp_path)])
+    finally:
+        set_cfg(default)
+
+    assert "Repo-Sitemap" not in html
+
+
 def test_should_org_and_role_chip_escape_and_label():
     from iil_klickdummy.genesor.render_genesor import _org_chip, _role_chip
 

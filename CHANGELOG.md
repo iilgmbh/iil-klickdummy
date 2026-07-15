@@ -5,6 +5,15 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.32.4] - 2026-07-15
+
+### Added
+
+- `render_genesor.py`: Cross-Link von der zentralen genesor-Übersicht auf die
+  neue Pro-Repo-KD-Sitemap (`klickdummy-gen-sitemap`) — nur wenn im Ingest-
+  Checkout tatsächlich generiert, sonst kein toter Link. Erster Schritt aus
+  dem genesor/kd-Konsolidierungsvorschlag (KONZ folgt für Stufe 2).
+
 ## [1.32.3] - 2026-07-15
 
 ### Fixed
