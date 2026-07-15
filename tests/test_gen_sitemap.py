@@ -70,6 +70,26 @@ def test_generate_builds_parent_child_tree_and_flags_orphan(tmp_path):
     assert lonely["parent"] is None and lonely["role"] != "root"
 
 
+def test_generate_finds_specs_rendered_as_shell_html(tmp_path):
+    """Issue #181: die neuere /klickdummy-Skill-Kette (genesor-Render) schreibt
+    shell.html statt index.html — der Scanner darf solche Specs nicht mehr
+    lautlos überspringen (kd-tree.json blieb sonst leer, 0 Knoten)."""
+    from iil_klickdummy import gen_sitemap
+
+    kd_root = tmp_path / "klickdummy"
+    d = kd_root / "hub"
+    d.mkdir(parents=True)
+    (d / "screens-spec.yaml").write_text(
+        yaml.safe_dump(_root_spec("acme:klickdummy-spec-hub", "Hub"), sort_keys=False),
+        encoding="utf-8",
+    )
+    (d / "shell.html").write_text("<html></html>", encoding="utf-8")
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+
+    assert tree["roots"] == ["acme:klickdummy-spec-hub"]
+
+
 def test_rerun_without_content_change_is_byte_identical(tmp_path):
     """Determinismus-Regression: ein zweiter Lauf ohne Spec-Änderung darf
     screens-spec.yaml NICHT verändern (spec_date darf nicht auf 'heute'

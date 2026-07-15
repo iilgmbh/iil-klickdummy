@@ -48,11 +48,16 @@ def _load_specs(kd_root: pathlib.Path) -> list[dict[str, Any]]:
             continue
         if not isinstance(data, dict) or "spec_id" not in data:
             continue
-        html_path = (
-            p.with_suffix("").with_suffix(".html")
-            if p.name.endswith(".screens-spec.yaml")
-            else p.parent / "index.html"
-        )
+        if p.name.endswith(".screens-spec.yaml"):
+            html_path = p.with_suffix("").with_suffix(".html")
+        else:
+            # Zwei Renderer-Konventionen im Umlauf: ältere Repos (z.B. risk-hub,
+            # ADR-046) schreiben index.html, die neuere /klickdummy-Skill-Kette
+            # (genesor-Render) schreibt shell.html (Issue #181) — beide prüfen,
+            # index.html zuerst (Rückwärtskompatibilität).
+            html_path = p.parent / "index.html"
+            if not html_path.exists():
+                html_path = p.parent / "shell.html"
         if not html_path.exists():
             continue
         data["__path__"] = html_path

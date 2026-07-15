@@ -5,14 +5,18 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.32.2] - 2026-07-15
+
 Sammeleintrag für PR #148–#158 (gemergt 2026-07-08) + PR #166–#172 (gemergt 2026-07-13,
-`/issues-offen`-Lauf gegen den cross-repo Schema-WARN-Sammel-Issue #165). Versions-Bump
-bewusst zurückgestellt — Entscheidung (Patch/Minor) obliegt einem Menschen; Einträge sind
-SemVer-kategorisiert, damit die Entscheidung später ohne erneute Diff-Sichtung getroffen
-werden kann.
+`/issues-offen`-Lauf gegen den cross-repo Schema-WARN-Sammel-Issue #165) + den
+`gen_sitemap.py`-shell.html-Fix (#181) — Versions-Bump jetzt bewusst getroffen (KD-Sitemap-
+Rollout über 8 Repos brauchte den Fix als Release, nicht nur als Source-Änderung).
 
 ### Fixed
 
+- `gen_sitemap.py` erkannte Specs mit `shell.html`-Renderer (neuere `/klickdummy`-Skill-Kette,
+  genesor-Render) nicht — nur `index.html` wurde geprüft, betroffene Specs fielen lautlos aus
+  dem Scan, `kd-tree.json` blieb leer (0 Knoten) in 8/8 Repos des Sitemap-Rollouts (#181)
 - `manage.py`-Warnings-Zähler, `check_i4.py`-Code-Block-Ausnahme, `inventory.py`-Self-Scan (A-02/A-03/A-05, #155)
 - `date.today()`-Determinismus in 7 genesor-Render-Funktionen + `sync_to_orchestrator.py`-Timestamp brach Sync-Idempotenz (S-04/S-05, #156)
 - `install_snippets.py`-Deprecation-Pfad (im Zuge der CLI-Fehlerzweig-Tests, #152)
