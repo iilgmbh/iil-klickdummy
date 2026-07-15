@@ -5,6 +5,14 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.32.3] - 2026-07-15
+
+### Fixed
+
+- `gen_sitemap.py`s Sitemap-Links (`→ öffnen`) öffneten via `target="_blank"` einen neuen
+  Tab — auf iOS Safari (u.a. hinter Cloudflare Access) öffnet das oft einen stillen
+  Hintergrund-Tab ohne sichtbare Reaktion, wirkt wie ein toter Link. Jetzt Same-Tab-Navigation.
+
 ## [1.32.2] - 2026-07-15
 
 Sammeleintrag für PR #148–#158 (gemergt 2026-07-08) + PR #166–#172 (gemergt 2026-07-13,

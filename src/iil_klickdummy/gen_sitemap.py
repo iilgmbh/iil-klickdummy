@@ -164,7 +164,7 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
             f'<td class="text-[11px]">root</td>'
             f'<td><span class="text-[10px] px-1.5 py-0.5 rounded {STATUS_COLOR.get(root["off_ramp_status"], "")}">{root["off_ramp_status"]}</span></td>'
             f'<td class="text-[11px]">{root["screens_count"]}</td>'
-            f'<td><a href="{rel(root["path"])}" data-testid="link-{root_id}" target="_blank" class="text-orange-600 hover:underline text-sm">→ öffnen</a></td>'
+            f'<td><a href="{rel(root["path"])}" data-testid="link-{root_id}" class="text-orange-600 hover:underline text-sm">→ öffnen</a></td>'
             f"</tr>"
         )
         for child_id in root["children"]:
@@ -175,7 +175,7 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
                 f'<td class="text-[11px] text-gray-500">branch</td>'
                 f'<td><span class="text-[10px] px-1.5 py-0.5 rounded {STATUS_COLOR.get(ch["off_ramp_status"], "")}">{ch["off_ramp_status"]}</span></td>'
                 f'<td class="text-[11px]">{ch["screens_count"]}</td>'
-                f'<td><a href="{rel(ch["path"])}" data-testid="link-{child_id}" target="_blank" class="text-gray-600 hover:underline text-sm">→ öffnen</a></td>'
+                f'<td><a href="{rel(ch["path"])}" data-testid="link-{child_id}" class="text-gray-600 hover:underline text-sm">→ öffnen</a></td>'
                 f"</tr>"
             )
         sections.append(
