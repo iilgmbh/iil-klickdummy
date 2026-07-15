@@ -4,6 +4,43 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-15, KD-Sitemap-Rollout + Generator-Fix + neuer Skill)
+
+**Auslöser:** User-Frage, ob es pro App-Repo ein KD-Verzeichnis/Index geben kann
+(`<repo>.iil.pet/kd/...`). Recherche ergab: der Mechanismus existiert bereits als
+`iil.pet/kd/<repo>/...` (genesor-Ingest, `platform:ADR-246`), nicht als eigene
+Subdomain — dafür bräuchte jedes App-Repo einen neuen Traefik/nginx-Static-Alias
+(Cross-Cutting-Infra, ADR-pflichtig). Entscheidung: bestehendes Schema nutzen.
+
+**Sitemap-Rollout über 8 Repos aus dem Issue-#176-Batch** (trading-hub#153,
+tax-hub#68, dev-hub#140, dms-hub#15, research-hub#50, coach-hub#45, pptx-hub#42,
+onboarding-hub#13 — 7 gemergt + deployed, onboarding-hub#13 offen, deploy-sicher,
+Merge-Entscheidung beim User) + **apo-hub#49** (Dogfood-Test, gemergt) — alle mit
+generierter `klickdummy/sitemap/index.html` + `kd-tree.json`.
+
+**Kritischer Fund:** `gen_sitemap.py` erkannte `shell.html`-Renderer (neuere
+`/klickdummy`-Skill-Konvention) nicht, nur `index.html` — `kd-tree.json` kam in
+8/8 Repos mit 0 Knoten zurück. Gefixt + released:
+[iilgmbh/iil-klickdummy#181](https://github.com/iilgmbh/iil-klickdummy/issues/181)
+→ **v1.32.2 auf PyPI**, PR [#182](https://github.com/iilgmbh/iil-klickdummy/pull/182).
+Lehre: Tag-Push muss von `origin/main` abgeleitet werden, nicht vom lokal ggf.
+veralteten Haupt-Tree-HEAD — erster Tag-Versuch traf einen Stand mit `1.32.1`,
+CI fing den Version-Mismatch, Tag wurde gelöscht + korrekt neu gesetzt.
+
+**Neuer Skill `/kd-sitemap`** ([platform#1154](https://github.com/achimdehnert/platform/pull/1154),
+gemergt) kodifiziert den bis dahin manuellen 6-Schritt-Ablauf (Makefile-Target,
+Venv-Upgrade, generieren+verifizieren, Auto-Deploy-Preflight, PR, genesor-Wiring,
+Ingest-Trigger) — idempotent, Erstanlage und Update laufen identisch. Dogfood-
+Test gegen apo-hub im PR-Body zitiert (3 Knoten/3 Wurzeln).
+
+**Deploy-Nachlauf:** 7 Merges lösten je einen echten Prod-Deploy aus — 4 direkt
+grün (trading-hub, tax-hub, coach-hub, pptx-hub), 3 (dev-hub, dms-hub,
+research-hub) scheiterten am gemeinsamen Runner (`graceful_stop`/GHCR-403,
+Infra nicht Code — Muster [[prod-server-runner-ram-oversubscription]] passt für
+dev-hub/research-hub), alle 3 nach Rerun grün.
+
+**Offen:** onboarding-hub#13 (deploy-sicher) noch nicht gemergt — User-Entscheidung.
+
 ## ⚡ Aktueller Stand (2026-07-13, KD-Rollout-Pilot — frist-hub + trading-hub, Session-Retro)
 
 **Klickdummy-Prozess-Frage beantwortet + Pilot gefahren:** User fragte, ob JEDES App-Repo
@@ -291,7 +328,7 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 > **Erledigt 2026-07-14:** `/klickdummy`-Skill Step 8 um "CI-Job-Verdrahtung bei
 > Erstadoption" ergänzt — [platform#1131](https://github.com/achimdehnert/platform/pull/1131)
-> (offen, Merge steht aus). Memory `klickdummy-adoption-needs-ci-gate` bleibt als
+> (gemergt 2026-07-14T10:24Z). Memory `klickdummy-adoption-needs-ci-gate` bleibt als
 > durable Regel bestehen (gilt für künftige Erstadoptionen, kein Einmal-Task mehr).
 
 > **Erledigt 2026-07-13 (KD-Rollout-Pilot):** frist-hub-Pilot (PR #41/#42), trading-hub-
