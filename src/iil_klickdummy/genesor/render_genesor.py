@@ -236,6 +236,23 @@ def _render_kd_detail(
             "</div>"
         )
 
+    # Repo-Sitemap-Link (klickdummy-gen-sitemap, iilgmbh/iil-klickdummy#181) — nur
+    # wenn im Ingest-Checkout tatsächlich generiert, sonst kein toter Link.
+    sitemap_link = ""
+    try:
+        sitemap_path = r["path"].parent.parent / "sitemap" / "index.html"
+        if sitemap_path.is_file():
+            sitemap_url = url_for_path(sitemap_path)
+            if sitemap_url:
+                sitemap_link = (
+                    '<div class="sitemap-link small">'
+                    f'🗺️ <a href="{sitemap_url}" target="_blank">'
+                    f"→ Repo-Sitemap für <code>{repo_slug}</code> öffnen</a>"
+                    "</div>"
+                )
+    except (AttributeError, KeyError, OSError):
+        sitemap_link = ""
+
     # Mockup-HTML (Stufe 1b: "Klickdummy klickbar") — mockup_url oben vorberechnet.
     if _mockup_html_path and mockup_url:
         mockup_link = (
@@ -327,6 +344,7 @@ def _render_kd_detail(
           </div>
         </div>
         {lineage_link}
+        {sitemap_link}
         <div class="spec-path small muted">Spec: <code>~/github/{html.escape(rel_path)}</code></div>
       </td>
     </tr>"""
