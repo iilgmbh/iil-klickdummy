@@ -4,6 +4,36 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-16, Folgesession — Issue #176 gegengecheckt, prod-server-RAM-Fund)
+
+**Issue #176 gegengecheckt** (war 2 Tage veraltet): billing-hub#28 + recruiting-hub#15 wurden
+2026-07-15 gemergt, aber **beide Deploy-Runs schlugen fehl** (kein Retry) — [Issue #176
+aktualisiert](https://github.com/iilgmbh/iil-klickdummy/issues/176). wedding-hub#34 ist nicht
+mehr CI-rot, aber weiterhin blockiert (Ruleset erwartet `ci / gate`, den das Repo nie erzeugt) —
+Fix als [wedding-hub#36](https://github.com/achimdehnert/wedding-hub/pull/36) vorbereitet.
+
+**Deploy-Rerun (explizit freigegeben) — beide erneut fehlgeschlagen**, gleiche Ursache: geteilter
+Runner `prod-server` (billing-hub + recruiting-hub + ~7 weitere Hubs auf **einem** Host, RAM
+strukturell überbucht — bereits als [platform#1078](https://github.com/achimdehnert/platform/issues/1078)
+getrackt, 3,7-fache `Committed_AS`/`CommitLimit`-Überbuchung). "Warten bis Last sich beruhigt"
+ist laut Memory bereits 2× widerlegt — kein 3. Retry ohne echten Fix.
+
+**ADR-257 gefunden** (accepted, in-progress): entschied bereits einen dedizierten Non-Prod-Runner
+(`ci-nonprod`), aber nur travel-beat (Pilot) hat ihn tatsächlich registriert — **`ci-nonprod` ist
+PER-REPO registriert, nicht org-weit geteilt** (wichtige Korrektur einer ersten Fehlannahme).
+PRs [billing-hub#30](https://github.com/achimdehnert/billing-hub/pull/30) / [recruiting-hub#17](https://github.com/achimdehnert/recruiting-hub/pull/17)
+vorbereitet, aber **billing-hub#30 hängt aktuell auf `ubuntu-latest`** (Test lief nur gegen
+`ci.yml`s harmlosen `ci`-Job grün — der eigentliche `deploy.yml`-Build-Job ist **ungetestet**,
+da ein echter `workflow_dispatch`-Test bewusst nicht freigegeben wurde). recruiting-hub#17 steht
+noch auf `ci-nonprod` (würde ohne eigenen Runner ewig `queued` bleiben).
+
+**Entscheidung: kein Ad-hoc-Fix, sondern `/konzept`** — User stoppte die begonnene Konzept-
+Arbeit mitten in dieser Session ("später eigene Session"). Tracking-Issue:
+[platform#1217](https://github.com/achimdehnert/platform/issues/1217) — enthält die volle,
+bereits gesammelte Evidenz (ADR-257, Runbook, #1078, Runner-API-Belege, Test-Ergebnis) für den
+Direkteinstieg. **Nächste Session zu diesem Thema: `/konzept` mit Issue #1217 als Kontext starten,
+nicht neu recherchieren.**
+
 ## ⚡ Aktueller Stand (2026-07-16, Session-Retro + Governance-Fund KD-Sitemap-Rollout)
 
 **Auslöser:** `/session-retro` ohne Argument gestartet. Lean-Retro (`d80d23`) über die letzten
@@ -363,7 +393,14 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 | 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Klickdummy-Rollout-Queue — 14 verbleibende Django-Apps, organisch abarbeiten (nächstes Mal einziehen, wenn ohnehin an einem der Repos gearbeitet wird). | `[Sonnet/Opus je Repo]` |
 | 2 | apo-hub Deploy-Pfad: dormant (ungesetzte `DEPLOY_ENABLED`-Var + kein Server) — aktivieren oder Rollout-Status auf "CI-only" korrigieren (Retro-Fund `c25d21` #5). | `[Sonnet]` |
 | 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
-| 4 | 5 offene platform-PRs aus der Session-Retro (#1176, #1180, #1194, #1195, #1206) — Merge-Entscheidung beim User. | `[User]` |
+| 4 | [platform#1217](https://github.com/achimdehnert/platform/issues/1217): `/konzept` fahren — Cross-Repo CI/Build-Runner-Placement (ubuntu-latest vs. per-repo `ci-nonprod` vs. Bootstrap-Automation). Evidenz bereits gesammelt, nicht neu recherchieren. | `[Opus, T3]` |
+| 5 | wedding-hub#36 + billing-hub#30 + recruiting-hub#17 mergen — abhängig von Prio 4 (billing-hub#30 aktuell auf `ubuntu-latest`, ungetestet gegen echten Build-Job; recruiting-hub#17 noch auf `ci-nonprod`, ohne eigenen Runner nicht mergebereit). | `[User/Sonnet je nach Konzept-Ausgang]` |
+
+> **Erledigt 2026-07-16 (Folgesession):** Issue #176 gegengecheckt + korrigiert (billing-hub/
+> recruiting-hub gemergt, Deploy 2× fehlgeschlagen — `prod-server`-RAM-Oversubscription,
+> platform#1078). Deploy-Rerun (freigegeben) bestätigte denselben Fehler erneut. ADR-257
+> gefunden (bereits akzeptierter Non-Prod-Runner-Beschluss, nur teilweise ausgerollt).
+> Ad-hoc-Fixes bewusst gestoppt zugunsten `/konzept` (Prio 4) — Details "Aktueller Stand" oben.
 
 > **Erledigt 2026-07-16:** `/session-retro` zweimal gefahren (Lean-Selbstkorrektur `d80d23`,
 > Deep-Tier `c25d21` für die 2026-07-15-Sitemap-Rollout-Session). Kernfund: 9 selbst-gemergte
