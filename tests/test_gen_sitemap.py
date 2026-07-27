@@ -200,6 +200,119 @@ def test_generate_defaults_repo_name_to_directory_name(tmp_path):
     assert "some-repo" in html
 
 
+# --------------------------------------------------------------------------
+# Issue: Sitemap rendert leer, wenn keine Spec `spec_role: root` deklariert
+#
+# `spec_role` ist optional und defaultet auf "branch". Repos, deren Specs es
+# nicht setzen, hatten deshalb roots=[] -> order=[] -> die Sitemap zeigte
+# sichtbar "0 Wurzeln · 0 Knoten gesamt" und KEINE Tabelle, obwohl
+# kd-tree.json Knoten enthielt. Realfall 2026-07-27: 8 von 10 ausgerollten
+# Repos (u.a. trading-hub mit 2 Knoten, 0 gerenderten Zeilen).
+# --------------------------------------------------------------------------
+
+
+def _branch_spec(spec_id: str, title: str, children: list[str] | None = None) -> dict:
+    """Spec OHNE `spec_role` — genau die Form, die in den App-Repos ausgerollt ist."""
+    return {
+        "spec_id": spec_id,
+        "title": title,
+        "class": "mock",
+        "kd_children": children or [],
+        "off_ramp": {"status_overall": "Phase A"},
+        "screens": [{"id": "s1", "off_ramp_status": "static"}],
+    }
+
+
+def test_should_treat_parentless_nodes_as_roots_when_no_spec_role_declared(tmp_path):
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "alpha", _branch_spec("acme:klickdummy-spec-alpha", "Alpha"))
+    _write_spec(kd_root, "beta", _branch_spec("acme:klickdummy-spec-beta", "Beta"))
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+
+    assert tree["roots"] == [
+        "acme:klickdummy-spec-alpha",
+        "acme:klickdummy-spec-beta",
+    ]
+    assert len(tree["order"]) == 2
+
+
+def test_should_render_rows_when_no_spec_role_declared(tmp_path):
+    """Der eigentliche Schaden war das gerenderte HTML, nicht der Tree."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "alpha", _branch_spec("acme:klickdummy-spec-alpha", "Alpha"))
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert "<b>0</b> Wurzeln" not in html
+    assert "<b>0</b> Knoten gesamt" not in html
+    assert 'data-testid="row-acme-klickdummy-spec-alpha"' in html
+
+
+def test_should_not_warn_orphans_for_fallback_roots(tmp_path):
+    """Fallback-Wurzeln duerfen nicht gleichzeitig als Waisen gewarnt werden."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "alpha", _branch_spec("acme:klickdummy-spec-alpha", "Alpha"))
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert 'data-testid="orphans"' not in html
+
+
+def test_should_still_warn_real_orphan_next_to_explicit_root(tmp_path):
+    """Gegenprobe: gibt es eine echte Wurzel, bleibt der Waisen-Block bestehen."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+    _write_spec(
+        kd_root, "lonely", _branch_spec("acme:klickdummy-spec-lonely", "Lonely")
+    )
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert tree["roots"] == ["acme:klickdummy-spec-hub"]
+    assert 'data-testid="orphans"' in html
+    assert 'data-testid="orphan-acme-klickdummy-spec-lonely"' in html
+
+
+def test_should_not_recurse_infinitely_on_cyclic_kd_children(tmp_path):
+    """`kd_children` ist freier Spec-Inhalt — zwei Specs koennen sich
+    gegenseitig als Kind fuehren. Ohne Zyklen-Schutz endete das in
+    RecursionError statt in einer Sitemap."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(
+        kd_root,
+        "a",
+        {
+            **_root_spec("acme:klickdummy-spec-a", "A", ["acme:klickdummy-spec-b"]),
+        },
+    )
+    _write_spec(
+        kd_root,
+        "b",
+        {
+            **_root_spec("acme:klickdummy-spec-b", "B", ["acme:klickdummy-spec-a"]),
+        },
+    )
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+
+    assert len(tree["order"]) == len(set(tree["order"])), "kein Knoten doppelt"
+    assert set(tree["order"]) == set(tree["nodes"])
+
+
 def test_main_cli_usage_without_args_returns_exit_code_2(capsys):
     from iil_klickdummy import gen_sitemap
 
