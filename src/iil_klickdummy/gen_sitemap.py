@@ -22,6 +22,7 @@ import datetime
 import json
 import pathlib
 import sys
+from importlib.resources import files
 from typing import Any
 
 import yaml
@@ -155,6 +156,22 @@ def _write_kd_tree_json(shared_dir: pathlib.Path, tree: dict[str, Any]) -> None:
         "// auto-generiert von klickdummy-gen-sitemap — bitte NICHT editieren\n"
         f"window.__KD_TREE__ = {body};\n",
         encoding="utf-8",
+    )
+
+
+def _write_kd_nav_js(shared_dir: pathlib.Path) -> None:
+    """`kd-nav.js` mit ausliefern.
+
+    Die generierte Sitemap bindet unbedingt `../_shared/kd-nav.js` ein
+    (Hauptmenue-Button + Tour-Modus). Die Datei lag aber nur historisch in
+    risk-hub und wurde vom Paket NIE mitgeliefert — in allen anderen Repos war
+    das `<script src>` ein 404 und die Navigation lief nie (gemessen 2026-07-27:
+    9 von 10 ausgerollten Repos). Der Generator schreibt jetzt die Quelle mit,
+    die er referenziert."""
+    shared_dir.mkdir(parents=True, exist_ok=True)
+    src = files("iil_klickdummy") / "snippets" / "kd-nav.js"
+    (shared_dir / "kd-nav.js").write_text(
+        src.read_text(encoding="utf-8"), encoding="utf-8"
     )
 
 
@@ -340,6 +357,7 @@ def generate(
     specs = _load_specs(kd_root)
     tree = _build_tree(specs)
     _write_kd_tree_json(kd_root / "_shared", tree)
+    _write_kd_nav_js(kd_root / "_shared")
     out_dir = kd_root / "sitemap"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_text(_render_sitemap(tree, name), encoding="utf-8")

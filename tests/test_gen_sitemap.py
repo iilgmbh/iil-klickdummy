@@ -186,6 +186,39 @@ def test_generate_writes_all_artifacts_with_repo_name_not_hardcoded(tmp_path):
     assert spec["adr"]["conforms_to"] == "platform:ADR-211"
 
 
+def test_should_write_kd_nav_js_referenced_by_the_sitemap(tmp_path):
+    """Die Sitemap bindet `../_shared/kd-nav.js` unbedingt ein. Die Datei lag
+    historisch nur in risk-hub und wurde nie mitgeliefert — in 9 von 10
+    ausgerollten Repos war das `<script src>` ein 404 (gemessen 2026-07-27)."""
+    from iil_klickdummy import gen_sitemap
+
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+
+    nav = kd_root / "_shared" / "kd-nav.js"
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert "../_shared/kd-nav.js" in html
+    assert nav.is_file(), "referenziertes Script muss auch geschrieben werden"
+    assert nav.read_text(encoding="utf-8").strip(), "kd-nav.js darf nicht leer sein"
+
+
+def test_should_keep_rerun_byte_identical_for_kd_nav_js(tmp_path):
+    from iil_klickdummy import gen_sitemap
+
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    first = (kd_root / "_shared" / "kd-nav.js").read_text(encoding="utf-8")
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    second = (kd_root / "_shared" / "kd-nav.js").read_text(encoding="utf-8")
+
+    assert first == second
+
+
 def test_generate_defaults_repo_name_to_directory_name(tmp_path):
     from iil_klickdummy import gen_sitemap
 
