@@ -107,17 +107,37 @@ def _build_tree(specs: list[dict[str, Any]]) -> dict[str, Any]:
             if child_id in by_id and by_id[child_id]["parent"] is None:
                 by_id[child_id]["parent"] = sid
                 node["children"].append(child_id)
-    # Tour-Reihenfolge: depth-first ab den Roots
+    # Tour-Reihenfolge: depth-first ab den Roots.
+    #
+    # `spec_role` ist optional und defaultet oben auf "branch". Ein Repo, dessen
+    # Specs es gar nicht deklarieren, hatte deshalb KEINE Wurzel — `order` blieb
+    # leer und die Sitemap renderte sichtbar "0 Wurzeln · 0 Knoten gesamt",
+    # obwohl kd-tree.json Knoten enthielt (Realfall 2026-07-27: 8 von 10
+    # ausgerollten Repos, u.a. trading-hub mit 2 Knoten). Fallback deshalb:
+    # ohne explizite Wurzel sind alle elternlosen Knoten Wurzeln.
     roots = sorted([sid for sid, n in by_id.items() if n["role"] == "root"])
+    if not roots:
+        roots = sorted([sid for sid, n in by_id.items() if n["parent"] is None])
     order: list[str] = []
+    seen: set[str] = set()
 
     def _visit(sid: str) -> None:
+        # Zyklen-Schutz: `kd_children` ist frei editierbarer Spec-Inhalt, zwei
+        # Specs koennen sich gegenseitig als Kind fuehren — ohne `seen` liefe
+        # der DFS in eine RecursionError.
+        if sid in seen:
+            return
+        seen.add(sid)
         order.append(sid)
         for ch in by_id[sid]["children"]:
             _visit(ch)
 
     for r in roots:
         _visit(r)
+    # Bewusst KEIN "Waisen-Rescue" hier: elternlose Branches neben echten Roots
+    # sind ein Spec-Fehler und werden vom Renderer als Warnblock ausgewiesen
+    # (data-testid="orphans"). Sie zu Roots zu befoerdern wuerde die Warnung
+    # stilllegen statt den Fehler zu zeigen.
     # prev/next setzen
     for i, sid in enumerate(order):
         by_id[sid]["prev"] = order[i - 1] if i > 0 else None
@@ -185,8 +205,17 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
             f"<tbody>{''.join(rows)}</tbody></table></div>"
         )
 
-    # Orphans (Knoten ohne Parent und nicht root)
-    orphans = [n for n in nodes.values() if n["role"] != "root" and n["parent"] is None]
+    # Orphans (Knoten ohne Parent, die auch nicht als Wurzel gerendert werden).
+    # Der Abgleich laeuft gegen tree["roots"], nicht gegen `role`: greift der
+    # Fallback fuer Repos ohne `spec_role: root`, sind alle Knoten Wurzeln und
+    # duerfen nicht zusaetzlich als Waisen gewarnt werden — sonst stuende
+    # dieselbe Spec gleichzeitig als Wurzel-Tabelle und als Fehler-Warnung da.
+    root_ids = set(tree["roots"])
+    orphans = [
+        n
+        for n in nodes.values()
+        if n["spec_id"] not in root_ids and n["parent"] is None
+    ]
     orphan_block = ""
     if orphans:
         rows = "".join(
