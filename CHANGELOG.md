@@ -5,13 +5,28 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.32.5] - 2026-07-27
+
 ### Fixed
 
 - `screens-spec.schema.json` + `check_i4.py`: Repo-Teil von `spec_id`,
   `adr.local` und `adr.sister_of[]` darf mit einer **Ziffer** beginnen
   (`137-hub:ADR-002`). Bisher erzwang `^[a-z]` einen Buchstaben — echte
   Repo-Namen wie `achimdehnert/137-hub` waren dadurch nicht abbildbar und
-  brauchten ad-hoc-Aliase ohne Konvention (Issue #179).
+  brauchten ad-hoc-Aliase ohne Konvention (Issue #179). Schema und I4-Checker
+  wurden gemeinsam gelockert — sonst hätte das Schema `137-hub:ADR-002`
+  akzeptiert, während I4 dieselbe Referenz als *lokale* ADR gelesen hätte.
+- `sync_to_orchestrator.py`: `entry_key`-Dedup läuft jetzt **einmal über alle
+  Repos** statt pro Repo. Duplikate aus zwei Repo-Roots mit identischem
+  `org/repo` (Kopie oder stale Worktree in der `--repos`-Liste) überlebten
+  bisher bis ins NDJSON; Konsumenten upserten in Dateireihenfolge
+  (last-write-wins), wodurch die **ältere** Variante gewann (Issue #188,
+  Lauf 2026-07-24: 143 Zeilen → 134 eindeutige Keys). `sync_repo()` bekommt
+  dafür `dedup=False`, damit die Präzedenz-Felder bis zum Aggregat-Lauf
+  erhalten bleiben.
+- `sync_to_orchestrator.py`: ADR-Content-Vorschau schneidet nicht mehr
+  markerlos bei 8000 Zeichen ab (`ADR-046` endete mitten in `## Refe`) —
+  neu mit `… [gekürzt: N weitere Zeichen]` (Issue #188, Zweitbefund).
 
 ## [1.32.4] - 2026-07-15
 
