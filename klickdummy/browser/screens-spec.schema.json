@@ -8,7 +8,7 @@
   "additionalProperties": true,
   "properties": {
     "$schema":       { "type": "string" },
-    "spec_id":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*$" },
+    "spec_id":       { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:[a-z][a-z0-9_-]*$" },
     "spec_version":  { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
     "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix. Generationen: 1.0 = Baseline; 1.1 = + `screen.use_cases[]` (Spec-Layer/X-Ray)." },
     "spec_date":     { "type": "string", "format": "date" },
@@ -18,11 +18,11 @@
       "type": "object",
       "required": ["local", "conforms_to"],
       "properties": {
-        "local":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:ADR-[0-9]{3}$" },
+        "local":       { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:ADR-[0-9]{3}$" },
         "conforms_to": { "type": "string", "pattern": "^platform:ADR-[0-9]{3}$" },
         "sister_of": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:ADR-[0-9]{3}$" }
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:ADR-[0-9]{3}$" }
         }
       }
     },

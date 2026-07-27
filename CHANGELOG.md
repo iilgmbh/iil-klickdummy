@@ -5,6 +5,14 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+### Fixed
+
+- `screens-spec.schema.json` + `check_i4.py`: Repo-Teil von `spec_id`,
+  `adr.local` und `adr.sister_of[]` darf mit einer **Ziffer** beginnen
+  (`137-hub:ADR-002`). Bisher erzwang `^[a-z]` einen Buchstaben — echte
+  Repo-Namen wie `achimdehnert/137-hub` waren dadurch nicht abbildbar und
+  brauchten ad-hoc-Aliase ohne Konvention (Issue #179).
+
 ## [1.32.4] - 2026-07-15
 
 ### Added
