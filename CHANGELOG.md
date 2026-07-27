@@ -5,6 +5,32 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.32.6] - 2026-07-27
+
+### Fixed
+
+- `gen_sitemap.py`: **Sitemap renderte leer.** Wurzeln wurden nur aus Specs mit
+  `spec_role: root` gesammelt; das Feld ist optional und defaultet auf
+  `"branch"`. Repos ohne explizite Rolle hatten `roots=[]` → `order=[]` → die
+  Seite zeigte sichtbar `0 Wurzeln · 0 Knoten gesamt` und keine einzige
+  Tabellenzeile, obwohl `kd-tree.json` Knoten enthielt. Betroffen waren 8 von
+  10 ausgerollten Repos. Neu: ohne explizite Wurzel gelten alle elternlosen
+  Knoten als Wurzeln (explizite Wurzeln behalten Vorrang).
+- `gen_sitemap.py`: Waisen-Warnblock wird gegen die tatsächlichen Wurzeln
+  gerechnet statt gegen `spec_role` — sonst stünde bei aktivem Fallback
+  dieselbe Spec gleichzeitig als Wurzel-Tabelle und als Fehler-Warnung da.
+- `gen_sitemap.py`: Zyklen-Schutz im Tour-DFS. `kd_children` ist freier
+  Spec-Inhalt; zwei Specs, die sich gegenseitig als Kind führen, lösten bisher
+  einen `RecursionError` aus.
+
+### Added
+
+- `snippets/kd-nav.js` wird als Paket-Asset ausgeliefert und von
+  `klickdummy-gen-sitemap` nach `klickdummy/_shared/kd-nav.js` geschrieben.
+  Die generierte Sitemap band das Script schon immer ein, aber die Datei lag
+  nur historisch in risk-hub — in 9 von 10 ausgerollten Repos war das
+  `<script src>` ein 404 und Hauptmenü-Button + Tour-Modus liefen dort nie.
+
 ## [1.32.5] - 2026-07-27
 
 ### Fixed
