@@ -20,8 +20,11 @@ import pathlib
 import re
 import sys
 
-# Erfasst sowohl 'ADR-021' als auch 'foo:ADR-021'
-ADR_PATTERN = re.compile(r"(?P<prefix>[A-Za-z][A-Za-z0-9_-]*:)?(?P<adr>ADR-\d{3})")
+# Erfasst sowohl 'ADR-021' als auch 'foo:ADR-021'.
+# Der Prefix darf mit einer Ziffer beginnen (`137-hub:ADR-002`, Issue #179) —
+# sonst greift die Prefix-Gruppe bei ziffern-präfigierten Repos nicht und die
+# Referenz wird fälschlich als *lokale*, unqualifizierte ADR bewertet.
+ADR_PATTERN = re.compile(r"(?P<prefix>[A-Za-z0-9][A-Za-z0-9_-]*:)?(?P<adr>ADR-\d{3})")
 SCAN_EXT = {".md", ".html", ".yaml", ".yml", ".json"}
 
 

@@ -8,7 +8,7 @@
   "additionalProperties": true,
   "properties": {
     "$schema":       { "type": "string" },
-    "spec_id":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*$", "description": "Eindeutige Spec-ID, Konvention `<repo>:klickdummy-spec-<name>` (z. B. `meiki:klickdummy-spec-fristenmanagement`). Referenzpunkt für Cross-Repo-Tools (registry.py, sync_to_orchestrator.py, gen_e2e)." },
+    "spec_id":       { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:[a-z][a-z0-9_-]*$", "description": "Eindeutige Spec-ID, Konvention `<repo>:klickdummy-spec-<name>` (z. B. `meiki:klickdummy-spec-fristenmanagement`). Referenzpunkt für Cross-Repo-Tools (registry.py, sync_to_orchestrator.py, gen_e2e). Der Repo-Teil darf mit einer Ziffer beginnen — echte Repo-Namen wie `137-hub` sind sonst nicht abbildbar (Issue #179)." },
     "spec_version":  { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$", "description": "SemVer-artige Spec-Version (nicht das Paket `iil-klickdummy`, nicht `spec_schema_version`). Erhöhen bei inhaltlichen Änderungen — Basis für `klickdummy-manage versions`/`diff`." },
     "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix. Generationen: 1.0 = Baseline; 1.1 = + `screen.use_cases[]` (Spec-Layer/X-Ray)." },
     "spec_date":     { "type": "string", "format": "date", "description": "Erstellungs-/Rev-Datum der Spec (`YYYY-MM-DD`), von Autoren gepflegt — nicht zu verwechseln mit dem generator-internen `build-date`-Determinismus-Marker in gerenderten HTML-Artefakten." },
@@ -19,12 +19,12 @@
       "description": "ADR-Verankerung dieses Klickdummies (I4 Namensraum-Pflicht: Cross-Repo-Refs nur als `repo:ADR-NNN`).",
       "required": ["local", "conforms_to"],
       "properties": {
-        "local":       { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:ADR-[0-9]{3}$", "description": "Die lokale, repo-eigene ADR, die diesen Klickdummy trägt (z. B. `meiki:ADR-021`). Muss `sunset_after` im Frontmatter tragen (Rev-11-Pflicht)." },
+        "local":       { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:ADR-[0-9]{3}$", "description": "Die lokale, repo-eigene ADR, die diesen Klickdummy trägt (z. B. `meiki:ADR-021`). Muss `sunset_after` im Frontmatter tragen (Rev-11-Pflicht). Repo-Teil darf mit einer Ziffer beginnen (`137-hub:ADR-002`, Issue #179)." },
         "conforms_to": { "type": "string", "pattern": "^platform:ADR-[0-9]{3}$", "description": "Die org-weite Rahmen-ADR, der dieser Klickdummy folgt — für dieses Schema faktisch immer `platform:ADR-211`." },
         "sister_of": {
           "type": "array",
           "description": "Optional: Schwester-Implementierungen desselben Fachthemas in anderen Repos/Modulen (z. B. Modul-Dummy im selben Repo, oder dieselbe Fachlichkeit in einem anderen Produkt-Repo). Referenz entweder auf eine ADR (`<repo>:ADR-NNN`) oder direkt auf eine andere Klickdummy-Spec (`<repo>:klickdummy-spec-<slug>`, analog `spec_id` — Issue #165: risk-hub/explosionsschutz referenziert Schwester-Specs ohne eigene ADR).",
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:(ADR-[0-9]{3}|[a-z][a-z0-9_-]*)$" }
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:(ADR-[0-9]{3}|[a-z][a-z0-9_-]*)$" }
         }
       }
     },
