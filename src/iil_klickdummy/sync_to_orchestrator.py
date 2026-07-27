@@ -75,6 +75,19 @@ def _version_sort_key(version: str) -> tuple:
     return tuple(parts)
 
 
+CONTENT_PREVIEW_LIMIT = 8000
+
+
+def _content_preview(text: str, limit: int = CONTENT_PREVIEW_LIMIT) -> str:
+    """Body-Vorschau für Embeddings (Token-Limit) — mit sichtbarem Truncation-
+    Marker (Issue #188 Zweitbefund). Ohne Marker endete der Content mitten im
+    Wort (`ADR-046` brach in "## Refe" ab) und Konsumenten konnten nicht
+    unterscheiden, ob die Quelle kurz ist oder abgeschnitten wurde."""
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}\n\n… [gekürzt: {len(text) - limit} weitere Zeichen]"
+
+
 def _dedup_entries(entries: list[dict]) -> list[dict]:
     """Dedupliziert Entries nach `entry_key` (Issue #163): rglob-Duplikate (ADR-
     Kopien in stale Agent-Worktrees) und Doppel-Emission (zwei Spec-Dateien im
@@ -250,7 +263,7 @@ def adr_entries(repo_root: pathlib.Path, org: str, repo: str) -> list[dict]:
                 entry_key=f"klickdummy-adr:{org}:{repo}:ADR-{adr_num}",
                 entry_type="decision",
                 title=f"{repo}:ADR-{adr_num} — {title}",
-                content=text[:8000],  # Body-Vorschau (Embeddings haben Token-Limit)
+                content=_content_preview(text),
                 tags=[
                     "klickdummy",
                     "klickdummy-adr",
@@ -265,7 +278,14 @@ def adr_entries(repo_root: pathlib.Path, org: str, repo: str) -> list[dict]:
     return out
 
 
-def sync_repo(repo_root: pathlib.Path) -> list[dict]:
+def sync_repo(repo_root: pathlib.Path, *, dedup: bool = True) -> list[dict]:
+    """Entries eines Repos sammeln.
+
+    `dedup=False` liefert die Roh-Entries **inklusive** der internen
+    `_source_path`/`_precedence_version`-Felder — nötig, damit ein späterer
+    aggregierter `_dedup_entries()`-Lauf die Präzedenz noch auswerten kann
+    (Issue #188). `main()` nutzt genau diesen Pfad; Einzel-Aufrufer behalten
+    das bisherige Verhalten."""
     org = _detect_org(repo_root)
     repo = _detect_repo_name(repo_root)
     entries: list[dict] = []
@@ -273,7 +293,7 @@ def sync_repo(repo_root: pathlib.Path) -> list[dict]:
         entries.append(klickdummy_entry(km, org, repo, repo_root))
     entries.extend(iteration_entries_from_feedback_log(repo_root, org, repo))
     entries.extend(adr_entries(repo_root, org, repo))
-    return _dedup_entries(entries)
+    return _dedup_entries(entries) if dedup else entries
 
 
 def main(argv: list[str]) -> int:
@@ -304,7 +324,7 @@ def main(argv: list[str]) -> int:
     all_entries: list[dict] = []
     for rr in repo_roots:
         print(f"  · {rr}", file=sys.stderr)
-        entries = sync_repo(rr)
+        entries = sync_repo(rr, dedup=False)
         all_entries.extend(entries)
         if args.dry_run:
             kdm = sum(1 for e in entries if e["entry_type"] == "repo_context")
@@ -315,6 +335,20 @@ def main(argv: list[str]) -> int:
                 file=sys.stderr,
             )
 
+    # Dedup EINMAL über alle Repos (Issue #188): der bisherige Per-Repo-Dedup
+    # in `sync_repo()` sah Duplikate nicht, die aus ZWEI Repo-Roots mit
+    # identischem org/repo stammen (Kopie/stale Worktree in der --repos-Liste).
+    # Die landeten reihenfolgeabhängig im NDJSON — Konsumenten upserten
+    # last-write-wins, wodurch die ÄLTERE Variante gewann.
+    raw_count = len(all_entries)
+    all_entries = _dedup_entries(all_entries)
+    dropped = raw_count - len(all_entries)
+    if dropped:
+        print(
+            f"  Dedup: {dropped} Duplikat-Entry(s) verworfen "
+            f"({raw_count} → {len(all_entries)})",
+            file=sys.stderr,
+        )
     print(f"  Total: {len(all_entries)} Entries", file=sys.stderr)
     if args.dry_run:
         return 0
