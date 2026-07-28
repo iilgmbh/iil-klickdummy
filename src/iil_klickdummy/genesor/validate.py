@@ -10,7 +10,11 @@ from .config import get_cfg
 
 
 # Per platform:ADR-213 (Cross-Repo-Ref-Format)
-CROSS_REPO_REF_RE = re.compile(r"^[a-z][a-z0-9-]+:ADR-[0-9]{3}$")
+# Repo-Teil darf mit einer Ziffer beginnen (`137-hub:ADR-002`, Issue #179).
+# Diese Stelle wurde beim urspruenglichen Fix uebersehen: sie validiert ein
+# ANDERES Feld (`consumes_from[].ref`) als Schema/check_i4 und lag deshalb
+# ausserhalb des Suchraums (Retro-Befund #3).
+CROSS_REPO_REF_RE = re.compile(r"^[a-z0-9][a-z0-9-]+:ADR-[0-9]{3}$")
 
 
 _ACCEPTANCE_AXES = ("spec_signed", "ui_walked")
@@ -127,7 +131,7 @@ def validate_kd(r: dict, kd_registry: set[str]) -> list[dict]:
                 {
                     "severity": "error",
                     "code": "I4-MALFORMED-REF",
-                    "msg": f"Cross-Repo-Ref '{ref}' verletzt platform:ADR-213-Regex (^[a-z][a-z0-9-]+:ADR-[0-9]{{3}}$).",
+                    "msg": f"Cross-Repo-Ref '{ref}' verletzt platform:ADR-213-Regex (^[a-z0-9][a-z0-9-]+:ADR-[0-9]{{3}}$).",
                 }
             )
         elif ref and ref not in kd_registry:

@@ -353,3 +353,115 @@ def test_main_cli_usage_without_args_returns_exit_code_2(capsys):
 
     assert rc == 2
     assert "Usage" in capsys.readouterr().out
+
+
+# --------------------------------------------------------------------------
+# Retro-Befunde 2026-07-27 (session-retro-…-aa60bb): der Wurzel-Fallback aus
+# #192 deckte seine eigenen Härtefälle nicht ab.
+# --------------------------------------------------------------------------
+
+
+def _cyclic_pair_without_root(kd_root: pathlib.Path) -> None:
+    """Zwei Specs OHNE `spec_role`, die sich gegenseitig als Kind führen."""
+    for name, other in (("a", "b"), ("b", "a")):
+        _write_spec(
+            kd_root,
+            name,
+            {
+                **_branch_spec(f"acme:spec-{name}", name.upper()),
+                "kd_children": [f"acme:spec-{other}"],
+            },
+        )
+
+
+def test_should_render_nodes_on_cycle_without_declared_root(tmp_path):
+    """Befund #7: bei Zyklus OHNE `spec_role: root` hat kein Knoten `parent is
+    None` — der Fallback griff ins Leere und die Sitemap blieb erneut leer,
+    also genau der Bug, den #192 beheben sollte."""
+    kd_root = tmp_path / "klickdummy"
+    _cyclic_pair_without_root(kd_root)
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+
+    assert tree["roots"], "kein Einstiegspunkt — Sitemap waere leer"
+    assert set(tree["order"]) == set(tree["nodes"]), "Knoten verschwinden aus der Tour"
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+    assert "<b>0</b> Knoten gesamt" not in html
+
+
+def test_should_warn_dangling_kd_children_without_declared_root(tmp_path):
+    """Befund #8: eine `kd_children`-Referenz ins Leere blieb unsichtbar, wenn
+    keine Spec `spec_role: root` trug — dort waren `roots` und `elternlos` per
+    Konstruktion dieselbe Menge, der Waisen-Block konnte nie feuern."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(
+        kd_root,
+        "alpha",
+        {
+            **_branch_spec("acme:spec-alpha", "Alpha"),
+            "kd_children": ["acme:spec-TIPPFEHLER"],
+        },
+    )
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert tree["dangling"] == ["acme:spec-alpha → acme:spec-TIPPFEHLER"]
+    assert 'data-testid="dangling"' in html
+
+
+def test_should_keep_orphan_warning_next_to_declared_root(tmp_path):
+    """Gegenprobe: mit deklarierter Wurzel bleibt der Waisen-Block erhalten."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+    _write_spec(
+        kd_root, "lonely", _branch_spec("acme:klickdummy-spec-lonely", "Lonely")
+    )
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert tree["declared_roots"] == ["acme:klickdummy-spec-hub"]
+    assert 'data-testid="orphans"' in html
+
+
+def test_should_not_warn_orphans_without_declared_root(tmp_path):
+    """Ohne deklarierte Wurzel gibt es begrifflich keine Waise — dort greift
+    der Dangling-Block, nicht die Waisen-Heuristik."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "alpha", _branch_spec("acme:spec-alpha", "Alpha"))
+    _write_spec(kd_root, "beta", _branch_spec("acme:spec-beta", "Beta"))
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert 'data-testid="orphans"' not in html
+    assert 'data-testid="dangling"' not in html
+
+
+def test_should_qualify_cross_repo_adr_refs_in_generated_html(tmp_path):
+    """I4 (Namensraum) verlangt `repo:ADR-NNN` fuer Cross-Repo-Refs. Das
+    HTML-Template emittierte `ADR-211` unqualifiziert — in Repos, deren I4-Lauf
+    den sitemap/-Ordner mit abdeckt (z.B. frist-hub), scheitert der Check
+    dadurch am generierten Artefakt selbst."""
+    import re
+
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    # Jede ADR-Referenz im gerenderten HTML muss repo-qualifiziert sein.
+    unqualified = [m.group(0) for m in re.finditer(r"(?<![\w:-])ADR-\d{3}", html)]
+    assert not unqualified, f"unqualifizierte ADR-Refs im HTML: {unqualified}"
