@@ -4,6 +4,49 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-28, Retro + Abarbeitung der Befunde)
+
+**Auslöser:** `/session-retro` über die Session vom 2026-07-27. `deep`-Footprint,
+1 Collector + 3 Finder + 3 Skeptiker + 1 Tie-Break + 1 Meta-Reviewer.
+Report: [platform#1503](https://github.com/achimdehnert/platform/pull/1503).
+**15 Befunde, 14 überleben.**
+
+**Was der Retro über die Vorsession fand — die zwei härtesten Punkte:**
+- Die Abschlussmeldung „13 von 13 Repos konsistent" war **methodisch zirkulär**: sie maß die
+  *bearbeiteten* Repos, nicht die *betroffenen*. `frist-hub` stand seit dem 2026-07-22 mit
+  `enabled: true` in genau der `genesor-repos.yaml`, die dieselbe Session editierte — und
+  rendete weiterhin `0 Wurzeln` mit totem `kd-nav.js`. Ein Skeptiker prüfte danach alle 22
+  Manifest-Einträge: Einzelfall, kein zweites Repo betroffen.
+- coach-hub #47 wurde über einen **roten Required Check** gemergt (`ci / Security Scan`, seit
+  2h09min FAILURE) — möglich, weil `enforce_admins: false` steht. In derselben Session wurde bei
+  #49/#51 korrekt argumentiert, der rote `Test`-Job sei *nicht* required; der PR mit dem echten
+  Bypass fiel nicht auf.
+
+**Selbstkorrektur:** Die GHCR-Erklärung stand falsch in Handover, Memory und Outline — es waren
+**6 von 9** roten Deploys, davon nur **3** GHCR. Alle drei Artefakte sind korrigiert
+([#195](https://github.com/iilgmbh/iil-klickdummy/pull/195)); die Outline-Lesson behält die alte
+Fassung bewusst als eigenen Abschnitt, weil der Diagnose-Fehler die eigentliche Lehre ist.
+
+**Abgearbeitet am 2026-07-28** ([#196](https://github.com/iilgmbh/iil-klickdummy/pull/196)):
+`genesor/validate.py`-Regex (vierte, übersehene Stelle) · Wurzel-Fallback für den Zyklus-Fall ·
+`declared_roots` von `roots` getrennt, damit die Waisen-Warnung wieder feuern kann · **neu**
+Dangling-Erkennung für kaputte `kd_children`-Referenzen · plus ein Kohärenztest über **alle vier**
+Regex-Stellen. Dazu drei Tracking-Issues ([coach-hub#54](https://github.com/achimdehnert/coach-hub/issues/54),
+[#55](https://github.com/achimdehnert/coach-hub/issues/55),
+[dms-hub#40](https://github.com/achimdehnert/dms-hub/issues/40)) und die Richtigstellung der
+Fehldiagnose in coach-hub#51.
+
+**Befund #15 entstand beim Abarbeiten** und wurde vom Retro selbst nicht gefunden: das
+HTML-Template emittiert `ADR-211` **unqualifiziert** und verletzt damit I4 — dieselbe Invariante,
+die dieselbe Toolchain anderswo durchsetzt. Sichtbar nur, weil frist-hubs I4-Lauf den
+`sitemap/`-Ordner mit abdeckt; in den zwölf am 2026-07-27 regenerierten Repos ist der Verstoß
+**still** vorhanden. Lehre: Generator-Ausgabe durch die Gates derselben Toolchain schicken, nicht
+nur inspizieren.
+
+**Offen:** Release **1.32.7** ist nötig, damit [frist-hub#102](https://github.com/meiki-lra/frist-hub/pull/102)
+grün wird — der PR liegt fertig, sein `klickdummy`-Check hängt am I4-Fix. Ohne Release bleibt
+frist-hubs Sitemap defekt.
+
 ## ⚡ Aktueller Stand (2026-07-27, Sitemap-Konsistenz + coach-hub-Entstörung)
 
 **Auslöser:** Frage, warum 137-hubs Klickdummy nirgends erreichbar ist. Daraus wurde ein
@@ -451,6 +494,7 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
+| 0 | **Release 1.32.7** — [PR #196](https://github.com/iilgmbh/iil-klickdummy/pull/196) ist gemergt, aber ohne Release bleibt [frist-hub#102](https://github.com/meiki-lra/frist-hub/pull/102) rot (I4-Verstoss im generierten HTML). Tag setzen, dann frist-hub-Sitemap neu erzeugen. | `[User + Sonnet]` |
 | 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Rollout-Queue — noch offen: weltenhub#42 + cad-hub#44 (`ci / Unit Tests` + `ci / gate` rot), wedding-hub#34 (Ruleset verlangt nie laufendes `ci / gate`). 137-hub#69 ist am 2026-07-27 gemergt. **Vor der Diagnose "CI rot" erst `ci.yml` auf YAML-Validität prüfen** — bei 137-hub war genau das die Ursache, nicht der gemeldete Check. | `[Sonnet/Opus je Repo]` |
 | 2 | apo-hub Deploy-Pfad: dormant. Am 2026-07-27 erneut belegt — Deploy scheitert an `failed to resolve host 'apo-hub-db'`, nicht an `DEPLOY_ENABLED`. Aktivieren oder Rollout-Status auf "CI-only" korrigieren (Retro-Fund `c25d21` #5). | `[Sonnet]` |
 | 2b | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
