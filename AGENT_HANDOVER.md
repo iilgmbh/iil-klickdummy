@@ -49,9 +49,21 @@ auf 5434 läuft aber `writing_hub_db_dev`. Wer lokal ohne `DATABASE_URL` startet
 die Dev-DB eines fremden Repos. Beide auf freie Ports gezogen (5438/5440), Belegung im Code
 dokumentiert.
 
-**Lehre für den nächsten Batch:** 9 gleichzeitige Merges lösten 9 parallele GHCR-Pushes aus
-→ 5 Deploys in `429`/`403`. Sequenzielle Reruns heilten 4; der fünfte (apo-hub) scheitert am
-dormanten Deploy-Pfad. **Gestaffelt mergen, nicht in einem Rutsch.**
+**Lehre für den nächsten Batch (korrigiert 2026-07-28 durch die Retro):** 9 Merges innerhalb von
+~31 Sekunden → **6 von 9 Deploys scheiterten in Attempt 1**, mit **vier verschiedenen Ursachen**:
+GHCR-`403` (research-hub, pptx-hub, 137-hub — nach Rerun grün), Host-Compose-Guard
+(recruiting-hub, `docker-compose.prod.yml absent`), DNS (apo-hub, blieb rot), Migrate-Crashloop
+(tax-hub, nie rerun).
+
+Die ursprüngliche Fassung dieses Absatzes nannte „5 Deploys in `429`/`403`" und führte alle auf
+GHCR zurück — beides falsch. Nachdem drei Logs GHCR zeigten, wurde nicht weitergelesen. Zwei der
+Fehlschläge waren durch einen Rerun gar nicht heilbar.
+
+**Zweifache Lehre:** (1) Gestaffelt mergen, nicht in einem Rutsch. (2) Bei Mehrfach-Fehlschlägen
+jeden Lauf **einzeln** zuordnen, bevor eine gemeinsame Ursache benannt wird — und beachten, dass
+`gh run rerun` die `conclusion` überschreibt: der Attempt-1-Fehler ist danach nur noch über
+`gh api repos/<o>/<r>/actions/runs/<id>/attempts/1/jobs` sichtbar.
+Beleg: Retro `session-retro-2026-07-27-iil-klickdummy-aa60bb` (platform#1503), Befund #9.
 
 ## ⚡ Aktueller Stand (2026-07-16, Folgesession — Issue #176 gegengecheckt, prod-server-RAM-Fund)
 
