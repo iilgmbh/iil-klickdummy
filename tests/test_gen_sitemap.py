@@ -445,3 +445,23 @@ def test_should_not_warn_orphans_without_declared_root(tmp_path):
 
     assert 'data-testid="orphans"' not in html
     assert 'data-testid="dangling"' not in html
+
+
+def test_should_qualify_cross_repo_adr_refs_in_generated_html(tmp_path):
+    """I4 (Namensraum) verlangt `repo:ADR-NNN` fuer Cross-Repo-Refs. Das
+    HTML-Template emittierte `ADR-211` unqualifiziert — in Repos, deren I4-Lauf
+    den sitemap/-Ordner mit abdeckt (z.B. frist-hub), scheitert der Check
+    dadurch am generierten Artefakt selbst."""
+    import re
+
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:klickdummy-spec-hub", "Hub"))
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    # Jede ADR-Referenz im gerenderten HTML muss repo-qualifiziert sein.
+    unqualified = [m.group(0) for m in re.finditer(r"(?<![\w:-])ADR-\d{3}", html)]
+    assert not unqualified, f"unqualifizierte ADR-Refs im HTML: {unqualified}"

@@ -315,14 +315,14 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
 </div>
 <div class="max-w-6xl mx-auto px-6 py-6">
  <h1 class="text-2xl font-bold text-orange-700 mb-2">Sitemap — {repo_name} Klickdummies</h1>
- <p class="text-sm text-gray-600 mb-6">Alle KD-Bäume mit Knoten-Hierarchie, Off-Ramp-Status (ADR-211 §I3) und Spec-ID (§I4).
+ <p class="text-sm text-gray-600 mb-6">Alle KD-Bäume mit Knoten-Hierarchie, Off-Ramp-Status (platform:ADR-211 §I3) und Spec-ID (§I4).
   Tour-Mode: hänge <code class="text-xs bg-gray-200 px-1 rounded">?tour=1</code> an die URL eines Knotens, um den Walkthrough zu starten.</p>
  <div class="text-xs text-gray-500 mb-4" data-testid="stats">
   <b>{len(tree["roots"])}</b> Wurzeln · <b>{len(tree["order"])}</b> Knoten gesamt · {sum(1 for n in nodes.values() if n["off_ramp_status"] == "parity-green")} parity-green
  </div>
  {"".join(sections)}
  {orphan_block}
- <p class="text-xs text-gray-400 mt-6">Generiert: <code class="text-[10px]">klickdummy-gen-sitemap</code> (iil-klickdummy). Quelle: jede <code class="text-[10px]">screens-spec.yaml</code> im klickdummy/-Baum (ADR-211 I1).</p>
+ <p class="text-xs text-gray-400 mt-6">Generiert: <code class="text-[10px]">klickdummy-gen-sitemap</code> (iil-klickdummy). Quelle: jede <code class="text-[10px]">screens-spec.yaml</code> im klickdummy/-Baum (platform:ADR-211 I1).</p>
 </div>
 <script>
 const PH=[{{id:"sitemap",t:"Sitemap"}}];
