@@ -4,6 +4,55 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-27, Sitemap-Konsistenz + coach-hub-Entstörung)
+
+**Auslöser:** Frage, warum 137-hubs Klickdummy nirgends erreichbar ist. Daraus wurde ein
+Strang über 8 Repos, weil an mehreren Stellen dieselbe Wurzel lag: **eine unterbrochene
+Prüfkette**. Wo nichts prüfte, verrottete etwas unbemerkt.
+
+**iil-klickdummy — zwei Releases:**
+- **1.32.5**: `entry_key`-Dedup lief nur pro Repo, Duplikate aus zwei Roots mit gleichem
+  `org/repo` überlebten bis ins NDJSON (Konsumenten upserten last-write-wins → die
+  *ältere* Variante gewann, [#188](https://github.com/iilgmbh/iil-klickdummy/issues/188)).
+  Plus Truncation-Marker und ziffern-präfigierte Repo-Namen im Schema
+  ([#179](https://github.com/iilgmbh/iil-klickdummy/issues/179), entblockte 137-hub).
+- **1.32.6**: `gen_sitemap` sammelte Wurzeln nur aus Specs mit `spec_role: root` — das Feld
+  ist optional, also hatten **8 von 10** ausgerollten Repos `roots=[]` und rendeten sichtbar
+  `0 Wurzeln · 0 Knoten gesamt`. Dazu Zyklen-Schutz im DFS und: `kd-nav.js` wurde von jeder
+  Sitemap eingebunden, aber **nie ausgeliefert** (lag nur in risk-hub) — 404 in 9 Repos.
+
+**Rollout:** 13 Repos regeneriert, Endzustand gegen `main` verifiziert (nicht gegen den
+eigenen Generierungslauf): 13/13 mit `Wurzeln>0` und `kd-nav.js`. 137-hub, billing-hub und
+recruiting-hub sind neu im genesor-Manifest ([iil-pet-portal#31](https://github.com/iilgmbh/iil-pet-portal/pull/31)),
+Ingest + Pages-Deploy grün — `kd/137-hub/klickdummy/` ist live.
+
+**Neues PyPI-Paket:** `iil-django-lms-lite` 0.1.1 (Trusted Publishing via OIDC,
+Distributions-Guard gegen `tests/`-Leak). Schließt den offenen ADR-266-Punkt
+„django-lms-lite … publizieren oder Registry-`pypi:`-Feld entfernen".
+
+**coach-hub war seit dem 2026-07-18 nicht deploybar** und ist es wieder. Drei
+Produktivdefekte, alle erst sichtbar, nachdem die Testkette wieder lief:
+1. `requirements.txt` zog `django-lms-lite` per `git+https` aus einem privaten Repo, der
+   Build-Token war ungültig → jetzt PyPI-Paket, Token-Kopplung ersatzlos weg.
+2. `templates/base.html` reversete `module_shop:catalogue` ohne registrierten Namespace
+   (seit `cc9b79a`, 2026-04-22) → `NoReverseMatch` auf eingeloggten Seiten. Link entfernt
+   (Owner-Entscheid).
+3. `apps/core/api.py:129` filterte `Course.objects.filter(is_active=True)` — Feld existiert
+   nicht → `GET /api/learning/progress/` warf `FieldError`.
+
+Testsuite von **21 rot auf 278 grün** (ADR-150-Migration in den Fixtures nachgezogen,
+Scoring-Skala und `/healthz/`-Erwartung an den Produktivcode angeglichen, Cache-Leak
+zwischen Tests geschlossen — der löste nebenbei ein `xfail` auf).
+
+**Dev-DB-Kollision:** coach-hub *und* billing-hub hatten `postgres://…:5434/…` als Default,
+auf 5434 läuft aber `writing_hub_db_dev`. Wer lokal ohne `DATABASE_URL` startete, schrieb in
+die Dev-DB eines fremden Repos. Beide auf freie Ports gezogen (5438/5440), Belegung im Code
+dokumentiert.
+
+**Lehre für den nächsten Batch:** 9 gleichzeitige Merges lösten 9 parallele GHCR-Pushes aus
+→ 5 Deploys in `429`/`403`. Sequenzielle Reruns heilten 4; der fünfte (apo-hub) scheitert am
+dormanten Deploy-Pfad. **Gestaffelt mergen, nicht in einem Rutsch.**
+
 ## ⚡ Aktueller Stand (2026-07-16, Folgesession — Issue #176 gegengecheckt, prod-server-RAM-Fund)
 
 **Issue #176 gegengecheckt** (war 2 Tage veraltet): billing-hub#28 + recruiting-hub#15 wurden
@@ -390,11 +439,22 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Klickdummy-Rollout-Queue — 14 verbleibende Django-Apps, organisch abarbeiten (nächstes Mal einziehen, wenn ohnehin an einem der Repos gearbeitet wird). | `[Sonnet/Opus je Repo]` |
-| 2 | apo-hub Deploy-Pfad: dormant (ungesetzte `DEPLOY_ENABLED`-Var + kein Server) — aktivieren oder Rollout-Status auf "CI-only" korrigieren (Retro-Fund `c25d21` #5). | `[Sonnet]` |
+| 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Rollout-Queue — noch offen: weltenhub#42 + cad-hub#44 (`ci / Unit Tests` + `ci / gate` rot), wedding-hub#34 (Ruleset verlangt nie laufendes `ci / gate`). 137-hub#69 ist am 2026-07-27 gemergt. **Vor der Diagnose "CI rot" erst `ci.yml` auf YAML-Validität prüfen** — bei 137-hub war genau das die Ursache, nicht der gemeldete Check. | `[Sonnet/Opus je Repo]` |
+| 2 | apo-hub Deploy-Pfad: dormant. Am 2026-07-27 erneut belegt — Deploy scheitert an `failed to resolve host 'apo-hub-db'`, nicht an `DEPLOY_ENABLED`. Aktivieren oder Rollout-Status auf "CI-only" korrigieren (Retro-Fund `c25d21` #5). | `[Sonnet]` |
+| 2b | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
+| 2c | [137-hub#72](https://github.com/achimdehnert/137-hub/issues/72): `aifw` fehlt in `INSTALLED_APPS`, `seed_action_types` kann nicht laufen. Entscheidung nötig: App registrieren (erzeugt Migrationen) oder Command entfernen. | `[Opus]` |
+| 2d | [tax-hub#73](https://github.com/iilgmbh/tax-hub/issues/73): Staging-Deploy scheitert, `tax_hub_staging_migrate` endet `exited`. Kein Prod-Impact (Build grün, Production skipped). Billigster Check: `docker logs` auf dem Staging-Host. | `[Sonnet]` |
 | 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
 | 4 | [platform#1217](https://github.com/achimdehnert/platform/issues/1217): `/konzept` fahren — Cross-Repo CI/Build-Runner-Placement (ubuntu-latest vs. per-repo `ci-nonprod` vs. Bootstrap-Automation). Evidenz bereits gesammelt, nicht neu recherchieren. | `[Opus, T3]` |
 | 5 | wedding-hub#36 + billing-hub#30 + recruiting-hub#17 mergen — abhängig von Prio 4 (billing-hub#30 aktuell auf `ubuntu-latest`, ungetestet gegen echten Build-Job; recruiting-hub#17 noch auf `ci-nonprod`, ohne eigenen Runner nicht mergebereit). | `[User/Sonnet je nach Konzept-Ausgang]` |
+
+> **Erledigt 2026-07-27:** iil-klickdummy 1.32.5 + 1.32.6 released (5 Bugfixes:
+> Cross-Repo-Dedup #188, Schema-Prefix #179, Sitemap-Wurzel-Fallback, DFS-Zyklen-Schutz,
+> `kd-nav.js`-Auslieferung). Sitemap in 13 Repos regeneriert und gegen `main` verifiziert
+> (13/13 korrekt). 137-hub/billing-hub/recruiting-hub ins genesor-Manifest, Ingest live.
+> Neues PyPI-Paket `iil-django-lms-lite` 0.1.1 → schließt den ADR-266-Punkt.
+> coach-hub wieder deploybar (3 Produktivdefekte), Testsuite 21 rot → 278 grün.
+> Dev-DB-Port-Kollision in coach-hub + billing-hub behoben. Details "Aktueller Stand" oben.
 
 > **Erledigt 2026-07-16 (Folgesession):** Issue #176 gegengecheckt + korrigiert (billing-hub/
 > recruiting-hub gemergt, Deploy 2× fehlgeschlagen — `prod-server`-RAM-Oversubscription,
