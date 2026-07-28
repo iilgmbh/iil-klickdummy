@@ -119,3 +119,44 @@ def test_schema_and_checker_agree_on_digit_prefix():
 
     assert re.match(pattern, "137-hub:ADR-002")
     assert check_i4.ADR_PATTERN.search("137-hub:ADR-002").group("prefix") == "137-hub:"
+
+
+# --------------------------------------------------------------------------
+# Retro-Befund #3 (session-retro-…-aa60bb): eine VIERTE Regex-Stelle blieb
+# `^[a-z]`-gebunden. Sie validiert `consumes_from[].ref` im genesor-Pfad und
+# lag deshalb ausserhalb des Suchraums "Schema + I4-Checker".
+# --------------------------------------------------------------------------
+
+
+def test_should_accept_digit_prefixed_repo_in_cross_repo_ref():
+    from iil_klickdummy.genesor.validate import CROSS_REPO_REF_RE
+
+    assert CROSS_REPO_REF_RE.match("137-hub:ADR-002")
+
+
+def test_should_still_accept_letter_prefixed_cross_repo_ref():
+    from iil_klickdummy.genesor.validate import CROSS_REPO_REF_RE
+
+    assert CROSS_REPO_REF_RE.match("platform:ADR-211")
+
+
+def test_should_still_reject_uppercase_cross_repo_ref():
+    from iil_klickdummy.genesor.validate import CROSS_REPO_REF_RE
+
+    assert not CROSS_REPO_REF_RE.match("Meiki:ADR-001")
+
+
+def test_all_repo_prefix_regexes_accept_digit_start():
+    """Kohaerenz ueber ALLE vier Stellen — genau der Check, der beim
+    urspruenglichen Fix fehlte."""
+    import re
+
+    from iil_klickdummy import check_i4
+    from iil_klickdummy.genesor.validate import CROSS_REPO_REF_RE
+    from iil_klickdummy.read_model import _load_schema
+
+    schema = _load_schema()["properties"]
+    assert re.match(schema["spec_id"]["pattern"], "137-hub:klickdummy-spec-x")
+    assert re.match(schema["adr"]["properties"]["local"]["pattern"], "137-hub:ADR-002")
+    assert check_i4.ADR_PATTERN.search("137-hub:ADR-002").group("prefix") == "137-hub:"
+    assert CROSS_REPO_REF_RE.match("137-hub:ADR-002")

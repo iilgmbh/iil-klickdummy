@@ -116,9 +116,22 @@ def _build_tree(specs: list[dict[str, Any]]) -> dict[str, Any]:
     # obwohl kd-tree.json Knoten enthielt (Realfall 2026-07-27: 8 von 10
     # ausgerollten Repos, u.a. trading-hub mit 2 Knoten). Fallback deshalb:
     # ohne explizite Wurzel sind alle elternlosen Knoten Wurzeln.
-    roots = sorted([sid for sid, n in by_id.items() if n["role"] == "root"])
+    # `declared_roots` und `roots` sind BEWUSST getrennt: nach Aktivierung des
+    # Fallbacks bedeutet `roots` nicht mehr "explizit deklariert", sondern
+    # "womit gerendert wird". Der Waisen-Block rechnet gegen `declared_roots` —
+    # sonst waeren beide Mengen identisch und die Warnung koennte nie feuern
+    # (Retro-Befund #8).
+    declared_roots = sorted([sid for sid, n in by_id.items() if n["role"] == "root"])
+    roots = list(declared_roots)
     if not roots:
         roots = sorted([sid for sid, n in by_id.items() if n["parent"] is None])
+    if not roots and by_id:
+        # Zyklus ohne deklarierte Wurzel: jeder Knoten hat einen Parent, also
+        # ist keiner elternlos — der Fallback oben greift ins Leere und die
+        # Sitemap bliebe erneut leer (Retro-Befund #7). Deterministisch alle
+        # Knoten als Einstieg nehmen; der Zyklen-Schutz unten verhindert
+        # Doppelungen.
+        roots = sorted(by_id)
     order: list[str] = []
     seen: set[str] = set()
 
@@ -139,11 +152,30 @@ def _build_tree(specs: list[dict[str, Any]]) -> dict[str, Any]:
     # sind ein Spec-Fehler und werden vom Renderer als Warnblock ausgewiesen
     # (data-testid="orphans"). Sie zu Roots zu befoerdern wuerde die Warnung
     # stilllegen statt den Fehler zu zeigen.
+    #
+    # Zusaetzlich: `kd_children`-Eintraege, die auf eine unbekannte spec_id
+    # zeigen (Tippfehler, geloeschter KD), sind ein Spec-Fehler, den die
+    # Waisen-Heuristik NICHT sieht — sie faellt nur auf, wenn zufaellig auch
+    # eine Wurzel deklariert ist. Deshalb direkt erfassen und rendern.
+    dangling = sorted(
+        {
+            f"{sid} → {child_id}"
+            for sid, node in by_id.items()
+            for child_id in node["kd_children"]
+            if child_id not in by_id
+        }
+    )
     # prev/next setzen
     for i, sid in enumerate(order):
         by_id[sid]["prev"] = order[i - 1] if i > 0 else None
         by_id[sid]["next"] = order[i + 1] if i < len(order) - 1 else None
-    return {"roots": roots, "order": order, "nodes": by_id}
+    return {
+        "roots": roots,
+        "declared_roots": declared_roots,
+        "dangling": dangling,
+        "order": order,
+        "nodes": by_id,
+    }
 
 
 def _write_kd_tree_json(shared_dir: pathlib.Path, tree: dict[str, Any]) -> None:
@@ -222,17 +254,22 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
             f"<tbody>{''.join(rows)}</tbody></table></div>"
         )
 
-    # Orphans (Knoten ohne Parent, die auch nicht als Wurzel gerendert werden).
-    # Der Abgleich laeuft gegen tree["roots"], nicht gegen `role`: greift der
-    # Fallback fuer Repos ohne `spec_role: root`, sind alle Knoten Wurzeln und
-    # duerfen nicht zusaetzlich als Waisen gewarnt werden — sonst stuende
-    # dieselbe Spec gleichzeitig als Wurzel-Tabelle und als Fehler-Warnung da.
-    root_ids = set(tree["roots"])
-    orphans = [
-        n
-        for n in nodes.values()
-        if n["spec_id"] not in root_ids and n["parent"] is None
-    ]
+    # Orphans: elternlose Knoten neben DEKLARIERTEN Wurzeln. Der Abgleich laeuft
+    # gegen `declared_roots`, nicht gegen `roots` — nach Aktivierung des
+    # Fallbacks sind `roots` und "elternlos" per Konstruktion dieselbe Menge,
+    # die Differenz waere immer leer und die Warnung koennte nie feuern
+    # (Retro-Befund #8). Ohne deklarierte Wurzel gibt es begrifflich keinen
+    # "Waisen" — dort greift stattdessen der Dangling-Block unten.
+    declared = set(tree.get("declared_roots") or [])
+    orphans = (
+        [
+            n
+            for n in nodes.values()
+            if n["spec_id"] not in declared and n["parent"] is None
+        ]
+        if declared
+        else []
+    )
     orphan_block = ""
     if orphans:
         rows = "".join(
@@ -246,6 +283,22 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
             '<h3 class="font-semibold text-sm mb-2 text-amber-800">⚠ Waisen-Knoten (kein Eltern-Root)</h3>'
             f'<ul class="text-sm">{rows}</ul></div>'
         )
+
+    # Dangling: `kd_children` zeigt auf eine spec_id, die es nicht gibt
+    # (Tippfehler, geloeschter KD). Unabhaengig davon, ob eine Wurzel
+    # deklariert ist — genau die Luecke, die die Waisen-Heuristik offen liess.
+    dangling_block = ""
+    if tree.get("dangling"):
+        rows = "".join(
+            f'<li class="border-b py-1"><code class="text-[11px]">{d}</code></li>'
+            for d in tree["dangling"]
+        )
+        dangling_block = (
+            '<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4" data-testid="dangling">'
+            '<h3 class="font-semibold text-sm mb-2 text-red-800">⚠ kd_children zeigt ins Leere</h3>'
+            f'<ul class="text-sm">{rows}</ul></div>'
+        )
+    orphan_block = dangling_block + orphan_block
 
     return f"""<!DOCTYPE html>
 <!--
