@@ -5,6 +5,8 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.33.0] - 2026-07-29
+
 ### Added
 
 - **Browser: Deep-Link (N9).** Auswahl und Story-Schritt stehen im URL-Fragment
