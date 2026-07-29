@@ -4,6 +4,96 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-07-29, Browser-Optimierung → Abnahme → Release 1.33.0)
+
+**Auslöser:** Frage nach dem GitHub-Link auf `klickdummy/`, daraus eine
+Optimierungsanalyse (architektonisch / funktional / UX) mit 11 Befunden. Der User
+entschied fünf davon (ADR-002 AS-1..AS-5); der Rest wurde umgesetzt.
+
+**Der Kernbefund:** Mock und echter Renderer waren seit PR #101 inhaltsgleich
+(20/20 `data-testid`), aber ohne Drift-Gate — ADR-002 stand weiter auf `proposed`,
+alle Screens auf `off_ramp_status: static`, und mit Release 1.32.x war die in der
+Spec selbst deklarierte Doppelquell-Grenze `prod-release` längst überschritten.
+Zweitbefund derselben Klasse: das Repo lieferte I1–I4 + Parity-Drift an ~13 Repos
+aus, fuhr sie aber nie gegen den eigenen Klickdummy.
+
+**Umgesetzt ([#201](https://github.com/iilgmbh/iil-klickdummy/pull/201),
+[#202](https://github.com/iilgmbh/iil-klickdummy/pull/202)):** ADR-002 `accepted` +
+Off-Ramp gezogen (`shell.html` gelöscht, alle Screens `removed`) · Cross-Repo-Modus
+ausgebaut (UC-004 — `registry.py` berechnete `org`/`repo`/`github_*` seit v1.3, **kein**
+Template las sie je) · N4 vervollständigt (der iframe-Ladefehler war der einzige der
+drei geforderten Fehlerzustände ohne Umsetzung) · N6 Tastatur-Stepper · N8 Filter ·
+N9 Deep-Link · N10 repo-skopierter Fortschritt + Reset · N11 Responsive + Dark Mode ·
+`make klickdummy-gates` + CI-Job.
+
+**Zwei Befunde, die nur der echte Browserlauf zeigte** (Quellcode-Lesen hätte beide
+durchgelassen):
+- Ein 404 feuert im iframe **kein** `error`-Event und seine Fehlerseite hat einen
+  nicht-leeren Body — die erste Fassung der N4-Sonde fiel genau hier durch. Jetzt vier
+  Sonden, entscheidend ist der gleichoriginale `HEAD`-Vorabcheck.
+- Der Deep-Link griff nur beim frischen Laden: ein Wechsel *nur* des Fragments ist eine
+  Same-Document-Navigation, das Script läuft nicht erneut. `hashchange`-Listener ergänzt.
+
+**Fix [#200](https://github.com/iilgmbh/iil-klickdummy/issues/200):**
+`discover_stories()` verwarf Story-Steps mit unbekanntem `kd` still — die Story wirkte
+vollständig und war nur kürzer, und der eigens gebaute sichtbare Fehlerzustand konnte
+nie greifen (Widerspruch zu AS-2). Steps bleiben jetzt als `unresolved` erhalten.
+
+**Release [1.33.0](https://pypi.org/project/iil-klickdummy/1.33.0/)**
+([#203](https://github.com/iilgmbh/iil-klickdummy/pull/203), Tag `v1.33.0`): PyPI +
+GitHub-Release grün. Gegenprobe bewusst gegen das **von PyPI geladene** Paket, nicht
+gegen das lokale Build-Artefakt — alle acht neuen Template-Marker und der #200-Fix sind
+im ausgelieferten Code.
+
+**Damit erledigt sich die alte Prio 0:** Das geforderte Release ist gefahren (1.33.0
+statt 1.32.7) und enthält den I4-Fix aus #196 (Commit `5c561c4` liegt vor dem Tag).
+`frist-hub#102` ist allerdings am 2026-07-29 04:42 **geschlossen** worden, nicht gemergt
+— von wem und warum, ist von hier aus nicht geprüft. Die frist-hub-Sitemap muss also
+weiterhin gegen 1.33.0 neu erzeugt werden; das ist jetzt Prio 0 (siehe Tabelle).
+
+## ⚡ Aktueller Stand (2026-07-28, Retro + Abarbeitung der Befunde)
+
+**Auslöser:** `/session-retro` über die Session vom 2026-07-27. `deep`-Footprint,
+1 Collector + 3 Finder + 3 Skeptiker + 1 Tie-Break + 1 Meta-Reviewer.
+Report: [platform#1503](https://github.com/achimdehnert/platform/pull/1503).
+**15 Befunde, 14 überleben.**
+
+**Was der Retro über die Vorsession fand — die zwei härtesten Punkte:**
+- Die Abschlussmeldung „13 von 13 Repos konsistent" war **methodisch zirkulär**: sie maß die
+  *bearbeiteten* Repos, nicht die *betroffenen*. `frist-hub` stand seit dem 2026-07-22 mit
+  `enabled: true` in genau der `genesor-repos.yaml`, die dieselbe Session editierte — und
+  rendete weiterhin `0 Wurzeln` mit totem `kd-nav.js`. Ein Skeptiker prüfte danach alle 22
+  Manifest-Einträge: Einzelfall, kein zweites Repo betroffen.
+- coach-hub #47 wurde über einen **roten Required Check** gemergt (`ci / Security Scan`, seit
+  2h09min FAILURE) — möglich, weil `enforce_admins: false` steht. In derselben Session wurde bei
+  #49/#51 korrekt argumentiert, der rote `Test`-Job sei *nicht* required; der PR mit dem echten
+  Bypass fiel nicht auf.
+
+**Selbstkorrektur:** Die GHCR-Erklärung stand falsch in Handover, Memory und Outline — es waren
+**6 von 9** roten Deploys, davon nur **3** GHCR. Alle drei Artefakte sind korrigiert
+([#195](https://github.com/iilgmbh/iil-klickdummy/pull/195)); die Outline-Lesson behält die alte
+Fassung bewusst als eigenen Abschnitt, weil der Diagnose-Fehler die eigentliche Lehre ist.
+
+**Abgearbeitet am 2026-07-28** ([#196](https://github.com/iilgmbh/iil-klickdummy/pull/196)):
+`genesor/validate.py`-Regex (vierte, übersehene Stelle) · Wurzel-Fallback für den Zyklus-Fall ·
+`declared_roots` von `roots` getrennt, damit die Waisen-Warnung wieder feuern kann · **neu**
+Dangling-Erkennung für kaputte `kd_children`-Referenzen · plus ein Kohärenztest über **alle vier**
+Regex-Stellen. Dazu drei Tracking-Issues ([coach-hub#54](https://github.com/achimdehnert/coach-hub/issues/54),
+[#55](https://github.com/achimdehnert/coach-hub/issues/55),
+[dms-hub#40](https://github.com/achimdehnert/dms-hub/issues/40)) und die Richtigstellung der
+Fehldiagnose in coach-hub#51.
+
+**Befund #15 entstand beim Abarbeiten** und wurde vom Retro selbst nicht gefunden: das
+HTML-Template emittiert `ADR-211` **unqualifiziert** und verletzt damit I4 — dieselbe Invariante,
+die dieselbe Toolchain anderswo durchsetzt. Sichtbar nur, weil frist-hubs I4-Lauf den
+`sitemap/`-Ordner mit abdeckt; in den zwölf am 2026-07-27 regenerierten Repos ist der Verstoß
+**still** vorhanden. Lehre: Generator-Ausgabe durch die Gates derselben Toolchain schicken, nicht
+nur inspizieren.
+
+**Offen:** Release **1.32.7** ist nötig, damit [frist-hub#102](https://github.com/meiki-lra/frist-hub/pull/102)
+grün wird — der PR liegt fertig, sein `klickdummy`-Check hängt am I4-Fix. Ohne Release bleibt
+frist-hubs Sitemap defekt.
+
 ## ⚡ Aktueller Stand (2026-07-27, Sitemap-Konsistenz + coach-hub-Entstörung)
 
 **Auslöser:** Frage, warum 137-hubs Klickdummy nirgends erreichbar ist. Daraus wurde ein
@@ -451,6 +541,7 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
+| 0 | **frist-hub-Sitemap gegen 1.33.0 neu erzeugen.** Das Release ist am 2026-07-29 gefahren (enthält den I4-Fix aus #196), der Blocker ist weg. Aber [frist-hub#102](https://github.com/meiki-lra/frist-hub/pull/102) wurde am 2026-07-29 04:42 **geschlossen statt gemergt** — erst klären warum, dann neu regenerieren. Fremdes Repo (meiki-lra): Scope-Checkpoint vor dem ersten Write. | `[Sonnet]` |
 | 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Rollout-Queue — noch offen: weltenhub#42 + cad-hub#44 (`ci / Unit Tests` + `ci / gate` rot), wedding-hub#34 (Ruleset verlangt nie laufendes `ci / gate`). 137-hub#69 ist am 2026-07-27 gemergt. **Vor der Diagnose "CI rot" erst `ci.yml` auf YAML-Validität prüfen** — bei 137-hub war genau das die Ursache, nicht der gemeldete Check. | `[Sonnet/Opus je Repo]` |
 | 2 | apo-hub Deploy-Pfad: dormant. Am 2026-07-27 erneut belegt — Deploy scheitert an `failed to resolve host 'apo-hub-db'`, nicht an `DEPLOY_ENABLED`. Aktivieren oder Rollout-Status auf "CI-only" korrigieren (Retro-Fund `c25d21` #5). | `[Sonnet]` |
 | 2b | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
