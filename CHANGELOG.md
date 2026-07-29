@@ -7,6 +7,22 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ### Added
 
+- **Browser: Deep-Link (N9).** Auswahl und Story-Schritt stehen im URL-Fragment
+  (`#kd=<name>`, `#story=<id>&step=<n>`); Reload landet dort wieder, ein Link auf
+  „Schritt 3" ist teilbar. Geschrieben per `replaceState` (kein History-Spam).
+  **Mit `hashchange`-Listener:** ein Wechsel nur des Fragments ist eine
+  Same-Document-Navigation — ohne den Listener änderte sich real nur die URL,
+  die Ansicht blieb stehen (im Browser beobachtet, nicht hergeleitet).
+- **Browser: Textfilter über der Auswahlliste (N8).** Filtert über Titel, KD-Name,
+  Spec-ID, Pfad, Repo/Org und Klasse, mit Trefferzahl und sichtbarer Meldung bei
+  null Treffern. Die aktive Auswahl bleibt erhalten, solange sie durchkommt.
+- **Browser: Fortschritt zurücksetzbar + repo-skopiert (N10).** Der Besucht-Status
+  lag unter `kd-story-visited:<story>:<n>` ohne Repo-Bezug — mehrere Browser-Seiten
+  unter derselben Origin (kd.iil.pet) überschrieben sich gegenseitig. Schlüssel
+  trägt jetzt das Repo-Label; `↺ Fortschritt zurücksetzen` löscht nur dieses Präfix.
+- **Browser: Responsive + Dark Mode (N11).** Unter 720px liegt die Sidebar oben
+  statt links (vorher blieb neben 320px fixer Leiste kein Renderbereich); Dark Mode
+  über `prefers-color-scheme`, umdefiniert werden nur die `--pui-*`-Tokens.
 - **Browser: Cross-Repo-Modus ausgebaut (UC-004).** `registry.py` berechnete
   `org`/`repo`/`github_shell_url`/`github_spec_url` seit v1.3, **kein** Template hat
   sie je gelesen — der iframe versuchte stattdessen den repo-relativen `shell_path`
@@ -45,6 +61,16 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 - `klickdummy/browser/screens-spec.schema.json` war eine veraltete Kopie des
   Paket-Schemas (fehlende `description`s, alte `sister_of`/`title`-Pattern) — jetzt
   1:1 synchron.
+
+### Fixed
+
+- **`discover_stories()` verwarf Story-Steps mit unbekanntem `kd` still** (nur
+  `stderr`-Warnung) — die Story wirkte im Browser vollständig und war nur kürzer.
+  Das widersprach ADR-002 AS-2 („Meldung statt Auto-Skip"), weil der vorhandene
+  sichtbare Fehlerzustand gar nicht mehr erreicht werden konnte. Steps bleiben
+  jetzt mit `unresolved: true` erhalten; der Browser benennt die Ursache konkret
+  („kein Klickdummy namens X in diesem Repo"). Im `stories-manifest.json` erzeugen
+  sie keinen Banner-Eintrag und sind für Nachbar-Steps kein Navigationsziel. (#200)
 
 ## [1.32.6] - 2026-07-27
 

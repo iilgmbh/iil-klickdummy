@@ -1,5 +1,6 @@
 # Klickdummy — klickdummy-browser (Spec-first-Neuaufbau, /repo-ux-opt B)
 # Erdet 1:1 an docs/use-cases/UC-001..004 + NFR-browser.md (PR #100).
+# v0.3: Deep-Link (N9), Filter (N8), Storage-Scoping/Reset (N10), Responsive+Dark (N11).
 #
 # STAND ab v0.2 (Abnahme 2026-07-29, ADR-002 accepted): Die statische Mock-Shell
 # (klickdummy/browser/shell.html) ist ENTFALLEN — alle Screens sind in den echten
@@ -10,7 +11,7 @@
 # (siehe ADR-002 „Abnahme-Entscheidungen").
 $schema: ./screens-spec.schema.json
 spec_id: iil-klickdummy:klickdummy-spec-browser
-spec_version: "0.2"
+spec_version: "0.3"
 spec_schema_version: "1.1"
 spec_date: "2026-07-29"
 title: Klickdummy-Browser — Redesign
@@ -91,6 +92,18 @@ screens:
       - id: browser-frei.frame-error-visible
         check: "N4: Lädt die Shell nicht (404/leere Seite/keine Antwort), erscheint eine sichtbare Fehlermeldung statt eines leeren iframes. Fehlerzustand — nur bei injiziertem Ladefehler sichtbar."
         assert: { action: visible, selector: "testid=frame-load-error" }
+      - id: browser-frei.filter-visible
+        check: "N8: Über der Auswahlliste steht ein Textfilter (Titel, Repo, Spec-ID, Pfad, Klasse)."
+        assert: { action: visible, selector: "testid=kd-filter" }
+      - id: browser-frei.filter-count
+        check: "N8: Die Trefferanzeige nennt Treffer und Gesamtzahl (`n / m Klickdummies`)."
+        assert: { action: visible, selector: "testid=kd-filter-count" }
+      - id: browser-frei.filter-no-match
+        check: "N4/N8: Ein Filter ohne Treffer zeigt eine Meldung statt einer wortlos leeren Liste. Fehlerzustand — nur bei nicht passendem Filtertext sichtbar."
+        assert: { action: visible, selector: "testid=kd-filter-empty" }
+      - id: browser-frei.deep-link
+        check: "N9: Die Auswahl schreibt `#kd=<name>` in die URL; ein Aufruf mit diesem Fragment stellt dieselbe Auswahl wieder her (reload-fest, teilbar)."
+        assert: { action: visible, selector: "testid=kd-detail" }
     off_ramp_status: removed
 
   - id: browser-story
@@ -114,6 +127,12 @@ screens:
       - id: browser-story.stepper-keyboard
         check: "N6: Jeder Stepper-Eintrag ist per Tastatur erreichbar und auslösbar (role=button, tabindex=0, Enter/Space) — nicht nur per Maus."
         assert: { action: clickable, selector: "testid=story-stepper" }
+      - id: browser-story.deep-link
+        check: "N9: Jeder Schritt schreibt `#story=<id>&step=<n>` (1-basiert) in die URL; ein Aufruf mit diesem Fragment öffnet den Story-Modus auf genau diesem Schritt."
+        assert: { action: visible, selector: "testid=story-stepper" }
+      - id: browser-story.reset-visited
+        check: "N10: Der Besucht-Fortschritt ist zurücksetzbar; der Storage-Schlüssel ist repo-skopiert, damit mehrere Browser-Seiten unter derselben Origin sich nicht überschreiben."
+        assert: { action: clickable, selector: "testid=btn-story-reset" }
     off_ramp_status: removed
 
   - id: browser-versionen

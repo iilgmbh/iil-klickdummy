@@ -1,6 +1,6 @@
 # AUTO-GENERATED — NICHT von Hand editieren (re-generieren: klickdummy-gen-e2e).
-# Quelle: iil-klickdummy:klickdummy-spec-browser v0.2  (screens-spec.yaml)
-# Spec-SHA256: 577a7cdeb496d81d83f7d73ecfa15395097d045f925de6fce66d60f9b317f25f  ·  platform:ADR-211 §Parity-Off-Ramp (I3-Gate)
+# Quelle: iil-klickdummy:klickdummy-spec-browser v0.3  (screens-spec.yaml)
+# Spec-SHA256: 4278c105e1c7bd05e581e0113b62c99f6681af6daafc6b914c829eb141fbdfac  ·  platform:ADR-211 §Parity-Off-Ramp (I3-Gate)
 # Deterministisch aus der Spec — KEIN Zeitstempel im File (sonst rauscht der
 # Drift-Check `klickdummy-parity-drift`). Lauf-Metadaten stehen im Manifest.
 #
@@ -66,6 +66,30 @@ def test_browser_frei__browser_frei_frame_error_visible(page: Page):
     expect(page.get_by_test_id("frame-load-error").first).to_be_visible()
 
 
+def test_browser_frei__browser_frei_filter_visible(page: Page):
+    """[browser-frei] N8: Über der Auswahlliste steht ein Textfilter (Titel, Repo, Spec-ID, Pfad, Klasse)."""
+    page.goto(BASE + "/browser-frei")
+    expect(page.get_by_test_id("kd-filter").first).to_be_visible()
+
+
+def test_browser_frei__browser_frei_filter_count(page: Page):
+    """[browser-frei] N8: Die Trefferanzeige nennt Treffer und Gesamtzahl (`n / m Klickdummies`)."""
+    page.goto(BASE + "/browser-frei")
+    expect(page.get_by_test_id("kd-filter-count").first).to_be_visible()
+
+
+def test_browser_frei__browser_frei_filter_no_match(page: Page):
+    """[browser-frei] N4/N8: Ein Filter ohne Treffer zeigt eine Meldung statt einer wortlos leeren Liste. Fehlerzustand — nur bei nicht passendem Filtertext sichtbar."""
+    page.goto(BASE + "/browser-frei")
+    expect(page.get_by_test_id("kd-filter-empty").first).to_be_visible()
+
+
+def test_browser_frei__browser_frei_deep_link(page: Page):
+    """[browser-frei] N9: Die Auswahl schreibt `#kd=<name>` in die URL; ein Aufruf mit diesem Fragment stellt dieselbe Auswahl wieder her (reload-fest, teilbar)."""
+    page.goto(BASE + "/browser-frei")
+    expect(page.get_by_test_id("kd-detail").first).to_be_visible()
+
+
 # ── Screen: browser-story · Story-Walk — geführte Journey über mehrere Klickdummies  (route /browser-story) ──
 def test_browser_story__browser_story_toggle_when_stories(page: Page):
     """[browser-story] Der Modus-Toggle ist sichtbar, wenn Stories vorhanden sind."""
@@ -95,6 +119,18 @@ def test_browser_story__browser_story_stepper_keyboard(page: Page):
     """[browser-story] N6: Jeder Stepper-Eintrag ist per Tastatur erreichbar und auslösbar (role=button, tabindex=0, Enter/Space) — nicht nur per Maus."""
     page.goto(BASE + "/browser-story")
     expect(page.get_by_test_id("story-stepper").first).to_be_enabled()
+
+
+def test_browser_story__browser_story_deep_link(page: Page):
+    """[browser-story] N9: Jeder Schritt schreibt `#story=<id>&step=<n>` (1-basiert) in die URL; ein Aufruf mit diesem Fragment öffnet den Story-Modus auf genau diesem Schritt."""
+    page.goto(BASE + "/browser-story")
+    expect(page.get_by_test_id("story-stepper").first).to_be_visible()
+
+
+def test_browser_story__browser_story_reset_visited(page: Page):
+    """[browser-story] N10: Der Besucht-Fortschritt ist zurücksetzbar; der Storage-Schlüssel ist repo-skopiert, damit mehrere Browser-Seiten unter derselben Origin sich nicht überschreiben."""
+    page.goto(BASE + "/browser-story")
+    expect(page.get_by_test_id("btn-story-reset").first).to_be_enabled()
 
 
 # ── Screen: browser-versionen · Versions-Historie — historische Spec-Version read-only ansehen  (route /browser-versionen) ──
