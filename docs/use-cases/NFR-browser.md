@@ -1,6 +1,6 @@
 # NFR & Querschnitts-Anforderungen — `klickdummy-browser`
 
-Gilt für UC-001..003. Diese Anforderungen sind der Grund, den Browser spec-first
+Gilt für UC-001..004. Diese Anforderungen sind der Grund, den Browser spec-first
 neu aufzubauen statt zu patchen — sie adressieren die im Ist-Template verankerten
 Schulden.
 
@@ -43,13 +43,21 @@ Schulden.
 - **Umgesetzt 2026-07-29** (`testid=frame-load-error`): Der iframe-Ladefehler war bis dahin
   als einziger der drei Fälle **nicht** implementiert — ein 404 zeigte einen leeren Rahmen.
   Ein 404 feuert im iframe **kein** `error`-Event (der Browser lädt eine Fehlerseite und
-  feuert `load`), deshalb drei Sonden statt einer:
-  1. `error`-Event — Netzwerk-/Schema-Fehler,
-  2. Watchdog (6 s ohne `load`) — gar keine Antwort,
-  3. Same-Origin-Probe nach `load` — leerer `body` ⇒ Fehler; wirft der Zugriff
-     (cross-origin), gilt die Seite als geladen.
+  feuert `load`), und deren Body ist **nicht leer** — gegen `python -m http.server`
+  verifiziert, die erste Fassung mit reiner Body-Probe fiel genau hier durch. Deshalb
+  vier Sonden statt einer:
+  1. gleichoriginer `HEAD`-Vorabcheck — der echte HTTP-Status, den das iframe verschluckt,
+  2. `error`-Event — Netzwerk-/Schema-Fehler,
+  3. Watchdog (6 s ohne `load`) — gar keine Antwort,
+  4. Same-Origin-Probe nach `load` — leerer `body` ⇒ Fehler; wirft der Zugriff
+     (cross-origin), gilt die Seite als geladen. Trägt vor allem `file://`.
 - Der Render-Bereich hat genau **einen** sichtbaren Zustand (`setMain()`): Leerzustand,
   Fehler, Cross-Repo-Hinweis oder iframe — nie zwei gleichzeitig, nie keinen.
+
+## N5 — Read-only-Integrität der Historie
+
+- Historische Snapshots laden **nie** mit `?feedback=on` (kein Co-Creation-Feedback auf alten Ständen).
+- Historische Ansicht ist als read-only erkennbar (Detail-Panel; ggf. Banner — offene Spec-Frage UC-003).
 
 ## N6 — Tastaturbedienung (ADR-048 A11y)
 
@@ -86,10 +94,46 @@ Schulden.
   Repo stammen. Dann ist die richtige Antwort ein eigener Origin für die Shells
   (Subdomain/`srcdoc`-Isolation), nicht ein `sandbox`-Attribut.
 
-## N5 — Read-only-Integrität der Historie
+## N8 — Auffindbarkeit in der Auswahlliste
 
-- Historische Snapshots laden **nie** mit `?feedback=on` (kein Co-Creation-Feedback auf alten Ständen).
-- Historische Ansicht ist als read-only erkennbar (Detail-Panel; ggf. Banner — offene Spec-Frage UC-003).
+- Ein `<select>` ohne Filter ist ab ~20 Einträgen keine Navigation mehr. Der Browser
+  hat deshalb einen Textfilter über Titel, KD-Name, Spec-ID, Pfad, Repo/Org und Klasse
+  (`testid=kd-filter`) plus sichtbare Trefferzahl (`testid=kd-filter-count`).
+- Kein Treffer ⇒ sichtbare Meldung (`testid=kd-filter-empty`), keine wortlos leere
+  Liste (N4-Prinzip auf die Liste angewandt).
+- Die aktive Auswahl bleibt erhalten, solange sie durch den Filter kommt.
+
+## N9 — Teilbarer Zustand (Deep-Link)
+
+- Auswahl und Story-Schritt stehen im URL-Fragment: `#kd=<name>` bzw.
+  `#story=<id>&step=<n>` (n 1-basiert). Ein Reload landet dort wieder, ein Link
+  („schau dir Schritt 3 an") funktioniert.
+- Geschrieben wird mit `history.replaceState` — kein History-Eintrag je Klick und
+  kein `hashchange`-Rückruf, der die eigene Zustandsänderung erneut anstößt.
+- Zeigt der Link auf einen Klickdummy, den es nicht (mehr) gibt: sichtbare Meldung
+  statt stiller Leerzustand.
+- `file://` verbietet in manchen Browsern `replaceState` — der Aufruf steht deshalb
+  in `try/catch`; der Deep-Link entfällt dort, der Rest läuft.
+
+## N10 — Fortschritt: skopiert und zurücksetzbar
+
+- Der Besucht-Status lag unter `kd-story-visited:<story>:<n>` — ohne Repo-Bezug.
+  Mehrere Browser-Seiten unter derselben Origin (z. B. kd.iil.pet) überschrieben sich
+  gegenseitig, weil Story-IDs zwischen Repos gleich heißen dürfen. Der Schlüssel trägt
+  jetzt das Repo-Label als Präfix.
+- „Besucht" heißt weiterhin „angezeigt" (wird beim Rendern des aktiven Schritts
+  gesetzt) — bewusst, aber dadurch nur sinnvoll mit Reset: `testid=btn-story-reset`
+  löscht genau die Schlüssel dieses Repo-Präfixes, keine fremden.
+
+## N11 — Responsive & Farbschema
+
+- Unter 720px liegt die Sidebar oben statt links (`flex-direction: column`,
+  `max-height: 50vh`); vorher blieb neben 320px fixer Seitenleiste kein nutzbarer
+  Renderbereich.
+- Dark Mode über `prefers-color-scheme`: umdefiniert werden **nur** die `--pui-*`-Tokens
+  — genau der Zweck der Token-Ebene (ADR-049). Ausnahme mit Kommentar: der aktive
+  Modus-Button setzt seine Textfarbe explizit gegen die dunkle Fläche, sonst stünde
+  Text auf Text.
 
 ## Nicht in diesem Strang
 

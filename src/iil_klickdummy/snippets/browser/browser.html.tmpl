@@ -75,6 +75,40 @@
   .error { color: var(--pui-badge-stub-fg); background: var(--pui-badge-stub-bg); }
   iframe { flex: 1; width: 100%; border: 0; }
   footer { padding: var(--pui-space-1) var(--pui-space-4); font-size: 10px; color: var(--pui-muted); border-top: 1px solid var(--pui-border); background: var(--pui-surface); }
+  input[type="search"] { width: 100%; font-family: inherit; font-size: 13px; padding: var(--pui-space-1) var(--pui-space-2); border: 1px solid var(--pui-border); border-radius: var(--pui-radius); background: var(--pui-surface-2); color: inherit; }
+  input[type="search"]:focus-visible { outline: 2px solid var(--pui-primary); outline-offset: 2px; }
+  .linklike { margin-top: var(--pui-space-2); padding: 0; border: 0; background: none; color: var(--pui-muted); font-family: inherit; font-size: 11px; text-decoration: underline; cursor: pointer; }
+  .linklike:focus-visible { outline: 2px solid var(--pui-primary); outline-offset: 2px; }
+
+  /* Responsive: unter 720px liegt die Sidebar oben statt links — vorher blieb
+     bei fixen 320px Seitenleiste kein nutzbarer Renderbereich übrig. */
+  @media (max-width: 720px) {
+    body { flex-direction: column; height: auto; min-height: 100vh; }
+    aside { width: 100%; max-height: 50vh; border-right: 0; border-bottom: 1px solid var(--pui-border); }
+    main { min-height: 50vh; }
+  }
+
+  /* Dark Mode: nur die Token-Ebene wird umdefiniert — alle Regeln oben greifen
+     unverändert weiter (das ist der Zweck des --pui-*-Layers, ADR-049). */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --pui-primary:   #cfe0f7;
+      --pui-surface:   #131922;
+      --pui-surface-2: #1b2330;
+      --pui-border:    #2c3849;
+      --pui-muted:     #93a2b8;
+      --pui-badge-mock-bg: #0c3550;      --pui-badge-mock-fg: #bae6fd;
+      --pui-badge-stub-bg: #4a3208;      --pui-badge-stub-fg: #fde68a;
+      --pui-badge-story-bg: #3b1d5c;     --pui-badge-story-fg: #e9d5ff;
+      --pui-badge-specdemo-bg: #10381f;  --pui-badge-specdemo-fg: #bbf7d0;
+      --pui-step-active-bg:     #22304a;
+      --pui-step-active-border: #3a4d6d;
+    }
+    body { background: var(--pui-surface-2); }
+    /* Der aktive Modus-Button färbt Text mit --pui-surface-2 — im Dunkeln wäre
+       das Text auf Text. Hier explizit gegen die dunkle Fläche setzen. */
+    .mode-toggle button[aria-pressed="true"] { background: var(--pui-primary); color: var(--pui-surface); }
+  }
 </style>
 </head>
 <body>
@@ -88,6 +122,12 @@
   </div>
 
   <section class="panel" data-testid="free-panel" id="free-panel" data-panel="free">
+    <label for="kd-filter">Filter</label>
+    <input type="search" id="kd-filter" data-testid="kd-filter" autocomplete="off"
+           placeholder="Titel, Repo, Spec-ID, Pfad…">
+    <div class="meta" data-testid="kd-filter-count" id="kd-filter-count"></div>
+    <div class="detail error" data-testid="kd-filter-empty" id="kd-filter-empty" hidden></div>
+
     <label for="kd-select">Klickdummy</label>
     <select id="kd-select" data-testid="kd-select"></select>
 
@@ -110,6 +150,8 @@
       <button data-testid="btn-prev" id="btn-prev" data-nav="-1" disabled>← Zurück</button>
       <button data-testid="btn-next" id="btn-next" data-nav="1" disabled>Weiter →</button>
     </div>
+    <button class="linklike" data-testid="btn-story-reset" id="btn-story-reset"
+            title="Besucht-Markierungen dieses Repos zurücksetzen">↺ Fortschritt zurücksetzen</button>
     <div class="detail error" data-testid="step-load-error" id="step-load-error" hidden></div>
   </section>
 </aside>
@@ -304,13 +346,72 @@
     var k = KLICKDUMMIES[parseInt(idx, 10)];
     if (!k) return;
     currentKD = k; renderDetail(k); populateVersions(k); loadCurrent(k);
+    writeHash({ kd: k.name });
+  }
+
+  // ── Deep-Link (Zustand in der URL) ─────────────────────────────────────────
+  // Ohne das ist „schau dir Schritt 3 der Onboarding-Story an" nicht verlinkbar
+  // und ein Reload wirft auf den Leerzustand zurück. `replaceState` statt
+  // location.hash = …: kein History-Eintrag je Klick, kein hashchange-Rückruf.
+  function writeHash(parts) {
+    var q = Object.keys(parts)
+      .filter(function (key) { return parts[key] != null && parts[key] !== ''; })
+      .map(function (key) { return key + '=' + encodeURIComponent(parts[key]); })
+      .join('&');
+    try { history.replaceState(null, '', q ? '#' + q : location.pathname + location.search); }
+    catch (e) { /* file:// in manchen Browsern — Deep-Link entfällt, Rest läuft */ }
+  }
+  function readHash() {
+    var out = {};
+    (location.hash || '').replace(/^#/, '').split('&').forEach(function (pair) {
+      var i = pair.indexOf('=');
+      if (i > 0) { try { out[pair.slice(0, i)] = decodeURIComponent(pair.slice(i + 1)); } catch (e) {} }
+    });
+    return out;
+  }
+  function applyHash() {
+    var h = readHash();
+    if (h.story) {
+      var si = -1;
+      STORIES.forEach(function (s, i) { if (s.id === h.story) si = i; });
+      if (si >= 0) {
+        var sti = Math.max(0, Math.min(parseInt(h.step, 10) - 1 || 0, STORIES[si].steps.length - 1));
+        $('story-select').value = String(si);
+        var btn = document.querySelector('[data-mode="story"]');
+        if (btn) btn.click();          // Modus umschalten wie ein Nutzerklick
+        loadStory(si, sti);
+        return true;
+      }
+    }
+    if (h.kd) {
+      var idx = -1;
+      KLICKDUMMIES.forEach(function (k, i) { if (k.name === h.kd) idx = i; });
+      if (idx >= 0) { $('kd-select').value = String(idx); onSelectFree(String(idx)); return true; }
+      setText($('empty'), 'Der verlinkte Klickdummy „' + h.kd + '" existiert in diesem Repo nicht (mehr).');
+      setMain('empty');
+    }
+    return false;
   }
 
   // ── Story-Walk ──
   var storyIdx = 0, stepIdx = 0;
-  function vkey(sid, i) { return 'kd-story-visited:' + sid + ':' + i; }
+  // Storage-Schlüssel ist repo-skopiert: mehrere Browser-Seiten (z. B. unter
+  // kd.iil.pet) teilen sonst denselben Origin und überschreiben gegenseitig
+  // ihren Fortschritt, weil Story-IDs zwischen Repos gleich heißen können.
+  var VKEY_PREFIX = 'kd-story-visited:' + ($('repo-label').textContent || '?') + ':';
+  function vkey(sid, i) { return VKEY_PREFIX + sid + ':' + i; }
   function visited(sid, i) { try { return !!localStorage.getItem(vkey(sid, i)); } catch (e) { return false; } }
   function markVisited(sid, i) { try { localStorage.setItem(vkey(sid, i), '1'); } catch (e) {} }
+  function resetVisited() {
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && key.indexOf(VKEY_PREFIX) === 0) kill.push(key);
+      }
+      kill.forEach(function (key) { localStorage.removeItem(key); });
+    } catch (e) { /* Storage gesperrt — nichts zurückzusetzen */ }
+  }
 
   function renderStepper(story, active) {
     setText($('story-progress'), 'Schritt ' + (active + 1) + ' / ' + story.steps.length);
@@ -337,13 +438,18 @@
     var step = story.steps[sti], k = KLICKDUMMIES[step.kd_index], err = $('step-load-error');
     if (!k) {
       clearWatchdog();
-      setText(err, 'Schritt „' + step.label + '" verweist auf einen fehlenden Klickdummy (kd_index ' + step.kd_index + ') — kein stiller Leerzustand.');
+      // `unresolved` setzt discover_stories, wenn der kd-Name der Story in keinem
+      // Klickdummy aufgeht (Issue #200) — die häufigste, konkret benennbare Ursache.
+      setText(err, step.unresolved
+        ? 'Schritt „' + step.label + '": kein Klickdummy namens „' + step.kd_name + '" in diesem Repo — Story-Datei prüfen.'
+        : 'Schritt „' + step.label + '" verweist auf einen fehlenden Klickdummy (kd_index ' + step.kd_index + ') — kein stiller Leerzustand.');
       show(err, true);
       setText($('empty'), 'Dieser Schritt kann nicht geladen werden — siehe Hinweis links.');
       setMain('empty');
     }
     else { show(err, false); currentKD = k; renderDetail(k); populateVersions(k); loadCurrent(k); }
     $('btn-prev').disabled = sti === 0; $('btn-next').disabled = sti === story.steps.length - 1;
+    writeHash({ story: story.id, step: String(sti + 1) });
   }
 
   function populateStories() {
@@ -384,25 +490,65 @@
     loadStory(storyIdx, parseInt(li.dataset.step, 10));
   });
 
-  // ── Init ──
-  var sel = $('kd-select');
-  sel.add(new Option('— wählen —', ''));
-  // Cross-Repo: nach Repo gruppieren (<optgroup>), sonst flache Liste. Eine
-  // flache Liste über ~20 Repos ist nicht mehr navigierbar.
-  var groups = {};
-  KLICKDUMMIES.forEach(function (k, i) {
-    var opt = new Option(k.title + ' (v' + k.spec_version + ')', String(i)); // Option()-Text ist textContent → N1-sicher
-    if (!isCrossRepo(k)) { sel.add(opt); return; }
-    var key = (k.org ? k.org + '/' : '') + k.repo;
-    if (!groups[key]) {
-      groups[key] = document.createElement('optgroup');
-      groups[key].label = key;           // label ist ein Attribut, kein HTML
-      groups[key].setAttribute('data-testid', 'kd-optgroup');
-      sel.appendChild(groups[key]);
+  // ── Auswahlliste (mit Filter) ──────────────────────────────────────────────
+  // Cross-Repo: nach Repo gruppieren (<optgroup>), sonst flache Liste. Der
+  // Filter greift über Titel, Repo, Spec-ID und Pfad — bei ~20 Repos ist Scrollen
+  // durch ein Dropdown keine Navigation mehr.
+  function matches(k, needle) {
+    if (!needle) return true;
+    var hay = [k.title, k.name, k.spec_id, k.path, k.repo || '', k.org || '', k.class]
+      .join(' ').toLowerCase();
+    return hay.indexOf(needle) >= 0;
+  }
+  function renderOptions(needle) {
+    var sel = $('kd-select');
+    sel.textContent = '';
+    sel.add(new Option('— wählen —', ''));
+    var groups = {}, hits = 0;
+    KLICKDUMMIES.forEach(function (k, i) {
+      if (!matches(k, needle)) return;
+      hits++;
+      var opt = new Option(k.title + ' (v' + k.spec_version + ')', String(i)); // Option()-Text ist textContent → N1-sicher
+      if (!isCrossRepo(k)) { sel.add(opt); return; }
+      var key = (k.org ? k.org + '/' : '') + k.repo;
+      if (!groups[key]) {
+        groups[key] = document.createElement('optgroup');
+        groups[key].label = key;         // label ist ein Attribut, kein HTML
+        groups[key].setAttribute('data-testid', 'kd-optgroup');
+        sel.appendChild(groups[key]);
+      }
+      groups[key].appendChild(opt);
+    });
+    var none = $('kd-filter-empty');
+    setText(none, hits ? '' : 'Kein Klickdummy passt zu „' + needle + '".');
+    show(none, !hits);
+    setText($('kd-filter-count'), hits + ' / ' + KLICKDUMMIES.length + ' Klickdummies');
+    // Aktive Auswahl beibehalten, solange sie durch den Filter kommt
+    if (currentKD && matches(currentKD, needle)) {
+      KLICKDUMMIES.forEach(function (k, i) { if (k === currentKD) $('kd-select').value = String(i); });
     }
-    groups[key].appendChild(opt);
+    return hits;
+  }
+  $('kd-filter').addEventListener('input', function (e) {
+    renderOptions(String(e.target.value || '').trim().toLowerCase());
   });
+
+  $('btn-story-reset').addEventListener('click', function () {
+    resetVisited();
+    if (STORIES.length && $('story-stepper').children.length) renderStepper(STORIES[storyIdx], stepIdx);
+  });
+
+  // Ein Wechsel NUR des Fragments (z. B. Klick auf einen zweiten Deep-Link derselben
+  // Seite) ist eine Same-Document-Navigation: die Seite lädt nicht neu, das Script
+  // läuft nicht erneut — ohne diesen Listener bliebe die Ansicht stehen und nur die
+  // URL änderte sich (real beobachtet, nicht theoretisch). Kein Loop-Risiko, weil
+  // writeHash() replaceState nutzt und replaceState kein hashchange auslöst.
+  window.addEventListener('hashchange', function () { applyHash(); });
+
+  // ── Init ──
+  renderOptions('');
   if (STORIES.length) { show($('mode-toggle'), true); populateStories(); }
+  applyHash();   // Deep-Link zuletzt: braucht Optionen und Stories
 })();
 </script>
 </body>

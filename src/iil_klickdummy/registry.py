@@ -323,9 +323,23 @@ def discover_stories(
             kd_name = step.get("kd", "")
             idx = kd_index.get(kd_name)
             if idx is None:
+                # Issue #200 / ADR-002 AS-2: Step BEHALTEN statt verwerfen. Ein
+                # still entfernter Step lässt die Story im Browser vollständig
+                # wirken — sie ist nur kürzer, und der eigentliche Fehler (z. B.
+                # Tippfehler im kd-Namen) bleibt unsichtbar. Der Renderer hat für
+                # genau diesen Fall einen sichtbaren Zustand (step-load-error).
                 print(
-                    f"  ⚠ story {raw['id']}: kd={kd_name!r} nicht gefunden — Step übersprungen",
+                    f"  ⚠ story {raw['id']}: kd={kd_name!r} nicht gefunden — "
+                    "Step bleibt als unauflösbar markiert",
                     file=sys.stderr,
+                )
+                resolved_steps.append(
+                    {
+                        "kd_name": kd_name,
+                        "label": step.get("label", kd_name),
+                        "kd_index": -1,
+                        "unresolved": True,
+                    }
                 )
                 continue
             resolved_steps.append(
@@ -337,7 +351,7 @@ def discover_stories(
             )
         if not resolved_steps:
             print(
-                f"  ⚠ story {raw['id']}: keine gültigen Steps — übersprungen",
+                f"  ⚠ story {raw['id']}: keine Steps — übersprungen",
                 file=sys.stderr,
             )
             continue
@@ -373,9 +387,20 @@ def write_stories_manifest(
         steps = story["steps"]
         total = len(steps)
         for idx, step in enumerate(steps):
+            if step.get("unresolved"):
+                # Kein Klickdummy → kein Shell, in dem ein Story-Banner stünde.
+                # Der Step bleibt in `stories` (der Browser zeigt ihn als Fehler),
+                # taucht hier aber nicht als Banner-Schlüssel auf (Issue #200).
+                continue
             kd_name = step["kd_name"]
             prev_step = steps[idx - 1] if idx > 0 else None
             next_step = steps[idx + 1] if idx < total - 1 else None
+            # Ein unauflösbarer Nachbar ist kein Navigationsziel — Banner ohne Link
+            # statt Link ins Leere.
+            if prev_step is not None and prev_step.get("unresolved"):
+                prev_step = None
+            if next_step is not None and next_step.get("unresolved"):
+                next_step = None
             entry = {
                 "story_id": story["id"],
                 "story_title": story["title"],
