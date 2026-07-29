@@ -865,6 +865,81 @@ def test_v116_discover_stories_resolves_steps(tmp_path):
     assert stories[0]["steps"][1]["label"] == "2. Angebot"
 
 
+def test_should_keep_unresolvable_story_step_as_marked(tmp_path):
+    """Issue #200: Step mit unbekanntem kd bleibt erhalten, markiert als unresolved.
+
+    Vorher wurde er still verworfen — die Story wirkte im Browser vollständig und
+    war nur kürzer; der sichtbare Fehlerzustand (step-load-error) konnte nie greifen.
+    """
+    import yaml
+    from iil_klickdummy import registry
+
+    spec_dir = tmp_path / "klickdummy" / "recherche"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "screens-spec.yaml").write_text(
+        "spec_id: test:klickdummy-spec-recherche\nspec_version: '0.1'\n"
+        "class: mock\ntitle: Recherche\nadr: {local: test:ADR-1}\n"
+    )
+    kds = registry.discover_klickdummies(tmp_path)
+    stories_dir = tmp_path / "klickdummy" / "stories"
+    stories_dir.mkdir()
+    (stories_dir / "j.yaml").write_text(
+        yaml.dump(
+            {
+                "id": "test:story-j",
+                "title": "J",
+                "steps": [
+                    {"kd": "recherche", "label": "1. Recherche"},
+                    {"kd": "tippfehler", "label": "2. Tippfehler"},
+                ],
+            }
+        )
+    )
+    stories = registry.discover_stories(tmp_path, kds)
+    assert len(stories) == 1
+    steps = stories[0]["steps"]
+    assert len(steps) == 2, "unauflösbarer Step darf nicht verschwinden"
+    assert steps[1]["unresolved"] is True
+    assert steps[1]["kd_index"] == -1
+    assert steps[1]["kd_name"] == "tippfehler"
+    assert "unresolved" not in steps[0]
+
+
+def test_should_omit_unresolved_step_from_stories_manifest(tmp_path):
+    """Issue #200: Der unauflösbare Step erzeugt keinen Banner-Eintrag und ist
+    für seinen Nachbarn kein Navigationsziel (Link ins Leere)."""
+    from iil_klickdummy import registry
+
+    kd = registry.KlickdummyMeta(
+        name="recherche",
+        path="klickdummy/recherche/screens-spec.yaml",
+        shell_path="klickdummy/recherche/shell.html",
+        spec_id="test:klickdummy-spec-recherche",
+        spec_version="0.1",
+        klickdummy_class="mock",
+        title="Recherche",
+        adr_local="test:ADR-1",
+        sister_of=[],
+    )
+    stories = [
+        {
+            "id": "test:story-j",
+            "title": "J",
+            "steps": [
+                {"kd_name": "recherche", "label": "1", "kd_index": 0},
+                {"kd_name": "fehlt", "label": "2", "kd_index": -1, "unresolved": True},
+            ],
+        }
+    ]
+    out = registry.write_stories_manifest(tmp_path, [kd], stories)
+    manifest = json.loads(out.read_text(encoding="utf-8"))
+    assert "fehlt" not in manifest["kd_to_stories"]
+    entry = manifest["kd_to_stories"]["recherche"][0]
+    assert entry["next_kd"] is None, "unauflösbarer Nachbar ist kein Navigationsziel"
+    # Die Story selbst behält beide Steps — der Browser zeigt den Fehler.
+    assert len(manifest["stories"][0]["steps"]) == 2
+
+
 def test_v116_browser_html_no_stories_no_toggle(tmp_path):
     """render_browser_html ohne Stories enthält keinen Story-Toggle (rückwärtskompatibel)."""
     from iil_klickdummy import registry

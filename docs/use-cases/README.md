@@ -25,10 +25,12 @@ die ihn zum Modus-B-Kandidaten machen:
 zuerst ein Klickdummy aus diesen UCs gebaut und **vom User abgenommen**, BEVOR
 Views/Templates entstehen. Reihenfolge:
 
-1. ✍️ UC-Entwürfe (dieses Verzeichnis) — **hier sind wir**
-2. ⬜ Klickdummy-Spec + Renderer via `/klickdummy` (nach UC-Freigabe)
-3. ⬜ Abnahme des Klickdummy durch den User (UX-Gate)
-4. ⬜ Implementierung strikt gegen die abgenommene KD-Spec
+1. ✅ UC-Entwürfe (dieses Verzeichnis)
+2. ✅ Klickdummy-Spec + Renderer via `/klickdummy`
+3. ✅ Abnahme des Klickdummy durch den User (UX-Gate) — 2026-07-29, ADR-002 `accepted`
+4. ✅ Implementierung strikt gegen die abgenommene KD-Spec — im echten Renderer
+   (`registry.py` + `snippets/browser/browser.html.tmpl`); die statische Mock-Shell ist
+   entfallen (Off-Ramp gezogen, alle Screens `off_ramp_status: removed`)
 
 ## Use-Cases
 
@@ -37,9 +39,10 @@ Views/Templates entstehen. Reihenfolge:
 | [UC-001](UC-001-browser-frei-auswahl.md) | Klickdummy im Frei-Modus auswählen & ansehen | Auswahl → Detail → iframe-Render |
 | [UC-002](UC-002-browser-story-walk.md) | Story-Walk geführt durchlaufen | Story wählen → Stepper → Prev/Next → Visited-State |
 | [UC-003](UC-003-browser-versionen.md) | Historische Spec-Version ansehen | Versions-Dropdown → Snapshot (read-only) oder Hinweis |
+| [UC-004](UC-004-browser-cross-repo.md) | Cross-Repo-Sammelliste sichten | `--cross-repo` → Repo-Gruppen → GitHub-Links statt iframe |
 
 Querschnitt (alle UCs): [NFR-browser.md](NFR-browser.md) — Sicherheit, Design-System,
-Testbarkeit.
+Testbarkeit, Fehlerzustände, Tastaturbedienung.
 
 ## Grounding
 

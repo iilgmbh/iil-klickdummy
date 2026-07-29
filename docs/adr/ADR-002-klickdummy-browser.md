@@ -1,8 +1,9 @@
 ---
 adr_id: ADR-002
 title: "iil-klickdummy — Klickdummy Browser-Redesign"
-status: proposed
+status: accepted
 date: 2026-07-02
+accepted_date: 2026-07-29
 deciders: ["Achim Dehnert"]
 tags: [klickdummy, ux, browser]
 conforms_to: platform:ADR-211
@@ -18,9 +19,12 @@ related:
 
 ## Status
 
-**proposed** — Klickdummy-Spec + Mock existieren; Abnahme durch den User steht aus
-(ADR-251 UX-Gate). Erst nach Abnahme folgt die Reimplementierung von
-`registry.py` / `snippets/browser/browser.html.tmpl`.
+**accepted** (2026-07-29) — der User hat den Klickdummy abgenommen (ADR-251 UX-Gate);
+die drei offenen Spec-Fragen sind entschieden (siehe *Abnahme-Entscheidungen*).
+Die Reimplementierung war zu diesem Zeitpunkt bereits erfolgt (PR #101), lief aber
+formal ohne Abnahme — mit dieser Fassung wird der **Off-Ramp gezogen**: die statische
+Mock-Shell `klickdummy/browser/shell.html` entfällt, alle Screens stehen auf
+`off_ramp_status: removed`, die Spec bleibt als UX-Vertrag über dem echten Renderer.
 
 ## Kontext
 
@@ -47,8 +51,13 @@ Backend/Persistenz. Drei Screens spiegeln die Use-Cases:
 - `browser-story` (UC-002) — geführter Story-Walk mit Stepper
 - `browser-versionen` (UC-003) — historische Spec-Version read-only
 
-Der Mock (`shell.html`) realisiert die drei Ziel-Korrekturen bereits als Referenz
-für die spätere Implementierung:
+Hinzu kommt seit der Abnahme:
+
+- `browser-cross-repo` (UC-004) — Sammelliste über mehrere Repos
+
+Der Mock (`shell.html`) realisierte die drei Ziel-Korrekturen als Referenz für die
+Implementierung; sie sind mit PR #101 in den echten Renderer übernommen und der Mock
+ist mit der Abnahme entfallen (Off-Ramp). Die Korrekturen im Wortlaut:
 
 - **N1 (löst S-01):** Daten als `<script type="application/json">`-Insel + `JSON.parse`;
   DOM aus Daten via `textContent` und geklonten `<template>`-Nodes, **kein**
@@ -57,15 +66,34 @@ für die spätere Implementierung:
   Klicks statt `onclick`; keine Inline-`style=`.
 - **N3 (ADR-040):** `data-testid` an jedem interaktiven Element (== Parity-Anker der Spec).
 
+## Abnahme-Entscheidungen (2026-07-29)
+
+| # | Offene Frage | Entscheidung |
+|---|---|---|
+| AS-1 | Sortierung der Klickdummy-Liste | **Generierungsreihenfolge bleibt** (`discover_klickdummies`). Im Cross-Repo-Modus zusätzlich nach `<org>/<repo>` gruppiert (`<optgroup>`), Reihenfolge innerhalb der Gruppe unverändert. |
+| AS-2 | Fehlender `kd_index` im Story-Schritt: Auto-Skip oder Meldung? | **Sichtbare Meldung**, kein Auto-Skip — ein übersprungener Schritt verdeckt einen Spec-Fehler. Der Renderer setzt das um; `registry.py:discover_stories()` verwirft unbekannte Steps aber schon vorher still — als Restarbeit getrackt in [#200](https://github.com/iilgmbh/iil-klickdummy/issues/200). |
+| AS-3 | read-only-Kennzeichnung historischer Versionen: Banner im iframe? | **Nur im Detail-Panel** (`testid=version-readonly`), kein iframe-Banner — der Banner überlagerte fremde Shell-Layouts. |
+| AS-4 | iframe-Isolation via `sandbox`? | **Kein `sandbox`** — das Feedback-Widget braucht `localStorage`/`fetch` im Frame; `allow-same-origin` + `allow-scripts` wäre wirkungslose Halb-Isolation. Begründung, akzeptiertes Risiko und Neu-Bewertungs-Trigger: `docs/use-cases/NFR-browser.md` §N7. |
+| AS-5 | Cross-Repo-Modus: ausbauen oder streichen? | **Ausbauen** als vierter Screen (UC-004): Repo-Gruppierung, Repo im Detail-Panel, GitHub-Links statt eines nicht auflösbaren iframes. |
+
 ## Konsequenzen
 
-- **Positiv:** Abnahmefähiger Prototyp vor Code; der spätere Refactor von
-  `registry.py`/`browser.html.tmpl` hat eine geprüfte Zielvorgabe; S-01/AP-Schuld
-  wird beim Neuaufbau strukturell erledigt statt gepatcht.
-- **Offen (bei Abnahme zu klären):** die `ASSUMPTION[unverified]`-Punkte je UC
-  (Sortierung der KD-Liste, Auto-Skip vs. Meldung bei fehlendem Step, read-only-Banner).
-- **Off-Ramp:** `off_ramp_status: static` je Screen; Parity-grün pro Screen ⇒ Screen
-  in den echten Renderer migrieren (Doppelquell-Grenze: prod-release).
+- **Positiv:** Abnahmefähiger Prototyp vor Code; der Refactor von
+  `registry.py`/`browser.html.tmpl` hatte eine geprüfte Zielvorgabe; S-01/AP-Schuld
+  wurde beim Neuaufbau strukturell erledigt statt gepatcht.
+- **Off-Ramp gezogen (2026-07-29):** `off_ramp_status: removed` je Screen; die statische
+  Mock-Shell ist gelöscht. Damit ist die Doppelquelle (Mock **und** echter Renderer)
+  aufgelöst, die seit PR #101 bestand und mit Release 1.32.x die eigene
+  Doppelquell-Grenze `prod-release` bereits überschritten hatte.
+- **Neu ergänzt bei der Abnahme:** `frame-load-error` (N4 war nur zu 2/3 umgesetzt —
+  der iframe-Ladefehler fehlte), Tastaturbedienung des Steppers (N6), Cross-Repo-Screen
+  (UC-004, verwertet die in `registry.py` längst berechneten, bis dahin von keinem
+  Template gelesenen Felder `org`/`repo`/`github_shell_url`/`github_spec_url`).
+- **Negativ / Preis:** Der UX-Vertrag lebt jetzt ohne statisches Vorbild; Abweichungen
+  fallen nur auf, wenn die Gates laufen. Deshalb fährt das Repo seine eigenen
+  Invarianten-Gates ab sofort in CI (`make klickdummy-gates`, Job `klickdummy-gates`) —
+  vorher wendete `iil-klickdummy` die Gates, die es an ~13 Repos ausliefert, auf sich
+  selbst **nicht** an.
 
 ## Bezug
 

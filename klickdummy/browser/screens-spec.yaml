@@ -1,13 +1,19 @@
 # Klickdummy — klickdummy-browser (Spec-first-Neuaufbau, /repo-ux-opt B)
-# Erdet 1:1 an docs/use-cases/UC-001..003 + NFR-browser.md (PR #100).
-# Ist-Verhalten aus src/iil_klickdummy/snippets/browser/browser.html.tmpl als Vertrag;
-# offene Spec-Fragen als ASSUMPTION[unverified] im check-Text (Ist-Default), zu klären
-# bei der KD-Abnahme (ADR-251). Der Neuaufbau löst S-01 (N1) + ADR-048-AP (N2).
+# Erdet 1:1 an docs/use-cases/UC-001..004 + NFR-browser.md (PR #100).
+# v0.3: Deep-Link (N9), Filter (N8), Storage-Scoping/Reset (N10), Responsive+Dark (N11).
+#
+# STAND ab v0.2 (Abnahme 2026-07-29, ADR-002 accepted): Die statische Mock-Shell
+# (klickdummy/browser/shell.html) ist ENTFALLEN — alle Screens sind in den echten
+# Renderer migriert (src/iil_klickdummy/snippets/browser/browser.html.tmpl +
+# registry.py, PR #101). Diese Spec bleibt die Source-of-Record des UX-Vertrags und
+# richtet sich ab jetzt gegen die GENERIERTE Browser-Ausgabe, nicht gegen einen Mock.
+# Die vormals offenen ASSUMPTION[unverified]-Punkte sind bei der Abnahme entschieden
+# (siehe ADR-002 „Abnahme-Entscheidungen").
 $schema: ./screens-spec.schema.json
 spec_id: iil-klickdummy:klickdummy-spec-browser
-spec_version: "0.1"
+spec_version: "0.3"
 spec_schema_version: "1.1"
-spec_date: "2026-07-02"
+spec_date: "2026-07-29"
 title: Klickdummy-Browser — Redesign
 
 adr:
@@ -28,7 +34,7 @@ class_evidence:
 grounding:
   konzept: docs/use-cases/README.md
   konzept_id: iil-klickdummy:UX-B-browser
-  pilot: "Ist-Browser src/iil_klickdummy/snippets/browser/browser.html.tmpl (registry.py render)"
+  pilot: "Echter Renderer src/iil_klickdummy/snippets/browser/browser.html.tmpl (registry.py render)"
   rechtsrahmen_kernnormen: {}
 
 off_ramp:
@@ -38,7 +44,7 @@ off_ramp:
   doppelquell_grenze: prod-release
   parity_runner: klickdummy-gen-e2e
   product_repo_planned: iil-klickdummy (Selbst-Konsument)
-  status_overall: static
+  status_overall: "removed — statische Mock-Shell entfallen (2026-07-29), alle Screens im echten Renderer"
 
 personas:
   reviewer:
@@ -54,6 +60,13 @@ personas:
     sieht:
       - dieselbe Oberfläche wie Reviewer (kein Sonderzustand)
 
+# HINWEIS zur generierten Parity-Suite (klickdummy/browser/test_parity_browser.py):
+# Der Browser ist EINE Seite mit umschaltbaren Panels, keine Route-je-Screen-App.
+# `make klickdummy-parity-drift` fährt deshalb bewusst nur Stufe 1 (Suite neu
+# generieren → kompilieren → Drift gegen den Commit) — die Suite wird NICHT in CI
+# gegen einen laufenden Renderer ausgeführt; dafür fehlt gen_e2e die Interaktion
+# (Panel umschalten, Fehlerzustand injizieren). Die Anker unten sind trotzdem
+# verbindlich: sie sind der Vertrag, gegen den manuell/per /kd-review geprüft wird.
 screens:
   - id: browser-frei
     title: Frei-Modus — Klickdummy auswählen & ansehen
@@ -74,9 +87,24 @@ screens:
         check: "Der iframe wird nach einer Auswahl sichtbar (Leerzustand verschwindet)."
         assert: { action: visible, selector: "testid=kd-frame" }
       - id: browser-frei.no-injection
-        check: "N1/S-01: Ein Klickdummy mit title 'x</script><script>...' wird als Text gezeigt, kein Script läuft. ASSUMPTION[unverified]: Titel-Sortierung bleibt Generierungsreihenfolge (Ist-Default) — bei Abnahme bestätigen."
+        check: "N1/S-01: Ein Klickdummy mit title 'x</script><script>...' wird als Text gezeigt, kein Script läuft. ENTSCHIEDEN (ADR-002 AS-1): Titel-Sortierung bleibt Generierungsreihenfolge."
         assert: { action: visible, selector: "testid=kd-select" }
-    off_ramp_status: static
+      - id: browser-frei.frame-error-visible
+        check: "N4: Lädt die Shell nicht (404/leere Seite/keine Antwort), erscheint eine sichtbare Fehlermeldung statt eines leeren iframes. Fehlerzustand — nur bei injiziertem Ladefehler sichtbar."
+        assert: { action: visible, selector: "testid=frame-load-error" }
+      - id: browser-frei.filter-visible
+        check: "N8: Über der Auswahlliste steht ein Textfilter (Titel, Repo, Spec-ID, Pfad, Klasse)."
+        assert: { action: visible, selector: "testid=kd-filter" }
+      - id: browser-frei.filter-count
+        check: "N8: Die Trefferanzeige nennt Treffer und Gesamtzahl (`n / m Klickdummies`)."
+        assert: { action: visible, selector: "testid=kd-filter-count" }
+      - id: browser-frei.filter-no-match
+        check: "N4/N8: Ein Filter ohne Treffer zeigt eine Meldung statt einer wortlos leeren Liste. Fehlerzustand — nur bei nicht passendem Filtertext sichtbar."
+        assert: { action: visible, selector: "testid=kd-filter-empty" }
+      - id: browser-frei.deep-link
+        check: "N9: Die Auswahl schreibt `#kd=<name>` in die URL; ein Aufruf mit diesem Fragment stellt dieselbe Auswahl wieder her (reload-fest, teilbar)."
+        assert: { action: visible, selector: "testid=kd-detail" }
+    off_ramp_status: removed
 
   - id: browser-story
     title: Story-Walk — geführte Journey über mehrere Klickdummies
@@ -94,9 +122,18 @@ screens:
         check: "Auf Schritt 1 einer mehrschrittigen Story ist Weiter bedienbar."
         assert: { action: clickable, selector: "testid=btn-next" }
       - id: browser-story.error-visible
-        check: "N4: Ein Schritt mit fehlendem kd_index zeigt eine sichtbare Meldung, keinen leeren iframe. ASSUMPTION[unverified]: Meldung statt Auto-Skip (Ist-nah) — bei Abnahme entscheiden."
+        check: "N4: Ein Schritt mit fehlendem kd_index zeigt eine sichtbare Meldung, keinen leeren iframe. ENTSCHIEDEN (ADR-002 AS-2): Meldung statt Auto-Skip."
         assert: { action: visible, selector: "testid=step-load-error" }
-    off_ramp_status: static
+      - id: browser-story.stepper-keyboard
+        check: "N6: Jeder Stepper-Eintrag ist per Tastatur erreichbar und auslösbar (role=button, tabindex=0, Enter/Space) — nicht nur per Maus."
+        assert: { action: clickable, selector: "testid=story-stepper" }
+      - id: browser-story.deep-link
+        check: "N9: Jeder Schritt schreibt `#story=<id>&step=<n>` (1-basiert) in die URL; ein Aufruf mit diesem Fragment öffnet den Story-Modus auf genau diesem Schritt."
+        assert: { action: visible, selector: "testid=story-stepper" }
+      - id: browser-story.reset-visited
+        check: "N10: Der Besucht-Fortschritt ist zurücksetzbar; der Storage-Schlüssel ist repo-skopiert, damit mehrere Browser-Seiten unter derselben Origin sich nicht überschreiben."
+        assert: { action: clickable, selector: "testid=btn-story-reset" }
+    off_ramp_status: removed
 
   - id: browser-versionen
     title: Versions-Historie — historische Spec-Version read-only ansehen
@@ -111,6 +148,29 @@ screens:
         check: "Eine gewählte historische Version ist als read-only gekennzeichnet."
         assert: { action: visible, selector: "testid=version-readonly" }
       - id: browser-versionen.no-snapshot-hint
-        check: "Eine Version ohne Shell-Snapshot zeigt einen Hinweis statt eines iframes. ASSUMPTION[unverified]: read-only-Kennzeichnung nur im Detail-Panel, kein iframe-Banner (Ist-Default) — bei Abnahme entscheiden."
+        check: "Eine Version ohne Shell-Snapshot zeigt einen Hinweis statt eines iframes. ENTSCHIEDEN (ADR-002 AS-3): read-only-Kennzeichnung nur im Detail-Panel, kein iframe-Banner."
         assert: { action: visible, selector: "testid=version-no-snapshot" }
-    off_ramp_status: static
+    off_ramp_status: removed
+
+  - id: browser-cross-repo
+    title: Cross-Repo-Modus — Klickdummies mehrerer Repos in einer Liste
+    personas: [reviewer, agent]
+    purpose: "Aus `klickdummy-browser --cross-repo` erzeugte Sammelliste: nach Repo gruppierte Auswahl; da fremde Shells nicht einbettbar sind, führen GitHub-Links zu Shell und Spec."
+    use_cases: [UC-004-browser-cross-repo]
+    parity_acceptance:
+      - id: browser-cross-repo.optgroup-per-repo
+        check: "Die Auswahlliste gruppiert Einträge nach `<org>/<repo>` (optgroup) statt sie flach zu mischen."
+        assert: { action: visible, selector: "testid=kd-optgroup" }
+      - id: browser-cross-repo.repo-in-detail
+        check: "Das Detail-Panel zeigt bei Cross-Repo-Einträgen zusätzlich das Herkunfts-Repo."
+        assert: { action: visible, selector: "testid=kd-repo" }
+      - id: browser-cross-repo.notice-instead-of-frame
+        check: "Statt eines toten iframes (shell_path ist repo-relativ und hier nicht auflösbar) erscheint ein Hinweis-Panel."
+        assert: { action: visible, selector: "testid=cross-repo-notice" }
+      - id: browser-cross-repo.github-shell-link
+        check: "Der Hinweis verlinkt die Shell im Herkunfts-Repo auf GitHub (github_shell_url aus registry.py)."
+        assert: { action: visible, selector: "testid=link-github-shell" }
+      - id: browser-cross-repo.github-spec-link
+        check: "Der Hinweis verlinkt zusätzlich die Spec im Herkunfts-Repo (github_spec_url)."
+        assert: { action: visible, selector: "testid=link-github-spec" }
+    off_ramp_status: removed

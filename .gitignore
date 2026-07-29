@@ -18,3 +18,6 @@ NEXT.md
 
 # Temporäre Screenshots / Mockup-PNGs im Root
 /*.png
+
+# Generierte Parity-Suiten-Manifeste (Pseudo-Drift, Issue #160/#156-Muster)
+klickdummy/*/test_parity_*.manifest.json

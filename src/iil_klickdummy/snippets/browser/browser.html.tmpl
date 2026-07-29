@@ -24,6 +24,9 @@
     --pui-badge-stub-bg: #fef3c7;      --pui-badge-stub-fg: #92400e;
     --pui-badge-story-bg: #f3e8ff;     --pui-badge-story-fg: #6b21a8;
     --pui-badge-specdemo-bg: #dcfce7;  --pui-badge-specdemo-fg: #166534;
+    /* aktiver Stepper-Eintrag — vorher Inline-Hex im Selektor (AP-007-Rest) */
+    --pui-step-active-bg:     #e8eef8;
+    --pui-step-active-border: #c5d5ec;
   }
   *, *::before, *::after { box-sizing: border-box; }
   /* [hidden] robust durchsetzen — sonst überschreibt display:flex/block das
@@ -52,8 +55,18 @@
   .story-progress { font-size: 11px; color: var(--pui-muted); margin: var(--pui-space-2) 0 var(--pui-space-1); }
   .story-stepper { list-style: none; margin: 0 0 var(--pui-space-3); padding: 0; }
   .story-stepper li { display: flex; align-items: flex-start; gap: var(--pui-space-2); padding: var(--pui-space-1) var(--pui-space-2); border-radius: var(--pui-radius); font-size: 12px; cursor: pointer; border: 1px solid transparent; }
-  .story-stepper li[data-active="true"] { background: #e8eef8; border-color: #c5d5ec; font-weight: 600; }
+  .story-stepper li[data-active="true"] { background: var(--pui-step-active-bg); border-color: var(--pui-step-active-border); font-weight: 600; }
   .story-stepper li[data-visited="true"] .step-icon { color: var(--pui-success); }
+  /* N6 (a11y): Stepper-Einträge sind role="button" + tabindex — ohne sichtbaren
+     Fokusring wären sie zwar erreichbar, aber nicht auffindbar. */
+  .story-stepper li:focus-visible, .story-nav button:focus-visible,
+  .mode-toggle button:focus-visible, select:focus-visible,
+  .link-list a:focus-visible { outline: 2px solid var(--pui-primary); outline-offset: 2px; }
+  .link-card { max-width: 560px; text-align: left; background: var(--pui-surface-2); border: 1px solid var(--pui-border); border-radius: var(--pui-radius-lg); padding: var(--pui-space-4); }
+  .link-card h2 { font-size: 14px; margin: 0 0 var(--pui-space-2); color: var(--pui-primary); }
+  .link-card p { margin: 0 0 var(--pui-space-3); font-size: 13px; line-height: 1.5; }
+  .link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--pui-space-2); }
+  .link-list a { color: var(--pui-primary); font-size: 13px; }
   .story-nav { display: flex; gap: var(--pui-space-2); }
   .story-nav button { flex: 1; padding: var(--pui-space-1) var(--pui-space-2); font-size: 12px; border: 1px solid var(--pui-border); border-radius: var(--pui-radius); background: var(--pui-surface-2); color: var(--pui-primary); cursor: pointer; font-family: inherit; font-weight: 600; }
   .story-nav button:disabled { opacity: .35; cursor: default; }
@@ -62,6 +75,40 @@
   .error { color: var(--pui-badge-stub-fg); background: var(--pui-badge-stub-bg); }
   iframe { flex: 1; width: 100%; border: 0; }
   footer { padding: var(--pui-space-1) var(--pui-space-4); font-size: 10px; color: var(--pui-muted); border-top: 1px solid var(--pui-border); background: var(--pui-surface); }
+  input[type="search"] { width: 100%; font-family: inherit; font-size: 13px; padding: var(--pui-space-1) var(--pui-space-2); border: 1px solid var(--pui-border); border-radius: var(--pui-radius); background: var(--pui-surface-2); color: inherit; }
+  input[type="search"]:focus-visible { outline: 2px solid var(--pui-primary); outline-offset: 2px; }
+  .linklike { margin-top: var(--pui-space-2); padding: 0; border: 0; background: none; color: var(--pui-muted); font-family: inherit; font-size: 11px; text-decoration: underline; cursor: pointer; }
+  .linklike:focus-visible { outline: 2px solid var(--pui-primary); outline-offset: 2px; }
+
+  /* Responsive: unter 720px liegt die Sidebar oben statt links — vorher blieb
+     bei fixen 320px Seitenleiste kein nutzbarer Renderbereich übrig. */
+  @media (max-width: 720px) {
+    body { flex-direction: column; height: auto; min-height: 100vh; }
+    aside { width: 100%; max-height: 50vh; border-right: 0; border-bottom: 1px solid var(--pui-border); }
+    main { min-height: 50vh; }
+  }
+
+  /* Dark Mode: nur die Token-Ebene wird umdefiniert — alle Regeln oben greifen
+     unverändert weiter (das ist der Zweck des --pui-*-Layers, ADR-049). */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --pui-primary:   #cfe0f7;
+      --pui-surface:   #131922;
+      --pui-surface-2: #1b2330;
+      --pui-border:    #2c3849;
+      --pui-muted:     #93a2b8;
+      --pui-badge-mock-bg: #0c3550;      --pui-badge-mock-fg: #bae6fd;
+      --pui-badge-stub-bg: #4a3208;      --pui-badge-stub-fg: #fde68a;
+      --pui-badge-story-bg: #3b1d5c;     --pui-badge-story-fg: #e9d5ff;
+      --pui-badge-specdemo-bg: #10381f;  --pui-badge-specdemo-fg: #bbf7d0;
+      --pui-step-active-bg:     #22304a;
+      --pui-step-active-border: #3a4d6d;
+    }
+    body { background: var(--pui-surface-2); }
+    /* Der aktive Modus-Button färbt Text mit --pui-surface-2 — im Dunkeln wäre
+       das Text auf Text. Hier explizit gegen die dunkle Fläche setzen. */
+    .mode-toggle button[aria-pressed="true"] { background: var(--pui-primary); color: var(--pui-surface); }
+  }
 </style>
 </head>
 <body>
@@ -75,6 +122,12 @@
   </div>
 
   <section class="panel" data-testid="free-panel" id="free-panel" data-panel="free">
+    <label for="kd-filter">Filter</label>
+    <input type="search" id="kd-filter" data-testid="kd-filter" autocomplete="off"
+           placeholder="Titel, Repo, Spec-ID, Pfad…">
+    <div class="meta" data-testid="kd-filter-count" id="kd-filter-count"></div>
+    <div class="detail error" data-testid="kd-filter-empty" id="kd-filter-empty" hidden></div>
+
     <label for="kd-select">Klickdummy</label>
     <select id="kd-select" data-testid="kd-select"></select>
 
@@ -97,11 +150,18 @@
       <button data-testid="btn-prev" id="btn-prev" data-nav="-1" disabled>← Zurück</button>
       <button data-testid="btn-next" id="btn-next" data-nav="1" disabled>Weiter →</button>
     </div>
+    <button class="linklike" data-testid="btn-story-reset" id="btn-story-reset"
+            title="Besucht-Markierungen dieses Repos zurücksetzen">↺ Fortschritt zurücksetzen</button>
     <div class="detail error" data-testid="step-load-error" id="step-load-error" hidden></div>
   </section>
 </aside>
 <main>
   <div class="empty" data-testid="empty" id="empty">Klickdummy links auswählen, um ihn rechts zu laden.</div>
+  <!-- N4: sichtbarer Fehlerzustand statt leerem iframe (Ladefehler/leere Seite). -->
+  <div class="empty error" data-testid="frame-load-error" id="frame-load-error" hidden></div>
+  <!-- Cross-Repo: shell_path ist repo-relativ und kann hier nicht aufgelöst
+       werden — statt eines toten iframes GitHub-Links (UC-004). -->
+  <div class="empty" data-testid="cross-repo-notice" id="cross-repo-notice" hidden></div>
   <iframe data-testid="kd-frame" id="kd-frame" title="Aktiver Klickdummy" hidden></iframe>
 </main>
 <footer>Generiert durch <code>iil-klickdummy</code> · Browser-Snippet · platform:ADR-211</footer>
@@ -115,7 +175,10 @@
 <script type="application/json" id="stories-data">__STORIES_JSON__</script>
 
 <template id="tpl-detail-row"><dt></dt><dd></dd></template>
-<template id="tpl-step"><li><span class="step-icon"></span><span class="step-label"></span></li></template>
+<!-- N6 (a11y): role/tabindex am <li>, damit der Stepper ohne Maus bedienbar ist
+     (Enter/Space werden im keydown-Handler auf denselben Pfad wie click geführt). -->
+<template id="tpl-step"><li role="button" tabindex="0"><span class="step-icon" aria-hidden="true"></span><span class="step-label"></span></li></template>
+<template id="tpl-cross-repo"><div class="link-card"><h2></h2><p></p><ul class="link-list"></ul></div></template>
 
 <script>
 'use strict';
@@ -129,6 +192,92 @@
 
   var currentKD = null;
 
+  // ── Main-Bereich: genau EIN Zustand sichtbar (kein stiller Leerzustand, N4) ──
+  var MAIN_PANES = ['empty', 'frame-load-error', 'cross-repo-notice', 'kd-frame'];
+  function setMain(id) { MAIN_PANES.forEach(function (p) { show($(p), p === id); }); }
+
+  // ── iframe-Ladefehler (N4) ─────────────────────────────────────────────────
+  // Ein 404 feuert im iframe KEIN 'error'-Event — der Browser lädt die
+  // Fehlerseite des Servers und feuert 'load'; deren Body ist NICHT leer
+  // (verifiziert 2026-07-29 gegen python -m http.server). Eine Body-Probe allein
+  // reicht also nicht. Vier Sonden:
+  //   (a) HEAD-Vorabprüfung (gleichoriginer HTTP-Status — der einzige Weg an den
+  //       echten Statuscode, ein iframe verschluckt ihn),
+  //   (b) 'error'-Event (Netzwerk-/Schema-Fehler),
+  //   (c) Watchdog (gar keine Antwort),
+  //   (d) Same-Origin-Probe auf leeren Body nach 'load' (file://-Fälle).
+  var FRAME_TIMEOUT_MS = 6000, frameWatchdog = null, frameLabel = '';
+  function clearWatchdog() { if (frameWatchdog) { clearTimeout(frameWatchdog); frameWatchdog = null; } }
+  function frameError(msg) {
+    clearWatchdog();
+    setText($('frame-load-error'), msg);
+    setMain('frame-load-error');
+  }
+  function loadFrame(src, label) {
+    var fr = $('kd-frame');
+    clearWatchdog();
+    frameLabel = label;
+    setMain('kd-frame');
+    fr.src = src;
+    // (a) HEAD-Vorabprüfung. Nur über http(s) — file:// verbietet fetch, dort
+    // tragen Watchdog und Body-Probe. Der Vergleich auf frameLabel verhindert,
+    // dass eine späte Antwort eine inzwischen gewechselte Auswahl überschreibt.
+    if (window.fetch && location.protocol.indexOf('http') === 0) {
+      fetch(src, { method: 'HEAD' }).then(function (r) {
+        if (!r.ok && frameLabel === label) {
+          frameError('Klickdummy „' + label + '" ist nicht abrufbar (HTTP ' + r.status + '): ' + src);
+        }
+      }).catch(function () { /* Netzwerk/CORS → (b)-(d) entscheiden */ });
+    }
+    frameWatchdog = setTimeout(function () {
+      frameError('Klickdummy „' + label + '" antwortet nicht (> ' + Math.round(FRAME_TIMEOUT_MS / 1000)
+        + ' s). Pfad prüfen: ' + src);
+    }, FRAME_TIMEOUT_MS);
+  }
+  $('kd-frame').addEventListener('error', function () {
+    frameError('Klickdummy „' + frameLabel + '" konnte nicht geladen werden (Ladefehler).');
+  });
+  $('kd-frame').addEventListener('load', function () {
+    clearWatchdog();
+    try {
+      var doc = this.contentDocument;
+      if (doc && doc.body && !doc.body.children.length && !doc.body.textContent.trim()) {
+        frameError('Klickdummy „' + frameLabel + '" lud eine leere Seite — Datei fehlt oder ist leer: ' + frameLabel);
+      }
+    } catch (e) { /* cross-origin: kein Zugriff auf contentDocument → als geladen werten */ }
+  });
+
+  // ── Cross-Repo (UC-004) ────────────────────────────────────────────────────
+  // registry.py setzt org/repo/github_* nur im --cross-repo-Modus; shell_path
+  // bleibt dort repo-relativ und ist von dieser Seite aus nicht auflösbar.
+  function isCrossRepo(k) { return !!(k && k.repo); }
+  function renderCrossRepoNotice(k) {
+    var host = $('cross-repo-notice');
+    host.textContent = '';
+    var frag = $('tpl-cross-repo').content.cloneNode(true);
+    setText(frag.querySelector('h2'), k.title + ' — ' + (k.org ? k.org + '/' : '') + k.repo);
+    setText(frag.querySelector('p'), 'Dieser Klickdummy liegt in einem anderen Repository. Seine Shell ist '
+      + 'von hier aus nicht einbettbar (repo-relativer Pfad) — auf GitHub öffnen:');
+    var ul = frag.querySelector('.link-list');
+    function link(href, label, testid) {
+      if (!href) return;
+      var li = document.createElement('li'), a = document.createElement('a');
+      a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.setAttribute('data-testid', testid);
+      setText(a, label);
+      li.appendChild(a); ul.appendChild(li);
+    }
+    link(k.github_shell_url, '↗ Shell öffnen (shell.html)', 'link-github-shell');
+    link(k.github_spec_url, '↗ Spec öffnen (screens-spec.yaml)', 'link-github-spec');
+    if (!ul.children.length) {
+      var li = document.createElement('li');
+      setText(li, 'Kein GitHub-Link verfügbar (weder Shell noch Spec-URL bekannt).');
+      ul.appendChild(li);
+    }
+    host.appendChild(frag);
+    setMain('cross-repo-notice');
+  }
+
   // ── Detail (N1: textContent + geklonte <template>-Rows) ──
   function renderDetail(k, ver) {
     var dl = $('kd-detail'); dl.textContent = '';
@@ -139,6 +288,12 @@
       valueFn(frag.querySelector('dd'));
       dl.appendChild(frag);
     }
+    if (isCrossRepo(k)) row('Repo', function (dd) {
+      var c = document.createElement('code');
+      c.setAttribute('data-testid', 'kd-repo');
+      setText(c, (k.org ? k.org + '/' : '') + k.repo);
+      dd.appendChild(c);
+    });
     row('Spec', function (dd) { var c = document.createElement('code'); setText(c, k.spec_id); dd.appendChild(c); dd.append(' v' + k.spec_version); });
     if (ver) row('Angezeigte Version', function (dd) { setText(dd, 'v' + ver.spec_version + ' · ' + ver.commit_date + ' · ' + ver.commit_sha + ' (historisch, read-only)'); });
     row('Klasse', function (dd) { var b = document.createElement('span'); b.className = 'badge ' + k.class; b.setAttribute('data-testid', 'kd-class-badge'); setText(b, k.class); dd.appendChild(b); });
@@ -161,9 +316,13 @@
   // ── iframe-Loader (echte Shell) ──
   function loadCurrent(k) {
     show($('version-no-snapshot'), false);
-    var fr = $('kd-frame'), empty = $('empty');
-    if (k.shell_path) { fr.src = k.shell_path + '?feedback=on'; show(fr, true); show(empty, false); }
-    else { setText(empty, 'Kein shell.html für ' + k.name + ' gefunden (nur Spec vorhanden).'); show(fr, false); show(empty, true); }
+    if (isCrossRepo(k)) { renderCrossRepoNotice(k); return; }
+    if (k.shell_path) { loadFrame(k.shell_path + '?feedback=on', k.shell_path); }
+    else {
+      clearWatchdog();
+      setText($('empty'), 'Kein shell.html für ' + k.name + ' gefunden (nur Spec vorhanden).');
+      setMain('empty');
+    }
   }
 
   function onSelectVersion(value) {
@@ -172,13 +331,14 @@
     var v = (currentKD.versions || [])[parseInt(value, 10)];
     if (!v) return;
     renderDetail(currentKD, v);
-    var fr = $('kd-frame'), n = $('version-no-snapshot');
+    var n = $('version-no-snapshot');
     if (v.shell_path) {
-      // historischer Snapshot — bewusst ohne ?feedback=on (read-only)
-      show(n, false); fr.src = v.shell_path; show(fr, true); show($('empty'), false);
+      // historischer Snapshot — bewusst ohne ?feedback=on (read-only, N5)
+      show(n, false); loadFrame(v.shell_path, v.shell_path);
     } else {
+      clearWatchdog();
       setText(n, 'Kein shell.html-Snapshot für v' + v.spec_version + ' (nur Spec versioniert).'); show(n, true);
-      show(fr, false); show($('empty'), false);
+      setMain('empty'); setText($('empty'), 'Für diese Version liegt kein Shell-Snapshot vor.');
     }
   }
 
@@ -186,13 +346,72 @@
     var k = KLICKDUMMIES[parseInt(idx, 10)];
     if (!k) return;
     currentKD = k; renderDetail(k); populateVersions(k); loadCurrent(k);
+    writeHash({ kd: k.name });
+  }
+
+  // ── Deep-Link (Zustand in der URL) ─────────────────────────────────────────
+  // Ohne das ist „schau dir Schritt 3 der Onboarding-Story an" nicht verlinkbar
+  // und ein Reload wirft auf den Leerzustand zurück. `replaceState` statt
+  // location.hash = …: kein History-Eintrag je Klick, kein hashchange-Rückruf.
+  function writeHash(parts) {
+    var q = Object.keys(parts)
+      .filter(function (key) { return parts[key] != null && parts[key] !== ''; })
+      .map(function (key) { return key + '=' + encodeURIComponent(parts[key]); })
+      .join('&');
+    try { history.replaceState(null, '', q ? '#' + q : location.pathname + location.search); }
+    catch (e) { /* file:// in manchen Browsern — Deep-Link entfällt, Rest läuft */ }
+  }
+  function readHash() {
+    var out = {};
+    (location.hash || '').replace(/^#/, '').split('&').forEach(function (pair) {
+      var i = pair.indexOf('=');
+      if (i > 0) { try { out[pair.slice(0, i)] = decodeURIComponent(pair.slice(i + 1)); } catch (e) {} }
+    });
+    return out;
+  }
+  function applyHash() {
+    var h = readHash();
+    if (h.story) {
+      var si = -1;
+      STORIES.forEach(function (s, i) { if (s.id === h.story) si = i; });
+      if (si >= 0) {
+        var sti = Math.max(0, Math.min(parseInt(h.step, 10) - 1 || 0, STORIES[si].steps.length - 1));
+        $('story-select').value = String(si);
+        var btn = document.querySelector('[data-mode="story"]');
+        if (btn) btn.click();          // Modus umschalten wie ein Nutzerklick
+        loadStory(si, sti);
+        return true;
+      }
+    }
+    if (h.kd) {
+      var idx = -1;
+      KLICKDUMMIES.forEach(function (k, i) { if (k.name === h.kd) idx = i; });
+      if (idx >= 0) { $('kd-select').value = String(idx); onSelectFree(String(idx)); return true; }
+      setText($('empty'), 'Der verlinkte Klickdummy „' + h.kd + '" existiert in diesem Repo nicht (mehr).');
+      setMain('empty');
+    }
+    return false;
   }
 
   // ── Story-Walk ──
   var storyIdx = 0, stepIdx = 0;
-  function vkey(sid, i) { return 'kd-story-visited:' + sid + ':' + i; }
+  // Storage-Schlüssel ist repo-skopiert: mehrere Browser-Seiten (z. B. unter
+  // kd.iil.pet) teilen sonst denselben Origin und überschreiben gegenseitig
+  // ihren Fortschritt, weil Story-IDs zwischen Repos gleich heißen können.
+  var VKEY_PREFIX = 'kd-story-visited:' + ($('repo-label').textContent || '?') + ':';
+  function vkey(sid, i) { return VKEY_PREFIX + sid + ':' + i; }
   function visited(sid, i) { try { return !!localStorage.getItem(vkey(sid, i)); } catch (e) { return false; } }
   function markVisited(sid, i) { try { localStorage.setItem(vkey(sid, i), '1'); } catch (e) {} }
+  function resetVisited() {
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && key.indexOf(VKEY_PREFIX) === 0) kill.push(key);
+      }
+      kill.forEach(function (key) { localStorage.removeItem(key); });
+    } catch (e) { /* Storage gesperrt — nichts zurückzusetzen */ }
+  }
 
   function renderStepper(story, active) {
     setText($('story-progress'), 'Schritt ' + (active + 1) + ' / ' + story.steps.length);
@@ -201,6 +420,11 @@
     story.steps.forEach(function (step, i) {
       var frag = tpl.content.cloneNode(true), li = frag.querySelector('li');
       li.dataset.active = String(i === active); li.dataset.visited = String(visited(story.id, i)); li.dataset.step = String(i);
+      // N6 (a11y): Screenreader-Kontext — Position, aktueller Schritt, Besucht-Status
+      // stecken sonst nur in Farbe/Icon (aria-hidden), also rein visuell.
+      if (i === active) li.setAttribute('aria-current', 'step');
+      li.setAttribute('aria-label', 'Schritt ' + (i + 1) + ' von ' + story.steps.length + ': ' + step.label
+        + (visited(story.id, i) ? ' (besucht)' : ''));
       setText(li.querySelector('.step-icon'), i === active ? '●' : (visited(story.id, i) ? '✅' : '○'));
       setText(li.querySelector('.step-label'), step.label);
       ul.appendChild(frag);
@@ -212,9 +436,20 @@
     storyIdx = si; stepIdx = sti;
     var story = STORIES[si]; renderStepper(story, sti);
     var step = story.steps[sti], k = KLICKDUMMIES[step.kd_index], err = $('step-load-error');
-    if (!k) { setText(err, 'Schritt „' + step.label + '" verweist auf einen fehlenden Klickdummy (kd_index ' + step.kd_index + ') — kein stiller Leerzustand.'); show(err, true); show($('kd-frame'), false); show($('empty'), false); }
+    if (!k) {
+      clearWatchdog();
+      // `unresolved` setzt discover_stories, wenn der kd-Name der Story in keinem
+      // Klickdummy aufgeht (Issue #200) — die häufigste, konkret benennbare Ursache.
+      setText(err, step.unresolved
+        ? 'Schritt „' + step.label + '": kein Klickdummy namens „' + step.kd_name + '" in diesem Repo — Story-Datei prüfen.'
+        : 'Schritt „' + step.label + '" verweist auf einen fehlenden Klickdummy (kd_index ' + step.kd_index + ') — kein stiller Leerzustand.');
+      show(err, true);
+      setText($('empty'), 'Dieser Schritt kann nicht geladen werden — siehe Hinweis links.');
+      setMain('empty');
+    }
     else { show(err, false); currentKD = k; renderDetail(k); populateVersions(k); loadCurrent(k); }
     $('btn-prev').disabled = sti === 0; $('btn-next').disabled = sti === story.steps.length - 1;
+    writeHash({ story: story.id, step: String(sti + 1) });
   }
 
   function populateStories() {
@@ -245,12 +480,75 @@
   $('story-stepper').addEventListener('click', function (e) {
     var li = e.target.closest('[data-step]'); if (li) loadStory(storyIdx, parseInt(li.dataset.step, 10));
   });
+  // N6 (a11y): role="button" verpflichtet zu Enter/Space — ohne diesen Handler
+  // wären die Stepper-Einträge fokussierbar, aber per Tastatur nicht auslösbar.
+  $('story-stepper').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    var li = e.target.closest('[data-step]');
+    if (!li) return;
+    e.preventDefault(); // Space scrollt sonst die Seite
+    loadStory(storyIdx, parseInt(li.dataset.step, 10));
+  });
+
+  // ── Auswahlliste (mit Filter) ──────────────────────────────────────────────
+  // Cross-Repo: nach Repo gruppieren (<optgroup>), sonst flache Liste. Der
+  // Filter greift über Titel, Repo, Spec-ID und Pfad — bei ~20 Repos ist Scrollen
+  // durch ein Dropdown keine Navigation mehr.
+  function matches(k, needle) {
+    if (!needle) return true;
+    var hay = [k.title, k.name, k.spec_id, k.path, k.repo || '', k.org || '', k.class]
+      .join(' ').toLowerCase();
+    return hay.indexOf(needle) >= 0;
+  }
+  function renderOptions(needle) {
+    var sel = $('kd-select');
+    sel.textContent = '';
+    sel.add(new Option('— wählen —', ''));
+    var groups = {}, hits = 0;
+    KLICKDUMMIES.forEach(function (k, i) {
+      if (!matches(k, needle)) return;
+      hits++;
+      var opt = new Option(k.title + ' (v' + k.spec_version + ')', String(i)); // Option()-Text ist textContent → N1-sicher
+      if (!isCrossRepo(k)) { sel.add(opt); return; }
+      var key = (k.org ? k.org + '/' : '') + k.repo;
+      if (!groups[key]) {
+        groups[key] = document.createElement('optgroup');
+        groups[key].label = key;         // label ist ein Attribut, kein HTML
+        groups[key].setAttribute('data-testid', 'kd-optgroup');
+        sel.appendChild(groups[key]);
+      }
+      groups[key].appendChild(opt);
+    });
+    var none = $('kd-filter-empty');
+    setText(none, hits ? '' : 'Kein Klickdummy passt zu „' + needle + '".');
+    show(none, !hits);
+    setText($('kd-filter-count'), hits + ' / ' + KLICKDUMMIES.length + ' Klickdummies');
+    // Aktive Auswahl beibehalten, solange sie durch den Filter kommt
+    if (currentKD && matches(currentKD, needle)) {
+      KLICKDUMMIES.forEach(function (k, i) { if (k === currentKD) $('kd-select').value = String(i); });
+    }
+    return hits;
+  }
+  $('kd-filter').addEventListener('input', function (e) {
+    renderOptions(String(e.target.value || '').trim().toLowerCase());
+  });
+
+  $('btn-story-reset').addEventListener('click', function () {
+    resetVisited();
+    if (STORIES.length && $('story-stepper').children.length) renderStepper(STORIES[storyIdx], stepIdx);
+  });
+
+  // Ein Wechsel NUR des Fragments (z. B. Klick auf einen zweiten Deep-Link derselben
+  // Seite) ist eine Same-Document-Navigation: die Seite lädt nicht neu, das Script
+  // läuft nicht erneut — ohne diesen Listener bliebe die Ansicht stehen und nur die
+  // URL änderte sich (real beobachtet, nicht theoretisch). Kein Loop-Risiko, weil
+  // writeHash() replaceState nutzt und replaceState kein hashchange auslöst.
+  window.addEventListener('hashchange', function () { applyHash(); });
 
   // ── Init ──
-  var sel = $('kd-select');
-  sel.add(new Option('— wählen —', ''));
-  KLICKDUMMIES.forEach(function (k, i) { sel.add(new Option(k.title + ' (v' + k.spec_version + ')', String(i))); });
+  renderOptions('');
   if (STORIES.length) { show($('mode-toggle'), true); populateStories(); }
+  applyHash();   // Deep-Link zuletzt: braucht Optionen und Stories
 })();
 </script>
 </body>
