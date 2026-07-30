@@ -5,6 +5,41 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.34.0] - 2026-07-30
+
+### Changed
+
+- **`klickdummy-sync` chunkt lange ADRs, statt sie zu kappen ([#199](https://github.com/iilgmbh/iil-klickdummy/issues/199),
+  [#207](https://github.com/iilgmbh/iil-klickdummy/pull/207)).** Bisher deckelte
+  `_content_preview()` den Entry-Content bei 8000 Zeichen; im Lauf vom 2026-07-29
+  verloren vier Entries Inhalt, bei `design-hub:ADR-007` zwei Drittel des Dokuments —
+  und bei einem MADR liegen Rationale, Konsequenzen und Alternativen hinten, also genau
+  der Teil, der die semantische Suche trägt. `_chunk_content()` schneidet jetzt an
+  `##`-Sektionsgrenzen in mehrere Entries (`…:ADR-007`, `…:ADR-007#2`, Titel
+  `(Teil 2/4)`). Alle Chunks tragen dieselben ADR-Tags und bleiben einzeln auffindbar.
+
+  Der 8000er-Deckel **bleibt**, und das ist der Kern: der harte Constraint ist ein
+  *Token*-Limit des Embedding-Providers, kein Zeichen-Limit. Der Store gibt den Content
+  ungekürzt an `embed_with_retry()` weiter; scheitert das Embedding, wird der Entry
+  trotzdem geschrieben — aber ohne Vektor, und `search()` filtert auf
+  `embedding IS NOT NULL`. Überschreiten ist damit schlimmer als Kürzen. Gemessen
+  (tiktoken `cl100k_base`): deutsches ADR-Markdown liegt bei 3,05–3,20 Zeichen/Token,
+  und das größte bekannte ADR lag mit 7969 Token bereits bei 97,3 % des 8191er-Limits —
+  ein bloß angehobener Deckel hätte 222 Token Reserve gehabt.
+
+  **Kompatibilität:** Chunk 1 behält den unsuffixierten `entry_key`, die im Store
+  liegenden Entries bleiben dieselben Objekte. Alle Contents, die schon bisher passten,
+  bleiben byte-identisch — der `content_hash`-Dedup greift weiter, kein
+  Re-Embedding-Churn.
+
+  Verifiziert gegen echte Daten (20 Repos, 243 Entries): 0 Kürzungs-Marker, alle vier
+  vormals gekappten ADRs verlustfrei, kein Chunk über 8191 Token. Nebenfund:
+  `platform:ADR-211` (102 049 Zeichen) war zu 92 % unsichtbar und ergibt jetzt 17 Chunks.
+
+  Bekannte Restlücke: schrumpft ein ADR wieder unter eine Chunk-Grenze, bleiben höhere
+  `#N` stale im Store ([#205](https://github.com/iilgmbh/iil-klickdummy/issues/205)) —
+  dieser Produzent emittiert nur Upserts, keine Soft-Deletes.
+
 ## [1.33.0] - 2026-07-29
 
 ### Added
