@@ -194,15 +194,72 @@ def test_should_dedup_across_repo_roots_preferring_newest_version():
     assert out[0]["content"] == "v2"
 
 
-# --------------------------------------- Issue #188 Zweitbefund: Truncation
+# ------------------------- Issue #199: Chunking statt Truncation (ex-#188)
 
 
-def test_should_not_mark_content_below_limit():
-    assert sync_mod._content_preview("kurz", limit=10) == "kurz"
+def test_should_return_single_chunk_below_limit():
+    assert sync_mod._chunk_content("kurz", limit=10) == ["kurz"]
 
 
-def test_should_mark_truncated_content():
-    out = sync_mod._content_preview("x" * 30, limit=10)
+def test_should_preserve_full_content_across_chunks():
+    """Kern von Issue #199: nichts geht verloren. Vorher kappte
+    `_content_preview` bei design-hub ADR-007 zwei Drittel des Dokuments."""
+    text = "".join(f"## Sektion {i}\n{'x' * 60}\n" for i in range(20))
 
-    assert out.startswith("x" * 10)
-    assert "gekürzt: 20 weitere Zeichen" in out
+    chunks = sync_mod._chunk_content(text, limit=200)
+
+    assert len(chunks) > 1
+    assert "".join(chunks) == text
+    assert "gekürzt" not in "".join(chunks)
+
+
+def test_should_never_exceed_limit_per_chunk():
+    """Die Invariante, die den Deckel überhaupt rechtfertigt: ein Chunk über
+    dem Provider-Token-Limit würde ohne Embedding geschrieben und wäre für
+    `search()` unsichtbar (`embedding IS NOT NULL`)."""
+    text = "".join(f"## S{i}\n{'y' * 150}\n" for i in range(10))
+
+    for chunk in sync_mod._chunk_content(text, limit=200):
+        assert len(chunk) <= 200
+
+
+def test_should_split_at_section_boundaries():
+    text = "## Alpha\n" + "a" * 150 + "\n## Beta\n" + "b" * 150 + "\n"
+
+    chunks = sync_mod._chunk_content(text, limit=200)
+
+    assert len(chunks) == 2
+    assert chunks[0].startswith("## Alpha")
+    assert chunks[1].startswith("## Beta")
+
+
+def test_should_hard_split_oversized_single_section():
+    """Eine Sektion, die allein über dem Limit liegt, darf die Invariante
+    nicht aushebeln — dann wird auf Zeichenebene weitergeschnitten."""
+    text = "## Riesig\n" + "z" * 500
+
+    chunks = sync_mod._chunk_content(text, limit=100)
+
+    assert all(len(c) <= 100 for c in chunks)
+    assert "".join(chunks) == text
+
+
+def test_should_keep_unsuffixed_entry_key_for_first_chunk(tmp_path):
+    """Rückwärtskompatibilität: die im Store liegenden ADR-Entries behalten
+    ihren entry_key, sonst entstünde bei jedem langen ADR ein Orphan."""
+    adr_dir = tmp_path / "docs" / "adr"
+    adr_dir.mkdir(parents=True)
+    body = "".join(f"## Sektion {i}\n{'x' * 900}\n" for i in range(12))
+    (adr_dir / "ADR-007-lang.md").write_text(
+        'tags: ["klickdummy"]\ntitle: "Langes ADR"\n\n' + body, encoding="utf-8"
+    )
+
+    entries = sync_mod.adr_entries(tmp_path, "achimdehnert", "design-hub")
+
+    keys = [e["entry_key"] for e in entries]
+    assert len(keys) > 1, "ADR über dem Limit muss gechunkt werden"
+    assert keys[0] == "klickdummy-adr:achimdehnert:design-hub:ADR-007"
+    assert keys[1] == "klickdummy-adr:achimdehnert:design-hub:ADR-007#2"
+    assert f"(Teil 1/{len(keys)})" in entries[0]["title"]
+    # Jeder Chunk bleibt über die ADR-Tags auffindbar.
+    assert all("klickdummy:adr:ADR-007" in e["tags"] for e in entries)
