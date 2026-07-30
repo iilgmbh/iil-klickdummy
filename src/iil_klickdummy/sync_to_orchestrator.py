@@ -8,7 +8,11 @@ Mechanik:
   - registry.discover_klickdummies(repo_root) findet Specs
   - pro Klickdummy: 1 Memory-Entry (entry_type=repo_context)
   - pro Iteration (feedback-log.md): 1 Entry (entry_type=lesson_learned)
-  - pro Klickdummy-ADR: 1 Entry (entry_type=decision)
+  - pro Klickdummy-ADR: 1 Entry (entry_type=decision) — überschreitet der Body
+    CHUNK_CHAR_LIMIT, mehrere Entries `…:ADR-007`, `…:ADR-007#2`, … (Issue #199).
+    Bekannte Restlücke: schrumpft ein ADR wieder unter eine Chunk-Grenze,
+    bleiben die höheren `#N` als stale Entries im Store liegen — dieser
+    Produzent emittiert nur Upserts, keine Soft-Deletes (Issue #205).
   - Idempotent via content_hash (vom orchestrator selbst)
 
 Multi-Tenant: Tags ['klickdummy', 'klickdummy:class:<cls>',
@@ -75,17 +79,74 @@ def _version_sort_key(version: str) -> tuple:
     return tuple(parts)
 
 
-CONTENT_PREVIEW_LIMIT = 8000
+CHUNK_CHAR_LIMIT = 8000
+"""Maximale Zeichenzahl pro Entry-Content (Issue #199).
+
+Der harte Constraint ist ein *Token*-Limit des Embedding-Providers, nicht ein
+Zeichen-Limit: der Store (`orchestrator_mcp/memory/store.py`) gibt den Content
+ungekürzt an `embed_with_retry()` weiter, und `openai:text-embedding-3-small`
+(live per `session_stats` 2026-07-30: 534/534 embeddete Entries) nimmt maximal
+8191 Token. Wird das überschritten, schreibt der Store den Entry **trotzdem**
+— aber ohne Embedding, und `search()` filtert auf `embedding IS NOT NULL`:
+der Eintrag wäre semantisch unfindbar. Überschreiten ist damit schlimmer als
+Kürzen, weshalb dieser Deckel bleibt.
+
+Gemessen an den vier betroffenen ADRs (tiktoken `cl100k_base`, dasselbe
+Encoding wie text-embedding-3-small): deutsches ADR-Markdown liegt bei
+**3,05–3,20 Zeichen/Token**. 8000 Zeichen ≈ 2600 Token — mit ~3× Luft zum
+Provider-Limit. Der Wert ist bewusst NICHT angehoben (Issue #199 Option A):
+das größte bekannte ADR (design-hub ADR-007, 24 570 Zeichen) liegt bei 7969
+Token, also auf 97,3 % des Limits — ein Deckel „groß genug für heute" hätte
+222 Token Reserve und würde beim nächsten längeren ADR still das Embedding
+verlieren. Stattdessen wird gechunkt (Option B), und dieser Wert bleibt, damit
+alle Entries, die heute schon passen, **byte-identisch** bleiben (content_hash-
+Dedup greift weiter, kein Re-Embedding-Churn).
+"""
 
 
-def _content_preview(text: str, limit: int = CONTENT_PREVIEW_LIMIT) -> str:
-    """Body-Vorschau für Embeddings (Token-Limit) — mit sichtbarem Truncation-
-    Marker (Issue #188 Zweitbefund). Ohne Marker endete der Content mitten im
-    Wort (`ADR-046` brach in "## Refe" ab) und Konsumenten konnten nicht
-    unterscheiden, ob die Quelle kurz ist oder abgeschnitten wurde."""
+def _chunk_content(text: str, limit: int = CHUNK_CHAR_LIMIT) -> list[str]:
+    """Content in embedding-taugliche Chunks schneiden — ohne Verlust (Issue #199).
+
+    Vorher wurde bei `limit` gekappt (mit Marker `… [gekürzt: N weitere
+    Zeichen]`, Issue #188 Zweitbefund). Der Marker machte die Kürzung sichtbar,
+    aber der Inhalt fehlte: bei design-hub ADR-007 zwei Drittel des Dokuments —
+    und bei einem MADR liegen Rationale, Konsequenzen und Alternativen hinten,
+    also genau der Teil, der die semantische Suche interessant macht.
+
+    Geschnitten wird an `##`-Sektionsgrenzen, damit ein Chunk eine
+    abgeschlossene Sinneinheit ist (ein 25k-Blob in *einem* 1536-dim-Vektor
+    verwässert die Retrieval-Qualität ohnehin). Eine einzelne Sektion, die
+    selbst über `limit` liegt, wird hart auf Zeichenebene weitergeschnitten —
+    die Invariante „kein Chunk > limit" gilt ausnahmslos, sonst wäre genau der
+    Fall wieder embedding-los, den der Deckel verhindern soll.
+
+    Gibt immer mindestens ein Element zurück (auch für leeren Text).
+    """
     if len(text) <= limit:
-        return text
-    return f"{text[:limit]}\n\n… [gekürzt: {len(text) - limit} weitere Zeichen]"
+        return [text]
+
+    # Sektionsgrenzen: Zeilenanfang + '## ' (auch '###…', da mit '##' beginnend).
+    parts = re.split(r"(?m)^(?=##\s)", text)
+    chunks: list[str] = []
+    current = ""
+    for part in parts:
+        # Sektion, die allein schon zu groß ist: hart weiterschneiden.
+        while len(part) > limit:
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.append(part[:limit])
+            part = part[limit:]
+        if not current:
+            current = part
+        elif len(current) + len(part) <= limit:
+            current += part
+        else:
+            chunks.append(current)
+            current = part
+    if current:
+        chunks.append(current)
+    return chunks or [text]
 
 
 def _dedup_entries(entries: list[dict]) -> list[dict]:
@@ -258,23 +319,34 @@ def adr_entries(repo_root: pathlib.Path, org: str, repo: str) -> list[dict]:
         adr_num = m.group(1)
         title_match = re.search(r"^title:\s*\"?([^\"\n]+)\"?", text, re.MULTILINE)
         title = title_match.group(1).strip() if title_match else candidate.stem
-        out.append(
-            dict(
-                entry_key=f"klickdummy-adr:{org}:{repo}:ADR-{adr_num}",
-                entry_type="decision",
-                title=f"{repo}:ADR-{adr_num} — {title}",
-                content=_content_preview(text),
-                tags=[
-                    "klickdummy",
-                    "klickdummy-adr",
-                    f"klickdummy:org:{org}",
-                    f"klickdummy:repo:{repo}",
-                    f"klickdummy:adr:ADR-{adr_num}",
-                ],
-                agent="iil-klickdummy-sync",
-                _source_path=str(rel),
+        base_key = f"klickdummy-adr:{org}:{repo}:ADR-{adr_num}"
+        chunks = _chunk_content(text)
+        total = len(chunks)
+        for idx, chunk in enumerate(chunks, start=1):
+            # Chunk 1 behält den unsuffixierten entry_key — die bereits im Store
+            # liegenden Entries bleiben damit dieselben Objekte (kein Orphan,
+            # kein Key-Bruch für Konsumenten, die exakt danach filtern).
+            out.append(
+                dict(
+                    entry_key=base_key if idx == 1 else f"{base_key}#{idx}",
+                    entry_type="decision",
+                    title=(
+                        f"{repo}:ADR-{adr_num} — {title}"
+                        if total == 1
+                        else f"{repo}:ADR-{adr_num} — {title} (Teil {idx}/{total})"
+                    ),
+                    content=chunk,
+                    tags=[
+                        "klickdummy",
+                        "klickdummy-adr",
+                        f"klickdummy:org:{org}",
+                        f"klickdummy:repo:{repo}",
+                        f"klickdummy:adr:ADR-{adr_num}",
+                    ],
+                    agent="iil-klickdummy-sync",
+                    _source_path=str(rel),
+                )
             )
-        )
     return out
 
 
