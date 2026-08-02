@@ -13,6 +13,7 @@
     "spec_schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "Optional: Version der `assert`-Semantik/dieses Schemas, gegen die die Spec geschrieben wurde (M28-1). Erlaubt Generator-Kompatibilitätsmatrix. Generationen: 1.0 = Baseline; 1.1 = + `screen.use_cases[]` (Spec-Layer/X-Ray)." },
     "spec_date":     { "type": "string", "format": "date", "description": "Erstellungs-/Rev-Datum der Spec (`YYYY-MM-DD`), von Autoren gepflegt — nicht zu verwechseln mit dem generator-internen `build-date`-Determinismus-Marker in gerenderten HTML-Artefakten." },
     "title":         { "type": "string", "pattern": "^(?!.*[\\n\\r])[^\\n\\r]*$", "description": "Kein Zeilenumbruch (AD-3): das bare `^[^\\n\\r]*$` ließ in re-basierten Validatoren ein *trailing* \\n durch (`$` matcht vor End-\\n); die Negative-Lookahead-Form lehnt es symmetrisch zu \\r ab. Runtime-`_comment_safe`/`_doc_safe` bleibt die eigentliche Barriere." },
+    "domain":        { "type": "string", "minLength": 1, "description": "Fachliche Domäne für die Sitemap-Gruppierung (optional, freier String) — gleiche Zeichenkette = gleiche Gruppe. Ohne Feld landet die Wurzel unter 'Weitere Bereiche' (bzw. flache Liste, wenn kein KD im Repo eine Domäne deklariert)." },
 
     "adr": {
       "type": "object",

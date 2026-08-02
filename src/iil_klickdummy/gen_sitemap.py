@@ -87,10 +87,16 @@ def _build_tree(specs: list[dict[str, Any]]) -> dict[str, Any]:
             if st in statuses:
                 worst = st
                 break
+        dom = s.get("domain")
         by_id[sid] = {
             "spec_id": sid,
             "title": s.get("title", sid),
             "role": s.get("spec_role", "branch"),
+            # Fachliche Domäne (optional, freier String) — gleiche Zeichenkette
+            # = gleiche Sitemap-Gruppe. Bewusst KEIN Fallback aus spec_id oder
+            # Verzeichnisnamen: eine geratene Domäne gruppiert falsch und sieht
+            # dabei absichtlich aus.
+            "domain": dom.strip() if isinstance(dom, str) and dom.strip() else None,
             "class": s.get("class", "mock"),
             "screens_count": len(screens),
             "off_ramp_status": worst,
@@ -122,8 +128,17 @@ def _build_tree(specs: list[dict[str, Any]]) -> dict[str, Any]:
     # sonst waeren beide Mengen identisch und die Warnung koennte nie feuern
     # (Retro-Befund #8).
     declared_roots = sorted([sid for sid, n in by_id.items() if n["role"] == "root"])
-    roots = list(declared_roots)
-    if not roots:
+    # Entdopplung (Realfall risk-hub 2026-08-02: 18 deklarierte Wurzeln, 9 davon
+    # gleichzeitig `kd_children` eines anderen KDs — jede erschien doppelt, als
+    # eigene Wurzel-Tabelle UND als Kind-Zeile): ein deklarierter Root, der von
+    # einem anderen KD als Kind referenziert wird, ist ein legitimer Teilbaum
+    # (Master-Flow bindet eigenständige KDs ein) und wird NUR verschachtelt
+    # gerendert. `demoted_roots` hält die Herabstufung im Tree transparent fest.
+    demoted_roots = sorted(
+        [sid for sid in declared_roots if by_id[sid]["parent"] is not None]
+    )
+    roots = [sid for sid in declared_roots if by_id[sid]["parent"] is None]
+    if not declared_roots:
         roots = sorted([sid for sid, n in by_id.items() if n["parent"] is None])
     if not roots and by_id:
         # Zyklus ohne deklarierte Wurzel: jeder Knoten hat einen Parent, also
@@ -172,6 +187,7 @@ def _build_tree(specs: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "roots": roots,
         "declared_roots": declared_roots,
+        "demoted_roots": demoted_roots,
         "dangling": dangling,
         "order": order,
         "nodes": by_id,
@@ -224,35 +240,85 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
     def rel(p: str) -> str:
         return "../" + p
 
-    for root_id in tree["roots"]:
-        root = nodes[root_id]
-        rows: list[str] = []
-        rows.append(
-            f'<tr class="border-b bg-orange-50" data-testid="row-{root_id.replace(":", "-").replace(".", "-")}">'
-            f'<td class="py-2 pl-2"><b>{root["title"]}</b><div class="text-[10px] text-gray-400">{root["spec_id"]}</div></td>'
-            f'<td class="text-[11px]">root</td>'
-            f'<td><span class="text-[10px] px-1.5 py-0.5 rounded {STATUS_COLOR.get(root["off_ramp_status"], "")}">{root["off_ramp_status"]}</span></td>'
-            f'<td class="text-[11px]">{root["screens_count"]}</td>'
-            f'<td><a href="{rel(root["path"])}" data-testid="link-{root_id}" class="text-orange-600 hover:underline text-sm">→ öffnen</a></td>'
-            f"</tr>"
-        )
-        for child_id in root["children"]:
-            ch = nodes[child_id]
-            rows.append(
-                f'<tr class="border-b" data-testid="row-{child_id.replace(":", "-").replace(".", "-")}">'
-                f'<td class="py-2 pl-6">↳ {ch["title"].split(" — ", 1)[-1] if " — " in ch["title"] else ch["title"]}<div class="text-[10px] text-gray-400">{ch["spec_id"]}</div></td>'
-                f'<td class="text-[11px] text-gray-500">branch</td>'
-                f'<td><span class="text-[10px] px-1.5 py-0.5 rounded {STATUS_COLOR.get(ch["off_ramp_status"], "")}">{ch["off_ramp_status"]}</span></td>'
-                f'<td class="text-[11px]">{ch["screens_count"]}</td>'
-                f'<td><a href="{rel(ch["path"])}" data-testid="link-{child_id}" class="text-gray-600 hover:underline text-sm">→ öffnen</a></td>'
-                f"</tr>"
+    # Jeder Knoten erscheint in genau EINER Tabelle: `rendered` ist global über
+    # alle Sektionen, damit (a) verschachtelte Teilbäume nicht zusätzlich als
+    # eigene Sektion auftauchen und (b) der Zyklus-Fallback (roots = alle
+    # Knoten) nicht jeden Teilbaum mehrfach rendert.
+    rendered: set[str] = set()
+
+    def _rows(sid: str, depth: int) -> list[str]:
+        if sid in rendered:
+            return []
+        rendered.add(sid)
+        n = nodes[sid]
+        tid = sid.replace(":", "-").replace(".", "-")
+        if depth == 0:
+            title_html = f"<b>{n['title']}</b>"
+            row_cls, role, role_cls, link_cls = (
+                "border-b bg-orange-50",
+                "root",
+                "text-[11px]",
+                "text-orange-600",
             )
-        sections.append(
+        else:
+            short = (
+                n["title"].split(" — ", 1)[-1] if " — " in n["title"] else n["title"]
+            )
+            title_html = f"↳ {short}"
+            # Herabgestufte Roots (deklariert root, aber als kd_children
+            # referenziert) bleiben als "sub-root" erkennbar.
+            role = "sub-root" if n["role"] == "root" else "branch"
+            row_cls, role_cls, link_cls = (
+                "border-b",
+                "text-[11px] text-gray-500",
+                "text-gray-600",
+            )
+        out = [
+            f'<tr class="{row_cls}" data-testid="row-{tid}">'
+            f'<td class="py-2" style="padding-left:{0.5 + depth}rem">{title_html}<div class="text-[10px] text-gray-400">{n["spec_id"]}</div></td>'
+            f'<td class="{role_cls}">{role}</td>'
+            f'<td><span class="text-[10px] px-1.5 py-0.5 rounded {STATUS_COLOR.get(n["off_ramp_status"], "")}">{n["off_ramp_status"]}</span></td>'
+            f'<td class="text-[11px]">{n["screens_count"]}</td>'
+            f'<td><a href="{rel(n["path"])}" data-testid="link-{sid}" class="{link_cls} hover:underline text-sm">→ öffnen</a></td>'
+            f"</tr>"
+        ]
+        for child_id in n["children"]:
+            out.extend(_rows(child_id, depth + 1))
+        return out
+
+    def _section(root_id: str) -> str:
+        rows = _rows(root_id, 0)
+        if not rows:
+            # Teilbaum bereits vollständig in einer früheren Sektion gerendert
+            # (nur im Zyklus-Fallback erreichbar).
+            return ""
+        return (
             f'<div class="bg-white rounded-lg shadow p-4 mb-4" data-testid="tree-{root_id.replace(":", "-").replace(".", "-")}">'
             f'<table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500 border-b">'
             f'<th class="py-2 pl-2">Knoten</th><th>Rolle</th><th>Off-Ramp</th><th>Screens</th><th></th></tr></thead>'
             f"<tbody>{''.join(rows)}</tbody></table></div>"
         )
+
+    # Domänen-Gruppierung: nur aktiv, wenn mindestens eine Wurzel `domain:`
+    # deklariert — ohne Deklaration bleibt die flache Liste (kein Verhaltens-
+    # sprung für die ausgerollten Repos). Wurzeln ohne Domäne sammeln sich
+    # unter "Weitere Bereiche" am Ende.
+    root_domains = {rid: nodes[rid]["domain"] for rid in tree["roots"]}
+    if any(root_domains.values()):
+        grouped: dict[str, list[str]] = {}
+        for rid in tree["roots"]:
+            grouped.setdefault(root_domains[rid] or "Weitere Bereiche", []).append(rid)
+        ordered = sorted([d for d in grouped if d != "Weitere Bereiche"])
+        if "Weitere Bereiche" in grouped:
+            ordered.append("Weitere Bereiche")
+        for domain in ordered:
+            slug = "".join(c if c.isalnum() else "-" for c in domain.lower()).strip("-")
+            sections.append(
+                f'<h2 class="text-lg font-semibold text-gray-700 mt-6 mb-3" data-testid="domain-{slug}">{domain}</h2>'
+            )
+            sections.extend(_section(rid) for rid in grouped[domain])
+    else:
+        sections.extend(_section(rid) for rid in tree["roots"])
 
     # Orphans: elternlose Knoten neben DEKLARIERTEN Wurzeln. Der Abgleich laeuft
     # gegen `declared_roots`, nicht gegen `roots` — nach Aktivierung des
@@ -300,6 +366,9 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
         )
     orphan_block = dangling_block + orphan_block
 
+    n_domains = len({d for d in root_domains.values() if d})
+    domain_stat = f"<b>{n_domains}</b> Domänen · " if n_domains else ""
+
     return f"""<!DOCTYPE html>
 <!--
   Klick-Dummy SITEMAP — automatisch generiert von `klickdummy-gen-sitemap`.
@@ -318,7 +387,7 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
  <p class="text-sm text-gray-600 mb-6">Alle KD-Bäume mit Knoten-Hierarchie, Off-Ramp-Status (platform:ADR-211 §I3) und Spec-ID (§I4).
   Tour-Mode: hänge <code class="text-xs bg-gray-200 px-1 rounded">?tour=1</code> an die URL eines Knotens, um den Walkthrough zu starten.</p>
  <div class="text-xs text-gray-500 mb-4" data-testid="stats">
-  <b>{len(tree["roots"])}</b> Wurzeln · <b>{len(tree["order"])}</b> Knoten gesamt · {sum(1 for n in nodes.values() if n["off_ramp_status"] == "parity-green")} parity-green
+  {domain_stat}<b>{len(tree["roots"])}</b> Wurzeln · <b>{len(tree["order"])}</b> Knoten gesamt · {sum(1 for n in nodes.values() if n["off_ramp_status"] == "parity-green")} parity-green
  </div>
  {"".join(sections)}
  {orphan_block}
@@ -393,7 +462,9 @@ screens:
     purpose: "Hauptmenü — auf einer Seite jeden Klickdummy mit Position im Baum, Off-Ramp-Status und Sprung-Link erreichen. Auto-generiert; spiegelt den aktuellen Stand der screens-spec.yaml-Dateien."
     konzept_ref: ["platform:ADR-211#I4"]
     parity_acceptance:
-      - {{ id: sitemap.roots-rendered,    check: "Pro spec_role=root existiert eine eigene Tabelle (tree-<id>) mit den Branches darunter." }}
+      - {{ id: sitemap.roots-rendered,    check: "Pro effektiver Wurzel (spec_role=root, nicht als kd_children referenziert) existiert eine eigene Tabelle (tree-<id>) mit dem Teilbaum darunter." }}
+      - {{ id: sitemap.no-duplicate-nodes, check: "Kein Knoten erscheint in mehr als einer Tabelle — als kd_children referenzierte Roots werden im Elternbaum verschachtelt (sub-root), nicht doppelt gerendert." }}
+      - {{ id: sitemap.domains-grouped,   check: "Deklariert mindestens eine Wurzel-Spec domain:, gruppiert die Sitemap die Wurzeln unter Domänen-Überschriften (domain-<slug>); ohne domain: bleibt die flache Liste." }}
       - {{ id: sitemap.links-resolve,     check: "Alle Sprung-Links (link-<spec-id>) zeigen auf existierende Dateien." }}
       - {{ id: sitemap.orphans-flagged,   check: "Falls Branches ohne Root existieren, werden sie unter 'orphans' aufgelistet." }}
       - {{ id: sitemap.tour-hint-visible, check: "Hinweis auf Tour-Mode (?tour=1) ist sichtbar." }}

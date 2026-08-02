@@ -465,3 +465,122 @@ def test_should_qualify_cross_repo_adr_refs_in_generated_html(tmp_path):
     # Jede ADR-Referenz im gerenderten HTML muss repo-qualifiziert sein.
     unqualified = [m.group(0) for m in re.finditer(r"(?<![\w:-])ADR-\d{3}", html)]
     assert not unqualified, f"unqualifizierte ADR-Refs im HTML: {unqualified}"
+
+
+# --------------------------------------------------------------------------
+# Wurzel-Entdopplung + Domänen-Gruppierung (Realfall risk-hub 2026-08-02:
+# 27 Knoten, 18 deklarierte Wurzeln, 9 davon gleichzeitig kd_children eines
+# anderen KDs — jede erschien doppelt: als eigene Wurzel-Tabelle UND als
+# Kind-Zeile im Elternbaum).
+# --------------------------------------------------------------------------
+
+
+def test_should_demote_declared_root_referenced_as_kd_child(tmp_path):
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(
+        kd_root,
+        "master",
+        _root_spec("acme:spec-master", "Master", ["acme:spec-sub"]),
+    )
+    _write_spec(kd_root, "sub", _root_spec("acme:spec-sub", "Sub"))
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+
+    assert tree["roots"] == ["acme:spec-master"]
+    assert tree["demoted_roots"] == ["acme:spec-sub"]
+    assert tree["declared_roots"] == ["acme:spec-master", "acme:spec-sub"]
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+    assert 'data-testid="tree-acme-spec-sub"' not in html, "keine eigene Tabelle"
+    assert html.count('data-testid="row-acme-spec-sub"') == 1, "genau eine Zeile"
+    assert ">sub-root<" in html, "Herabstufung bleibt sichtbar"
+    assert "<b>1</b> Wurzeln" in html
+
+
+def test_should_render_grandchildren_recursively(tmp_path):
+    """Vor der Entdopplung war der Teilbaum eines herabgestuften Roots nur in
+    dessen EIGENER Tabelle sichtbar — entfällt diese, dürfen seine Kinder
+    nicht aus dem HTML verschwinden."""
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(
+        kd_root,
+        "master",
+        _root_spec("acme:spec-master", "Master", ["acme:spec-sub"]),
+    )
+    _write_spec(kd_root, "sub", _root_spec("acme:spec-sub", "Sub", ["acme:spec-leaf"]))
+    _write_spec(
+        kd_root,
+        "leaf",
+        {**_branch_spec("acme:spec-leaf", "Leaf"), "spec_role": "branch"},
+    )
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    master_section = html.split('data-testid="tree-acme-spec-master"')[1].split(
+        "</table>"
+    )[0]
+    assert 'data-testid="row-acme-spec-sub"' in master_section
+    assert 'data-testid="row-acme-spec-leaf"' in master_section
+    assert html.count('data-testid="row-acme-spec-leaf"') == 1
+
+
+def test_should_group_roots_by_domain(tmp_path):
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(
+        kd_root,
+        "dsb",
+        {**_root_spec("acme:spec-dsb", "DSB"), "domain": "Datenschutz"},
+    )
+    _write_spec(
+        kd_root,
+        "gbu",
+        {**_root_spec("acme:spec-gbu", "GBU"), "domain": "Arbeitsschutz"},
+    )
+    _write_spec(kd_root, "misc", _root_spec("acme:spec-misc", "Misc"))
+
+    from iil_klickdummy import gen_sitemap
+
+    tree = gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert tree["nodes"]["acme:spec-dsb"]["domain"] == "Datenschutz"
+    assert 'data-testid="domain-arbeitsschutz"' in html
+    assert 'data-testid="domain-datenschutz"' in html
+    assert 'data-testid="domain-weitere-bereiche"' in html
+    # Domänen alphabetisch, "Weitere Bereiche" immer zuletzt
+    assert html.index("domain-arbeitsschutz") < html.index("domain-datenschutz")
+    assert html.index("domain-datenschutz") < html.index("domain-weitere-bereiche")
+    assert "<b>2</b> Domänen" in html
+
+
+def test_should_not_render_domain_headings_without_domains(tmp_path):
+    kd_root = tmp_path / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("acme:spec-hub", "Hub"))
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert 'data-testid="domain-' not in html
+    assert "Domänen" not in html
+
+
+def test_should_render_each_node_exactly_once_on_cycle_fallback(tmp_path):
+    """Zyklus ohne deklarierte Wurzel: der Fallback macht ALLE Knoten zu
+    Einstiegen — mit rekursivem Rendering darf das nicht in mehrfach
+    gerenderte Teilbäume kippen."""
+    kd_root = tmp_path / "klickdummy"
+    _cyclic_pair_without_root(kd_root)
+
+    from iil_klickdummy import gen_sitemap
+
+    gen_sitemap.generate(tmp_path, adr_local="acme:ADR-001", repo_name="acme")
+    html = (kd_root / "sitemap" / "index.html").read_text(encoding="utf-8")
+
+    assert html.count('data-testid="row-acme-spec-a"') == 1
+    assert html.count('data-testid="row-acme-spec-b"') == 1
