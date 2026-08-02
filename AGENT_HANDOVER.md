@@ -4,6 +4,47 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
+## ⚡ Aktueller Stand (2026-08-02, Sitemap-Entdopplung → Release 1.35.0 → 12-Repo-Rollout)
+
+**Auslöser:** Handover-Prios 0–2 + Auftrag „Sitemap-Wurzeln entdoppeln (9 von 18
+sind Kind eines anderen KD) und nach Domäne gruppieren" (Kontext risk-hub #474).
+
+**Generator ([#211](https://github.com/iilgmbh/iil-klickdummy/pull/211), Release
+[#213](https://github.com/iilgmbh/iil-klickdummy/pull/213) → PyPI 1.35.0):**
+Ein Spec mit `spec_role: root`, das gleichzeitig `kd_children` eines anderen KDs
+ist, erschien doppelt (eigene Wurzel-Tabelle + Kind-Zeile). Jetzt: nur noch
+verschachtelt gerendert (`sub-root`, rekursiv über beliebige Tiefe — Kinder
+herabgestufter Roots waren vorher nur über deren eigene Tabelle sichtbar);
+`kd-tree.json` führt `demoted_roots`. Neues Opt-in-Spec-Feld `domain:` gruppiert
+Wurzeln unter Domänen-Überschriften; ohne Deklaration flache Liste (kein
+Verhaltenssprung). Canary gegen echten risk-hub-Baum vor dem PR: 18→9 Wurzeln,
+alle 27 Knoten exakt 1×, Rerun byte-identisch.
+
+**Rollout (Tracking [#212](https://github.com/iilgmbh/iil-klickdummy/issues/212),
+Batch approved by user):** 12 Consumer-Repos regeneriert + gemergt, 10/10 Deploys
+grün (coach-hub nach transientem GHCR-403-Rerun; tax-hub-Staging-Rot ist
+Vorbestand tax-hub#73). risk-hub zusätzlich: Pin 1.32.6→1.35.0 (das war die
+Ursache des roten Drift-Gates auf #474 — CI regenerierte mit altem Pin gegen
+1.34.0-Artefakte; #474 geschlossen, ersetzt durch #477) + `domain:` an den 9
+Wurzel-Specs (Datenschutz/Arbeitsschutz/Querschnitt). **apo-hub-Erstdeploy:**
+Root Cause war fehlender einmaliger Vollstack-Bootstrap (deploy-remote.sh ist
+Rolling-Restart-Design, startet db/redis nie) — Host-Bootstrap durch User, dann
+#68 gemergt → CI-Run 30748746267 komplett grün, apo-hub#66 geschlossen.
+
+**Erledigte Prios:** Prio 0 (frist-hub#112 auf 1.35.0 gemergt; #102 war von #104
+überholt worden, kein Inhaltsverlust) · Prio 1 teilweise (weltenhub#42 gemergt
+nach grünem Rerun — RAM-These bestätigt; cad-hub#44 blockiert durch yanked
+`aifw`-Dependency → cad-hub#46; wedding-hub#34: `ci / gate` läuft jetzt und ist
+grün, aber Integration rot → wedding-hub#45) · Prio 2 (apo-hub aktiviert statt
+CI-only, s.o.).
+
+**Offene Enden (alle getrackt):** #212 (domain-Opt-in weiterer Repos +
+kd.iil.pet-Live-Verify nach genesor-Ingest steht aus) · frist-hub#113
+(Coverage-Gate bei 0 Integration-Tests — gleiche Signatur vermutlich in
+wedding-hub#45) · risk-hub#476 + apo-hub#67 (I4-Vorbestand docs/) · tax-hub#75
+(`PYTHON ?= python`) · apo-hub: `apo_hub_worker`/`beat` auf Host nicht sichtbar,
+Soll-Zustand unverifiziert (Notiz in #66).
+
 ## ⚡ Aktueller Stand (2026-07-29, Browser-Optimierung → Abnahme → Release 1.33.0)
 
 **Auslöser:** Frage nach dem GitHub-Link auf `klickdummy/`, daraus eine
@@ -541,15 +582,20 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 0 | **frist-hub-Sitemap gegen 1.33.0 neu erzeugen.** Das Release ist am 2026-07-29 gefahren (enthält den I4-Fix aus #196), der Blocker ist weg. Aber [frist-hub#102](https://github.com/meiki-lra/frist-hub/pull/102) wurde am 2026-07-29 04:42 **geschlossen statt gemergt** — erst klären warum, dann neu regenerieren. Fremdes Repo (meiki-lra): Scope-Checkpoint vor dem ersten Write. | `[Sonnet]` |
-| 1 | [Issue #176](https://github.com/iilgmbh/iil-klickdummy/issues/176): Rollout-Queue — noch offen: weltenhub#42 + cad-hub#44 (`ci / Unit Tests` + `ci / gate` rot), wedding-hub#34 (Ruleset verlangt nie laufendes `ci / gate`). 137-hub#69 ist am 2026-07-27 gemergt. **Vor der Diagnose "CI rot" erst `ci.yml` auf YAML-Validität prüfen** — bei 137-hub war genau das die Ursache, nicht der gemeldete Check. | `[Sonnet/Opus je Repo]` |
-| 2 | apo-hub Deploy-Pfad: dormant. Am 2026-07-27 erneut belegt — Deploy scheitert an `failed to resolve host 'apo-hub-db'`, nicht an `DEPLOY_ENABLED`. Aktivieren oder Rollout-Status auf "CI-only" korrigieren (Retro-Fund `c25d21` #5). | `[Sonnet]` |
+| 0 | Rollout-Reste aus [#176](https://github.com/iilgmbh/iil-klickdummy/issues/176): [cad-hub#44](https://github.com/achimdehnert/cad-hub/pull/44) blockiert durch yanked `aifw` ([cad-hub#46](https://github.com/achimdehnert/cad-hub/issues/46) — Requirement auf `iil-aifw` umstellen) · [wedding-hub#34](https://github.com/achimdehnert/wedding-hub/pull/34) `ci / gate` grün, aber Integration rot ([wedding-hub#45](https://github.com/achimdehnert/wedding-hub/issues/45), Signatur vermutlich = [frist-hub#113](https://github.com/meiki-lra/frist-hub/issues/113) Coverage-Gate bei 0 Tests). | `[Sonnet]` |
+| 1 | [#212](https://github.com/iilgmbh/iil-klickdummy/issues/212): `domain:`-Opt-in in weiteren Consumer-Repos + kd.iil.pet-Live-Verify nach dem nächsten genesor-Ingest (Playwright, nicht curl — Cloudflare). | `[Sonnet]` |
 | 2b | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
 | 2c | [137-hub#72](https://github.com/achimdehnert/137-hub/issues/72): `aifw` fehlt in `INSTALLED_APPS`, `seed_action_types` kann nicht laufen. Entscheidung nötig: App registrieren (erzeugt Migrationen) oder Command entfernen. | `[Opus]` |
 | 2d | [tax-hub#73](https://github.com/iilgmbh/tax-hub/issues/73): Staging-Deploy scheitert, `tax_hub_staging_migrate` endet `exited`. Kein Prod-Impact (Build grün, Production skipped). Billigster Check: `docker logs` auf dem Staging-Host. | `[Sonnet]` |
 | 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
 | 4 | [platform#1217](https://github.com/achimdehnert/platform/issues/1217): `/konzept` fahren — Cross-Repo CI/Build-Runner-Placement (ubuntu-latest vs. per-repo `ci-nonprod` vs. Bootstrap-Automation). Evidenz bereits gesammelt, nicht neu recherchieren. | `[Opus, T3]` |
 | 5 | wedding-hub#36 + billing-hub#30 + recruiting-hub#17 mergen — abhängig von Prio 4 (billing-hub#30 aktuell auf `ubuntu-latest`, ungetestet gegen echten Build-Job; recruiting-hub#17 noch auf `ci-nonprod`, ohne eigenen Runner nicht mergebereit). | `[User/Sonnet je nach Konzept-Ausgang]` |
+
+> **Erledigt 2026-08-02:** Prio 0 (frist-hub#112 auf 1.35.0 gemergt), Prio 1
+> teilweise (weltenhub#42 gemergt), Prio 2 (apo-hub-Deploy-Pfad AKTIVIERT —
+> Bootstrap + Erstdeploy grün, apo-hub#66 zu). Dazu: Generator 1.35.0
+> (Wurzel-Entdopplung + domain:-Gruppierung) released + 12-Repo-Rollout.
+> Details „Aktueller Stand (2026-08-02)" oben.
 
 > **Erledigt 2026-07-27:** iil-klickdummy 1.32.5 + 1.32.6 released (5 Bugfixes:
 > Cross-Repo-Dedup #188, Schema-Prefix #179, Sitemap-Wurzel-Fallback, DFS-Zyklen-Schutz,
