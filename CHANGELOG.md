@@ -5,6 +5,8 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.35.0] - 2026-08-02
+
 ### Changed
 
 - **Sitemap entdoppelt verschachtelte Wurzeln und gruppiert nach Domäne.**
