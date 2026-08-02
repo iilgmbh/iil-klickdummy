@@ -5,6 +5,20 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+### Changed
+
+- **Sitemap entdoppelt verschachtelte Wurzeln und gruppiert nach Domäne.**
+  Ein KD mit `spec_role: root`, der gleichzeitig als `kd_children` eines anderen
+  KDs referenziert ist, erschien doppelt: als eigene Wurzel-Tabelle UND als
+  Kind-Zeile (Realfall risk-hub 2026-08-02: 18 Wurzeln bei 27 Knoten, 9 doppelt).
+  Solche Roots werden jetzt nur noch verschachtelt gerendert (Rolle `sub-root`,
+  rekursiv über beliebige Tiefe — Kinder herabgestufter Roots waren vorher nur
+  über deren eigene Tabelle sichtbar); `kd-tree.json` hält sie transparent in
+  `demoted_roots` fest. Neu außerdem: optionales Spec-Feld `domain:` —
+  deklariert mindestens eine Wurzel eine Domäne, gruppiert die Sitemap unter
+  Domänen-Überschriften (`domain-<slug>`, alphabetisch, Rest unter „Weitere
+  Bereiche"); ohne Deklaration bleibt die flache Liste unverändert.
+
 ## [1.34.0] - 2026-07-30
 
 ### Changed
