@@ -4,7 +4,15 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-08-02, Sitemap-Entdopplung → Release 1.35.0 → 12-Repo-Rollout)
+## ⚡ Aktueller Stand (2026-08-03, Rollout-Reste + domain:-Opt-in abgeschlossen)
+
+Prio 0 + 1 vollständig erledigt (Details in der Erledigt-Notiz unter `## Prioritäten`):
+4 Repos entblockt/deployed (pptx-hub, cad-hub, wedding-hub inkl. Migrations-Bootstrap
++ Prod-Schema-Reset, iil-pet-portal F1-Fix), frist-hub#115 `domain:` gemergt.
+Kein WIP, keine offenen Branches dieser Session. Nächster Prüfpunkt: Prio 0 (neu) —
+kd.iil.pet nach dem Auto-Ingest ~06:30.
+
+### Vorheriger Stand (2026-08-02, Sitemap-Entdopplung → Release 1.35.0 → 12-Repo-Rollout)
 
 **Auslöser:** Handover-Prios 0–2 + Auftrag „Sitemap-Wurzeln entdoppeln (9 von 18
 sind Kind eines anderen KD) und nach Domäne gruppieren" (Kontext risk-hub #474).
@@ -582,14 +590,25 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 0 | Rollout-Reste aus [#176](https://github.com/iilgmbh/iil-klickdummy/issues/176): [cad-hub#44](https://github.com/achimdehnert/cad-hub/pull/44) blockiert durch yanked `aifw` ([cad-hub#46](https://github.com/achimdehnert/cad-hub/issues/46) — Requirement auf `iil-aifw` umstellen) · [wedding-hub#34](https://github.com/achimdehnert/wedding-hub/pull/34) `ci / gate` grün, aber Integration rot ([wedding-hub#45](https://github.com/achimdehnert/wedding-hub/issues/45), Signatur vermutlich = [frist-hub#113](https://github.com/meiki-lra/frist-hub/issues/113) Coverage-Gate bei 0 Tests). | `[Sonnet]` |
-| 1 | [#212](https://github.com/iilgmbh/iil-klickdummy/issues/212): `domain:`-Opt-in in weiteren Consumer-Repos + kd.iil.pet-Live-Verify nach dem nächsten genesor-Ingest (Playwright, nicht curl — Cloudflare). | `[Sonnet]` |
-| 2b | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
+| 0 | kd.iil.pet-Nachverify: frist-hub-Domänen erscheinen mit dem nächsten Auto-Ingest (~06:30) — einmal Sitemap prüfen (Playwright/Eyeball, Cloudflare); dazu User-Eyeball risk-hub-Redirect. | `[Haiku]` |
+| 1 | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
 | 2c | [137-hub#72](https://github.com/achimdehnert/137-hub/issues/72): `aifw` fehlt in `INSTALLED_APPS`, `seed_action_types` kann nicht laufen. Entscheidung nötig: App registrieren (erzeugt Migrationen) oder Command entfernen. | `[Opus]` |
 | 2d | [tax-hub#73](https://github.com/iilgmbh/tax-hub/issues/73): Staging-Deploy scheitert, `tax_hub_staging_migrate` endet `exited`. Kein Prod-Impact (Build grün, Production skipped). Billigster Check: `docker logs` auf dem Staging-Host. | `[Sonnet]` |
 | 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
 | 4 | [platform#1217](https://github.com/achimdehnert/platform/issues/1217): `/konzept` fahren — Cross-Repo CI/Build-Runner-Placement (ubuntu-latest vs. per-repo `ci-nonprod` vs. Bootstrap-Automation). Evidenz bereits gesammelt, nicht neu recherchieren. | `[Opus, T3]` |
 | 5 | wedding-hub#36 + billing-hub#30 + recruiting-hub#17 mergen — abhängig von Prio 4 (billing-hub#30 aktuell auf `ubuntu-latest`, ungetestet gegen echten Build-Job; recruiting-hub#17 noch auf `ci-nonprod`, ohne eigenen Runner nicht mergebereit). | `[User/Sonnet je nach Konzept-Ausgang]` |
+
+> **Erledigt 2026-08-03:** Prio 0 komplett — cad-hub#46/#48 (`aifw`→`iil-aifw`,
+> Import-Name bleibt) + #44 gemergt/deployed; wedding-hub#45-Hypothese (Coverage-Gate)
+> **falsifiziert**: echte Ursache = null committete Migrations (8 Apps) + Prod-Schema
+> vom Feb-Layout (`InconsistentMigrationHistory`) — wedding-hub#48 (Migrations) gemergt,
+> Prod-DB nach Datencheck (User-Freigabe, Backup `/tmp/wh-backup.sql`) resettet,
+> Deploy grün mit 8× „Applying … OK". pptx-hub#51 (shared-ci v1.1.2 GHCR-Fix) gemergt,
+> Beweis-Deploy grün. Prio 1 komplett — Live-Verify: Ingest trägt 9 Wurzeln + 3 Domänen;
+> Befund F1 (stale Portal-Landing) via iil-pet-portal#33 (Redirect) + #34 (Flat-Legacy-
+> Cleanup) behoben; `domain:`-Opt-in frist-hub#115 gemergt (Fristen & Termine ·
+> Dokumente & Akten · Regelwerk). Die 3 Rollout-PRs apo/research/onboarding waren
+> bereits am 02.08. gemergt (Issue-Kommentar war stale). Alles an #212 dokumentiert.
 
 > **Erledigt 2026-08-02:** Prio 0 (frist-hub#112 auf 1.35.0 gemergt), Prio 1
 > teilweise (weltenhub#42 gemergt), Prio 2 (apo-hub-Deploy-Pfad AKTIVIERT —
