@@ -3,7 +3,7 @@ PYTHON := $(VENV)/bin/python
 PIP    := $(VENV)/bin/pip
 RUFF   := $(VENV)/bin/ruff
 
-.PHONY: install test lint format clean \
+.PHONY: install setup test lint format clean \
         klickdummy-i1 klickdummy-i3 klickdummy-parity-drift klickdummy-gates
 
 # Eigene Klickdummies dieses Repos (Selbst-Konsument). Bewusst NICHT via
@@ -12,6 +12,9 @@ RUFF   := $(VENV)/bin/ruff
 # editable install im .venv, ein zweiter Bezugsweg wäre genau die
 # Versions-Drift, vor der gates.mk warnt.
 KD_SPECS := $(wildcard klickdummy/*/screens-spec.yaml)
+
+# Fleet-Standard-Einstieg (pkg-agents-v1, platform #2075 K2): make setup && make test
+setup: install
 
 install:
 	python3 -m venv $(VENV)
