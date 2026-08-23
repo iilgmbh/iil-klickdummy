@@ -4,39 +4,92 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-08-23, Automatik-Strang entstopft)
+## ⚡ Aktueller Stand (2026-08-23, stille Selbstberuhigung — Blindstellen + zwei Auslieferungswege)
+
+**Zielzustand (akzeptiert):** „Beweis der Wirkung statt grüner Haken" — belegen, welche
+Automatismen grün melden, ohne dass ihr Wirken bewiesen ist. **Abnahme: erreicht**, alle
+fünf Kriterien einzeln verifiziert; dazu die Zusatzaufgabe `kd/`-Wurzelseite.
+SA-4: n/a (nicht angewendet).
 
 **Auslöser:** Sitzungsstart meldete `0.2 platform-sync WARN` — der geteilte
-platform-Haupt-Tree war dirty und blockierte den Sync-Loop für alle Repos.
+platform-Haupt-Tree war dirty und blockierte den Sync-Loop für alle Repos. Ursache: der
+nächtliche `/klickdummy-pgvector-sync` hängt sein Protokoll an die Skill-Quelle an und
+committet nicht ([platform#2212](https://github.com/achimdehnert/platform/pull/2212)
+rein additiv nachgetragen — die Arbeitskopie stand 14 Commits zurück und hätte die
+gepushten 08-22-Blöcke gelöscht; Konstruktionsfehler getrackt:
+[platform#2213](https://github.com/achimdehnert/platform/issues/2213), Owner-Entscheid
+**A** = Protokoll in eine Datendatei, Umsetzung offen).
 
-**Ursache:** Der nächtliche Lauf `/klickdummy-pgvector-sync` (Cron `17 3 * * *`)
-hängt sein Protokoll an die Skill-Quelle in `platform` an und committet nicht.
-Der Tree stand dabei 14 Commits hinter `origin/main`, weshalb die Arbeitskopie die
-bereits gepushten `2026-08-22`-Blöcke überschrieben hätte. Rein additiv nachgetragen
-in [platform#2212](https://github.com/achimdehnert/platform/pull/2212); Haupt-Tree
-wieder clean und auf `origin/main`.
+**Falsifiziert:** Derselbe Lauf behauptete seinen eigenen Ausfall. Belegt ist das
+Gegenteil — Cron aktiv, Host durchgelaufen, Log- und Changelog-Datei mit derselben mtime
+`03:32:16`. Ein Job, dessen stdout per `>>` in die Datei läuft, die er prüfen will, sieht
+darin nie sich selbst; diese Selbstprüfung ist strukturell blind.
 
-**Falsifiziert:** Der Protokoll-Block behauptete einen ausgefallenen nächtlichen Lauf.
-Belegt ist das Gegenteil — Cron-Eintrag vorhanden, `cron` aktiv, Host durchgelaufen,
-und Log- wie Changelog-Datei tragen dieselbe mtime `03:32:16`. Der Lauf hat
-stattgefunden und sich selbst für einen manuellen Ersatz gehalten, weil er seine
-eigene Log-Datei las: sein stdout landet per `>>` erst beim Prozessende dort. Ein Job,
-der seine eigene Log-Datei zur Selbstprüfung liest, ist strukturell blind — als Lehre
-im Skill verankert.
+**Kill-Test (das eigentliche Ergebnis):** Von sechs stillen Befunden dieser Stunde fingen
+die vorhandenen Detektoren **drei**. Nicht gefangen: die falsche Ausfall-Behauptung (kein
+Detektor), die 10 Tage veraltete verteilte Skill-Kopie (`0.7.5` deckt nur
+`tools/claude-hooks/`) und — der Lehrfall — die seit 19 Tagen erledigte Prio 0:
+`0.7.4 prio-referenzen` meldete **PASS** mit „keine Prio-Liste im Handover", während diese
+Datei sieben Prio-Zeilen trug. Der Parser kannte nur nummerierte Listen, hier steht eine
+Tabelle, und der Runner verbuchte den SKIP als PASS.
 
-**Konstruktionsfehler getrackt** ([platform#2213](https://github.com/achimdehnert/platform/issues/2213)):
-(1) unbeaufsichtigter Schreiber ohne Commit-Pfad im geteilten `main`-Tree; (2) die
-Lauf-Buchführung liegt in der verteilten Skill-Quelle, wodurch jeder Eintrag die
-Kopien entwertet — `platform-pinned` steht seit dem 2026-08-13 auf
-`source_commit=bb17444e2d8f`. Owner entscheidet A (Protokoll in Datendatei) / B
-(Job committet via Worktree) / C (nur `~/logs/`).
+**Gebaut und real gelaufen:** `tools/blindstellen.py` (platform) listet jeden
+`record`-Aufruf, der PASS für eine nicht stattgefundene Prüfung meldet — erster Lauf 3 von
+67. Danach der Fix ([platform#2222](https://github.com/achimdehnert/platform/pull/2222)):
+`SKIP` als eigener Status mit Icon `◌` plus Tabellen-Support im Prio-Parser. Gegenprobe im
+echten Runner-Lauf: `| 0.4.1 reflex | ◌ SKIP |` steht in der Summary, `0.7.4` meldet jetzt
+`4 Referenz(en) offen` statt blindem Grün, Blindstellen 0 von 69. Konzept + Advocatus
+Diabolus: `docs/konzepte/KONZ-platform-050-blindstellen-wirknachweis.md`.
 
-**Prio 0 war seit 19 Tagen erledigt:** Die frist-hub-Domänen (Fristen & Termine ·
-Dokumente & Akten · Regelwerk) liegen seit dem Ingest `dd9f375` vom **2026-08-04
-06:04** im Portal. Verifiziert an der ausgelieferten Quelle (`iil-pet-portal`,
-`origin/main`), **nicht** live — `kd.iil.pet` steht hinter Cloudflare Access, und
-der Playwright-MCP-Kontext teilt die Edge-Session nicht. Offen bleibt nur der
-User-Eyeball auf den risk-hub-Redirect.
+**Ehrliche Grenze:** Der Parser-Fix hätte Prio 0 **nicht** gefangen — sie verwies auf
+`kd.iil.pet`, nicht auf ein GitHub-Objekt. Was er behebt, sind die vier nie geprüften
+Referenzen desselben Handovers.
+
+**Zweiter Strang — zwei Auslieferungswege** ([iil-pet-portal#38](https://github.com/iilgmbh/iil-pet-portal/issues/38)):
+Der Owner sah unter `kd.iil.pet` einen Juli-Stand. Verifiziert: `iil.pet/kd/` kommt aus
+dem Portal-Repo via GitHub Pages (25 Repos, nächtlicher Ingest), `kd.iil.pet` aus
+`/var/www/kd` auf 88.198.191.108, von Hand per `~/kd-serve/kd-publish.sh` (4 Repos,
+zuletzt Juli). Der einprägsame Name zeigte auf den schlechteren Weg. Owner-Entscheid:
+**Variante A** — spiegeln. Umgesetzt in
+[iil-pet-portal#39](https://github.com/iilgmbh/iil-pet-portal/pull/39) (offen).
+
+**Warum das ganze Portal gespiegelt wird und ohne `--delete`:** Die Seiten tragen drei
+widersprüchliche Wurzel-Annahmen (relativ · 26 Dateien `/genesor/`+`/_widget/` =
+Portal-Wurzel · 6 Dateien `/<repo>/klickdummy/…` = kd-Wurzel); kein Host erfüllt beide.
+Und `kd.iil.pet/meiki-hub/fristenmanagement` — die vom Owner benutzte URL — existiert
+**nur** auf der alten Fläche: im Portal hat meiki-hub 76 Dateien unter `docs/…/mockups/`
+und keinen solchen KD. Ein spiegelndes `--delete` hätte ihn gelöscht.
+
+**Weiter erledigt:** `kd/`-Wurzelseite generiert und deployed
+([#35](https://github.com/iilgmbh/iil-pet-portal/pull/35), 25 Repos, 10 davon ohne
+generierte Sitemap) · Generator-Pin des Ingests `v1.32.4` → `v1.35.0`
+([#37](https://github.com/iilgmbh/iil-pet-portal/pull/37)) · Prio 0 geschlossen
+([#226](https://github.com/iilgmbh/iil-klickdummy/pull/226)).
+
+**Korrektur im Protokoll:** PR #35 behauptete, `kd.iil.pet` habe keinen Einstieg — falsch
+war nicht das Ergebnis, sondern die **Fläche**; die Wurzelseite sitzt auf `iil.pet/kd/`.
+Als Kommentar an den gemergten PR gehängt, damit die falsche Prämisse nicht im
+Merge-Protokoll stehenbleibt.
+
+**Rückfällige Gates (Session-Start 0.7.7) — Verzicht mit Grund:** Vier Gates gemeldet
+(`deferred-item-no-tracking-issue` 9×, `hand-distributed-copy-not-redistributed` 2×,
+`handover-stale-vor-merge` 2×, `scope-checkpoint-not-durably-recorded` 2×). In dieser
+Sitzung **nicht umgebaut** — die Sitzung lief bereits an einem eigenen Gate-Thema
+(Blindstellen) und ein zweiter Gate-Umbau hätte den Scope gesprengt. Für
+`deferred-item-no-tracking-issue` läuft der Umbau ohnehin schon als Kalibrierfenster
+(`verankerung_pruefer.py`, platform#2211); `scope-checkpoint-not-durably-recorded` wurde
+in dieser Sitzung **instanzweise** bedient (Scope-Checkpoint durabel an PR #35
+kommentiert), das Gate selbst blieb unangetastet.
+
+**Lücke benannt:** `verankerung_pruefer.py` (Phase 0g) lief nur bei 3 von 7 PR-Texten
+durch — 2× `✅` (#2218, #37), 4× Timeout des lokalen Modells. Kein grünes Ergebnis,
+sondern eine Abdeckungslücke. Substanziell trägt jede aufgeschobene Arbeit dieser Sitzung
+ein Issue (#2213, #2219, #36, #38) — geprüft ist das von Hand, nicht vom Werkzeug.
+
+**Offene Frage an den Owner:** Die nginx-Konfiguration von `kd.iil.pet` liegt nur auf dem
+Host; der vhost-Schnipsel steht als Text im PR #39. Soll die vhost-Datei versioniert ins
+Repo (Klasse `host-fix-not-mirrored-to-iac`, 3× ungegated) — oder ist die
+Host-Konfiguration bewusst außerhalb?
 
 ### Vorheriger Stand (2026-08-03, Rollout-Reste + domain:-Opt-in abgeschlossen)
 
@@ -624,6 +677,9 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
+| 0 | [iil-pet-portal#39](https://github.com/iilgmbh/iil-pet-portal/pull/39) mergen, dann 4 Schritte am Prod-Host (Probelauf → `--apply` → vhost `location = / { return 302 /kd/; }` → Cron `15 5 * * *`). Danach ist `kd-publish.sh` ohne Aufgabe. | `[User + Sonnet]` |
+| 0b | [platform#2213](https://github.com/achimdehnert/platform/issues/2213) Variante A umsetzen: Lauf-Protokoll raus aus der Skill-Quelle in eine Datendatei. | `[Sonnet]` |
+| 0c | [iil-pet-portal#38](https://github.com/iilgmbh/iil-pet-portal/issues/38) Rest: Alt-Bestand unter `/var/www/kd` abräumen — erst nach Umzug und bewusst, `meiki-hub/fristenmanagement` existiert nur dort. | `[User]` |
 | 1 | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
 | 2c | [137-hub#72](https://github.com/achimdehnert/137-hub/issues/72): `aifw` fehlt in `INSTALLED_APPS`, `seed_action_types` kann nicht laufen. Entscheidung nötig: App registrieren (erzeugt Migrationen) oder Command entfernen. | `[Opus]` |
 | 2d | [tax-hub#73](https://github.com/iilgmbh/tax-hub/issues/73): Staging-Deploy scheitert, `tax_hub_staging_migrate` endet `exited`. Kein Prod-Impact (Build grün, Production skipped). Billigster Check: `docker logs` auf dem Staging-Host. | `[Sonnet]` |
@@ -631,11 +687,14 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 | 4 | [platform#1217](https://github.com/achimdehnert/platform/issues/1217): `/konzept` fahren — Cross-Repo CI/Build-Runner-Placement (ubuntu-latest vs. per-repo `ci-nonprod` vs. Bootstrap-Automation). Evidenz bereits gesammelt, nicht neu recherchieren. | `[Opus, T3]` |
 | 5 | wedding-hub#36 + billing-hub#30 + recruiting-hub#17 mergen — abhängig von Prio 4 (billing-hub#30 aktuell auf `ubuntu-latest`, ungetestet gegen echten Build-Job; recruiting-hub#17 noch auf `ci-nonprod`, ohne eigenen Runner nicht mergebereit). | `[User/Sonnet je nach Konzept-Ausgang]` |
 
-> **Erledigt 2026-08-23:** Prio 0 — die frist-hub-Domänen sind seit dem Ingest vom
-> 2026-08-04 im Portal (an der Quelle verifiziert, nicht live). Dazu ausserhalb der
-> Prio-Liste: platform-Sync-Loop entstopft ([platform#2212](https://github.com/achimdehnert/platform/pull/2212)),
-> behaupteter Cron-Ausfall falsifiziert, Konstruktionsfehler des nächtlichen Schreibers
-> getrackt ([platform#2213](https://github.com/achimdehnert/platform/issues/2213)).
+> **Erledigt 2026-08-23:** Prio 0 (frist-hub-Domänen seit Ingest 2026-08-04 im Portal,
+> an der Quelle verifiziert). Dazu ausserhalb der Prio-Liste: platform-Sync-Loop entstopft
+> ([#2212](https://github.com/achimdehnert/platform/pull/2212)), behaupteter Cron-Ausfall
+> falsifiziert, `SKIP` als eigener Runner-Status + Prio-Parser liest Tabellen
+> ([#2222](https://github.com/achimdehnert/platform/pull/2222), schliesst #2219),
+> Blindstellen-Melder + KONZ-050 ([#2218](https://github.com/achimdehnert/platform/pull/2218)),
+> `kd/`-Wurzelseite ([#35](https://github.com/iilgmbh/iil-pet-portal/pull/35)),
+> Generator-Pin 1.35.0 ([#37](https://github.com/iilgmbh/iil-pet-portal/pull/37)).
 > Details „Aktueller Stand (2026-08-23)" oben.
 
 > **Erledigt 2026-08-03:** Prio 0 komplett — cad-hub#46/#48 (`aifw`→`iil-aifw`,
