@@ -4,7 +4,41 @@
 (`handover_prio_mirror.sh`) spiegelt die Tabelle unter `## Prioritäten`;
 `NEXT.md` ist nur der git-log-Fallback. Pflege: bei `/session-ende` aktualisieren.
 
-## ⚡ Aktueller Stand (2026-08-03, Rollout-Reste + domain:-Opt-in abgeschlossen)
+## ⚡ Aktueller Stand (2026-08-23, Automatik-Strang entstopft)
+
+**Auslöser:** Sitzungsstart meldete `0.2 platform-sync WARN` — der geteilte
+platform-Haupt-Tree war dirty und blockierte den Sync-Loop für alle Repos.
+
+**Ursache:** Der nächtliche Lauf `/klickdummy-pgvector-sync` (Cron `17 3 * * *`)
+hängt sein Protokoll an die Skill-Quelle in `platform` an und committet nicht.
+Der Tree stand dabei 14 Commits hinter `origin/main`, weshalb die Arbeitskopie die
+bereits gepushten `2026-08-22`-Blöcke überschrieben hätte. Rein additiv nachgetragen
+in [platform#2212](https://github.com/achimdehnert/platform/pull/2212); Haupt-Tree
+wieder clean und auf `origin/main`.
+
+**Falsifiziert:** Der Protokoll-Block behauptete einen ausgefallenen nächtlichen Lauf.
+Belegt ist das Gegenteil — Cron-Eintrag vorhanden, `cron` aktiv, Host durchgelaufen,
+und Log- wie Changelog-Datei tragen dieselbe mtime `03:32:16`. Der Lauf hat
+stattgefunden und sich selbst für einen manuellen Ersatz gehalten, weil er seine
+eigene Log-Datei las: sein stdout landet per `>>` erst beim Prozessende dort. Ein Job,
+der seine eigene Log-Datei zur Selbstprüfung liest, ist strukturell blind — als Lehre
+im Skill verankert.
+
+**Konstruktionsfehler getrackt** ([platform#2213](https://github.com/achimdehnert/platform/issues/2213)):
+(1) unbeaufsichtigter Schreiber ohne Commit-Pfad im geteilten `main`-Tree; (2) die
+Lauf-Buchführung liegt in der verteilten Skill-Quelle, wodurch jeder Eintrag die
+Kopien entwertet — `platform-pinned` steht seit dem 2026-08-13 auf
+`source_commit=bb17444e2d8f`. Owner entscheidet A (Protokoll in Datendatei) / B
+(Job committet via Worktree) / C (nur `~/logs/`).
+
+**Prio 0 war seit 19 Tagen erledigt:** Die frist-hub-Domänen (Fristen & Termine ·
+Dokumente & Akten · Regelwerk) liegen seit dem Ingest `dd9f375` vom **2026-08-04
+06:04** im Portal. Verifiziert an der ausgelieferten Quelle (`iil-pet-portal`,
+`origin/main`), **nicht** live — `kd.iil.pet` steht hinter Cloudflare Access, und
+der Playwright-MCP-Kontext teilt die Edge-Session nicht. Offen bleibt nur der
+User-Eyeball auf den risk-hub-Redirect.
+
+### Vorheriger Stand (2026-08-03, Rollout-Reste + domain:-Opt-in abgeschlossen)
 
 Prio 0 + 1 vollständig erledigt (Details in der Erledigt-Notiz unter `## Prioritäten`):
 4 Repos entblockt/deployed (pptx-hub, cad-hub, wedding-hub inkl. Migrations-Bootstrap
@@ -590,13 +624,19 @@ Großer Strang **Analyse → Spec-first → Security → Release-Prep**, alle PR
 
 | Prio | Task | Tier |
 |---|---|---|
-| 0 | kd.iil.pet-Nachverify: frist-hub-Domänen erscheinen mit dem nächsten Auto-Ingest (~06:30) — einmal Sitemap prüfen (Playwright/Eyeball, Cloudflare); dazu User-Eyeball risk-hub-Redirect. | `[Haiku]` |
 | 1 | [coach-hub#50](https://github.com/achimdehnert/coach-hub/issues/50): tote Alt-Modelle nach ADR-150 (`apps/assessment/models.py`, `apps/learning/models.py`) — Entfernung braucht Migrations-Betrachtung. | `[Opus]` |
 | 2c | [137-hub#72](https://github.com/achimdehnert/137-hub/issues/72): `aifw` fehlt in `INSTALLED_APPS`, `seed_action_types` kann nicht laufen. Entscheidung nötig: App registrieren (erzeugt Migrationen) oder Command entfernen. | `[Opus]` |
 | 2d | [tax-hub#73](https://github.com/iilgmbh/tax-hub/issues/73): Staging-Deploy scheitert, `tax_hub_staging_migrate` endet `exited`. Kein Prod-Impact (Build grün, Production skipped). Billigster Check: `docker logs` auf dem Staging-Host. | `[Sonnet]` |
 | 3 | KONZ-003 Empf-3 S2/S3: Repository-Port + Multi-Adapter (pgvector/SQLite) — erst wenn zweiter Live-Konsument `uc-export.json` abfragt (Trigger-Gate §13). | `[Opus]` |
 | 4 | [platform#1217](https://github.com/achimdehnert/platform/issues/1217): `/konzept` fahren — Cross-Repo CI/Build-Runner-Placement (ubuntu-latest vs. per-repo `ci-nonprod` vs. Bootstrap-Automation). Evidenz bereits gesammelt, nicht neu recherchieren. | `[Opus, T3]` |
 | 5 | wedding-hub#36 + billing-hub#30 + recruiting-hub#17 mergen — abhängig von Prio 4 (billing-hub#30 aktuell auf `ubuntu-latest`, ungetestet gegen echten Build-Job; recruiting-hub#17 noch auf `ci-nonprod`, ohne eigenen Runner nicht mergebereit). | `[User/Sonnet je nach Konzept-Ausgang]` |
+
+> **Erledigt 2026-08-23:** Prio 0 — die frist-hub-Domänen sind seit dem Ingest vom
+> 2026-08-04 im Portal (an der Quelle verifiziert, nicht live). Dazu ausserhalb der
+> Prio-Liste: platform-Sync-Loop entstopft ([platform#2212](https://github.com/achimdehnert/platform/pull/2212)),
+> behaupteter Cron-Ausfall falsifiziert, Konstruktionsfehler des nächtlichen Schreibers
+> getrackt ([platform#2213](https://github.com/achimdehnert/platform/issues/2213)).
+> Details „Aktueller Stand (2026-08-23)" oben.
 
 > **Erledigt 2026-08-03:** Prio 0 komplett — cad-hub#46/#48 (`aifw`→`iil-aifw`,
 > Import-Name bleibt) + #44 gemergt/deployed; wedding-hub#45-Hypothese (Coverage-Gate)
