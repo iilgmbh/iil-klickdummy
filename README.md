@@ -47,6 +47,8 @@ klickdummy-install-snippets [--symlink]    # HTML+JS+templates in <repo>/platfor
 klickdummy-browser [--output X.html]       # v1.1: Multi-Klickdummy-Browser (Listbox + iframe)
 klickdummy-sync                            # Klickdummy-Meta → pgvector-Orchestrator
 klickdummy-manage                          # Verwaltungs-CLI (list/status/topics/versions/diff)
+klickdummy-tokens --profile <p.yaml> --out tokens.css [--check]
+                                           # design-hub-Profil → CSS-Tokens (v1.36)
 ```
 
 ## v1.1 — Browser-Feature (Stufe 1+2)
@@ -190,5 +192,23 @@ ohne `meta.topic` landen unter „(kein topic)" — kein Bruch zu v1.3.
 - `sunset_after` in <N Tagen fällig? → Warnung
 - `class` in 4-Pattern (mock|stub-demo|story|spec-demo)? → sonst Warnung
 - ADR-Frontmatter vollständig? → fehlt sunset_after → Warnung
+
+## v1.36 — klickdummy-tokens (design-hub-Profil → CSS-Tokens)
+
+Erzeugt eine deterministische `tokens.css` aus einem design-hub-Profil
+(`profiles/<slug>.yaml`, Source of Truth für Klickdummy-Corporate-Design,
+dev-hub#320) — keine Zeitstempel, keine Rechner-Pfade, zwei Läufe sind
+byte-gleich:
+
+```bash
+klickdummy-tokens --profile design-hub/profiles/meiki-lra.yaml --out klickdummy/_shared/tokens.css
+klickdummy-tokens --profile design-hub/profiles/meiki-lra.yaml --out klickdummy/_shared/tokens.css --check
+                                           # CI-Gate: Exit 1 bei Abweichung/fehlender Datei
+```
+
+`fonts.*` → `--kd-font-primary`/`--kd-font-mono`; jeder Key unter `colours`
+→ `--kd-<key mit _→->` (Reihenfolge wie im Profil); optionales `colours_dark`
+→ derselbe Block unter `[data-theme="dark"]`. Fehlender Pflichtschlüssel oder
+ungültiger Farbwert (kein `#RRGGBB`) → Exit 2 mit Schlüsselnennung.
 
 Exit 1 bei Warnings (für CI-Hooks).

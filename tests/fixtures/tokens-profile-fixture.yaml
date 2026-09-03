@@ -1,0 +1,23 @@
+# Kleines synthetisches Test-Profil für test_gen_tokens.py — KEINE echten
+# design-hub-Daten, KEINE Kontaktdaten. Struktur bewusst analog zu
+# design-hub/profiles/meiki-lra.yaml (Pflichtfelder + optionaler Dark-Block).
+schema_version: 1
+name: fixture-profile
+description: "Synthetisches Test-Profil für klickdummy-tokens"
+
+fonts:
+  primary: "Inter"
+  mono: "JetBrains Mono"
+  fallbacks: ["Noto Sans", "Arial", "sans-serif"]
+
+colours:
+  primary:      "#1A4A7A"
+  primary_dark: "#0F3060"
+  text:         "#1F2937"
+  bg_light:     "#EFF4FA"
+  border:       "#D0D8E4"
+
+colours_dark:
+  text:     "#E8EAED"
+  bg_light: "#232830"
+  border:   "#3A424E"
