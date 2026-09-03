@@ -5,6 +5,17 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.36.0] - 2026-09-03
+
+### Added
+
+- **`klickdummy-tokens`: design-hub-Profil → `tokens.css` (dev-hub#320).**
+  Neues CLI liest ein design-hub-Profil (`profiles/<slug>.yaml`, Source of
+  Truth für Klickdummy-Corporate-Design) und erzeugt deterministische
+  CSS-Custom-Properties (`--kd-*`). `--check` vergleicht byte-genau gegen
+  eine bestehende Ausgabedatei (CI-Gate, Exit 1 bei Abweichung); fehlende
+  Pflichtschlüssel oder ungültige Farbwerte enden mit Exit 2.
+
 ## [1.35.0] - 2026-08-02
 
 ### Changed
