@@ -5,6 +5,25 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.37.0] - 2026-09-04
+
+### Changed
+
+- **`klickdummy-sitemap` ohne CDN — Tokens statt Tailwind/lucide (dev-hub#320
+  Welle 0).** Die generierte Sitemap lud bisher `cdn.tailwindcss.com` und
+  `unpkg.com/lucide` und färbte sich über Tailwind-Utility-Klassen
+  (`text-orange-600` etc.). Jetzt ist die Sitemap self-contained: Layout aus
+  einem eingebetteten `<style>`-Block, der ausschließlich `var(--kd-*)`-Tokens
+  nutzt; Icons als Text-Marker (`→`, `↳`) statt Icon-Font. Neue
+  `klickdummy-gen-sitemap`-Optionen `--tokens-css <pfad>` (Datei roh als
+  ersten `<style>`-Block einbetten) und `--profile <yaml>` (design-hub-Profil
+  zur Laufzeit über `gen_tokens.generate()` einbetten); ohne beide Optionen
+  IIL-Fallback aus `<design-hub>/profiles/iil-extern.yaml`
+  (`--design-hub <dir>`, Default `$GITHUB_DIR/design-hub` sonst
+  `~/github/design-hub`) — fehlt die Datei, Exit 2 mit Meldung statt einer
+  Sitemap ohne Farben. `generate()` bekommt dafür einen optionalen
+  `tokens_css`-Parameter; die Auflösung selbst bleibt CLI-Sache.
+
 ## [1.36.0] - 2026-09-03
 
 ### Added

@@ -20,12 +20,15 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import pathlib
 import sys
 from importlib.resources import files
 from typing import Any
 
 import yaml
+
+from iil_klickdummy import gen_tokens
 
 
 def _load_specs(kd_root: pathlib.Path) -> list[dict[str, Any]]:
@@ -223,15 +226,94 @@ def _write_kd_nav_js(shared_dir: pathlib.Path) -> None:
     )
 
 
-STATUS_COLOR = {
-    "static": "bg-gray-100 text-gray-700",
-    "parity-staging": "bg-amber-100 text-amber-800",
-    "parity-green": "bg-green-100 text-green-800",
-    "removed": "bg-zinc-200 text-zinc-500 line-through",
+# dev-hub#320 Welle 0: keine Tailwind-Utility-Klassen mehr — nur noch
+# Status-Klassennamen, die im eingebetteten <style>-Block (_SITEMAP_CSS) auf
+# `var(--kd-*)`-Tokens abgebildet sind.
+STATUS_CLASS = {
+    "static": "kd-status-static",
+    "parity-staging": "kd-status-parity-staging",
+    "parity-green": "kd-status-parity-green",
+    "removed": "kd-status-removed",
 }
 
+# Layout-CSS der Sitemap — ausschließlich `var(--kd-*)`-Tokens (mit Fallback-
+# Ketten für optionale Profil-Keys), keine Hex-Werte, keine Farbnamen, keine
+# externe Utility-Bibliothek (dev-hub#320 Welle 0, Ersatz für Tailwind-CDN).
+_SITEMAP_CSS = """
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--kd-bg-light);
+  color: var(--kd-text);
+  font-family: var(--kd-font-primary, system-ui, sans-serif);
+}
+.kd-topbar {
+  padding: 0.5rem 1.5rem;
+  font-size: 0.75rem;
+  color: var(--kd-text-muted, var(--kd-text));
+  border-bottom: 2px solid var(--kd-primary);
+}
+.kd-topbar strong { color: var(--kd-text); }
+.kd-page { max-width: 72rem; margin: 0 auto; padding: 1.5rem; }
+.kd-title { margin: 0 0 0.5rem; font-size: 1.5rem; font-weight: 700; color: var(--kd-primary); }
+.kd-subtitle { margin: 0 0 1.5rem; font-size: 0.875rem; color: var(--kd-text-muted, var(--kd-text)); }
+.kd-kbd {
+  font-family: var(--kd-font-mono, monospace);
+  font-size: 0.75rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--kd-border);
+  border-radius: 3px;
+}
+.kd-stats { margin-bottom: 1rem; font-size: 0.75rem; color: var(--kd-text-muted, var(--kd-text)); }
+.kd-section-heading {
+  margin: 1.5rem 0 0.75rem;
+  padding-bottom: 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--kd-text);
+  border-bottom: 1px solid var(--kd-border);
+}
+.kd-card { margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--kd-border); border-radius: 8px; }
+.kd-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.kd-table thead th {
+  padding: 0.5rem 0.5rem 0.5rem 0;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--kd-text-muted, var(--kd-text));
+  border-bottom: 1px solid var(--kd-border);
+}
+.kd-row { border-bottom: 1px solid var(--kd-line, var(--kd-border)); }
+.kd-row-root { border-left: 3px solid var(--kd-primary); }
+.kd-row td { padding: 0.5rem 0.5rem 0.5rem 0; vertical-align: top; }
+.kd-spec-id { font-family: var(--kd-font-mono, monospace); font-size: 0.625rem; color: var(--kd-text-muted, var(--kd-text)); }
+.kd-role { font-size: 0.6875rem; color: var(--kd-text-muted, var(--kd-text)); }
+.kd-count { font-size: 0.6875rem; }
+.kd-link { color: var(--kd-primary); text-decoration: none; }
+.kd-link:hover { color: var(--kd-primary-dark, var(--kd-primary)); text-decoration: underline; }
+.kd-badge {
+  display: inline-block;
+  padding: 0.0625rem 0.375rem;
+  font-size: 0.625rem;
+  border-radius: 3px;
+  border: 1px solid var(--kd-border);
+}
+.kd-status-static { color: var(--kd-text-muted, var(--kd-text)); }
+.kd-status-parity-staging { color: var(--kd-accent-2, var(--kd-primary)); border-color: var(--kd-accent-2, var(--kd-primary)); }
+.kd-status-parity-green { color: var(--kd-accent-1, var(--kd-primary)); border-color: var(--kd-accent-1, var(--kd-primary)); font-weight: 600; }
+.kd-status-removed { color: var(--kd-text-muted, var(--kd-text)); text-decoration: line-through; }
+.kd-alert { margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--kd-border); border-radius: 8px; }
+.kd-alert h3 { margin: 0 0 0.5rem; font-size: 0.875rem; font-weight: 600; }
+.kd-alert ul, .kd-alert li { list-style: none; margin: 0; padding: 0; }
+.kd-alert li { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid var(--kd-border); }
+.kd-alert-warning h3 { color: var(--kd-accent-2, var(--kd-primary)); }
+.kd-alert-danger h3 { color: var(--kd-primary); }
+.kd-footer { margin-top: 1.5rem; font-size: 0.75rem; color: var(--kd-text-muted, var(--kd-text)); }
+"""
 
-def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
+
+def _render_sitemap(
+    tree: dict[str, Any], repo_name: str, tokens_css: str | None = None
+) -> str:
     nodes = tree["nodes"]
     sections: list[str] = []
 
@@ -254,12 +336,8 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
         tid = sid.replace(":", "-").replace(".", "-")
         if depth == 0:
             title_html = f"<b>{n['title']}</b>"
-            row_cls, role, role_cls, link_cls = (
-                "border-b bg-orange-50",
-                "root",
-                "text-[11px]",
-                "text-orange-600",
-            )
+            row_cls, role = ("kd-row kd-row-root", "root")
+            link_cls = "kd-link kd-link-root"
         else:
             short = (
                 n["title"].split(" — ", 1)[-1] if " — " in n["title"] else n["title"]
@@ -268,18 +346,16 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
             # Herabgestufte Roots (deklariert root, aber als kd_children
             # referenziert) bleiben als "sub-root" erkennbar.
             role = "sub-root" if n["role"] == "root" else "branch"
-            row_cls, role_cls, link_cls = (
-                "border-b",
-                "text-[11px] text-gray-500",
-                "text-gray-600",
-            )
+            row_cls = "kd-row"
+            link_cls = "kd-link"
+        status_cls = STATUS_CLASS.get(n["off_ramp_status"], "")
         out = [
             f'<tr class="{row_cls}" data-testid="row-{tid}">'
-            f'<td class="py-2" style="padding-left:{0.5 + depth}rem">{title_html}<div class="text-[10px] text-gray-400">{n["spec_id"]}</div></td>'
-            f'<td class="{role_cls}">{role}</td>'
-            f'<td><span class="text-[10px] px-1.5 py-0.5 rounded {STATUS_COLOR.get(n["off_ramp_status"], "")}">{n["off_ramp_status"]}</span></td>'
-            f'<td class="text-[11px]">{n["screens_count"]}</td>'
-            f'<td><a href="{rel(n["path"])}" data-testid="link-{sid}" class="{link_cls} hover:underline text-sm">→ öffnen</a></td>'
+            f'<td style="padding-left:{0.5 + depth}rem">{title_html}<div class="kd-spec-id">{n["spec_id"]}</div></td>'
+            f'<td class="kd-role">{role}</td>'
+            f'<td><span class="kd-badge {status_cls}">{n["off_ramp_status"]}</span></td>'
+            f'<td class="kd-count">{n["screens_count"]}</td>'
+            f'<td><a href="{rel(n["path"])}" data-testid="link-{sid}" class="{link_cls}">→ öffnen</a></td>'
             f"</tr>"
         ]
         for child_id in n["children"]:
@@ -293,9 +369,9 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
             # (nur im Zyklus-Fallback erreichbar).
             return ""
         return (
-            f'<div class="bg-white rounded-lg shadow p-4 mb-4" data-testid="tree-{root_id.replace(":", "-").replace(".", "-")}">'
-            f'<table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500 border-b">'
-            f'<th class="py-2 pl-2">Knoten</th><th>Rolle</th><th>Off-Ramp</th><th>Screens</th><th></th></tr></thead>'
+            f'<div class="kd-card" data-testid="tree-{root_id.replace(":", "-").replace(".", "-")}">'
+            f'<table class="kd-table"><thead><tr>'
+            f"<th>Knoten</th><th>Rolle</th><th>Off-Ramp</th><th>Screens</th><th></th></tr></thead>"
             f"<tbody>{''.join(rows)}</tbody></table></div>"
         )
 
@@ -314,7 +390,7 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
         for domain in ordered:
             slug = "".join(c if c.isalnum() else "-" for c in domain.lower()).strip("-")
             sections.append(
-                f'<h2 class="text-lg font-semibold text-gray-700 mt-6 mb-3" data-testid="domain-{slug}">{domain}</h2>'
+                f'<h2 class="kd-section-heading" data-testid="domain-{slug}">{domain}</h2>'
             )
             sections.extend(_section(rid) for rid in grouped[domain])
     else:
@@ -339,15 +415,15 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
     orphan_block = ""
     if orphans:
         rows = "".join(
-            f'<li data-testid="orphan-{o["spec_id"].replace(":", "-")}" class="border-b py-1 flex justify-between">'
-            f'<span>{o["title"]} <code class="text-[10px] text-gray-400">{o["spec_id"]}</code></span>'
-            f'<a href="{rel(o["path"])}" class="text-xs text-orange-600">→ öffnen</a></li>'
+            f'<li data-testid="orphan-{o["spec_id"].replace(":", "-")}">'
+            f'<span>{o["title"]} <code class="kd-spec-id">{o["spec_id"]}</code></span>'
+            f'<a href="{rel(o["path"])}" class="kd-link">→ öffnen</a></li>'
             for o in orphans
         )
         orphan_block = (
-            '<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4" data-testid="orphans">'
-            '<h3 class="font-semibold text-sm mb-2 text-amber-800">⚠ Waisen-Knoten (kein Eltern-Root)</h3>'
-            f'<ul class="text-sm">{rows}</ul></div>'
+            '<div class="kd-alert kd-alert-warning" data-testid="orphans">'
+            "<h3>⚠ Waisen-Knoten (kein Eltern-Root)</h3>"
+            f"<ul>{rows}</ul></div>"
         )
 
     # Dangling: `kd_children` zeigt auf eine spec_id, die es nicht gibt
@@ -356,18 +432,24 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
     dangling_block = ""
     if tree.get("dangling"):
         rows = "".join(
-            f'<li class="border-b py-1"><code class="text-[11px]">{d}</code></li>'
-            for d in tree["dangling"]
+            f'<li><code class="kd-spec-id">{d}</code></li>' for d in tree["dangling"]
         )
         dangling_block = (
-            '<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4" data-testid="dangling">'
-            '<h3 class="font-semibold text-sm mb-2 text-red-800">⚠ kd_children zeigt ins Leere</h3>'
-            f'<ul class="text-sm">{rows}</ul></div>'
+            '<div class="kd-alert kd-alert-danger" data-testid="dangling">'
+            "<h3>⚠ kd_children zeigt ins Leere</h3>"
+            f"<ul>{rows}</ul></div>"
         )
     orphan_block = dangling_block + orphan_block
 
     n_domains = len({d for d in root_domains.values() if d})
     domain_stat = f"<b>{n_domains}</b> Domänen · " if n_domains else ""
+
+    # dev-hub#320 Welle 0: kein CDN mehr (weder Tailwind noch lucide) — Layout
+    # kommt aus dem eingebetteten `_SITEMAP_CSS`, Farben/Schriften ausschließlich
+    # aus `var(--kd-*)`-Tokens. Der Tokens-Block (falls vorhanden) steht als
+    # ERSTER <style>-Tag, damit er self-contained bleibt (keine relativen
+    # Pfad-Annahmen) und die Layout-Regeln seine `--kd-*`-Variablen sehen.
+    tokens_style = f"<style>\n{tokens_css}\n</style>" if tokens_css else ""
 
     return f"""<!DOCTYPE html>
 <!--
@@ -377,28 +459,24 @@ def _render_sitemap(tree: dict[str, Any], repo_name: str) -> str:
 -->
 <html lang="de"><head><meta charset="UTF-8"><meta name="klickdummy_class" content="mock">
 <title>Klick-Dummy Sitemap — {repo_name}</title>
-<script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/lucide@latest"></script></head>
-<body class="bg-gray-50 min-h-screen">
-<div class="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-800">
+{tokens_style}
+<style>{_SITEMAP_CSS}</style>
+</head>
+<body>
+<div class="kd-topbar">
  <strong>Klick-Dummy Sitemap</strong>&nbsp;auto-generiert · Hauptmenü aller KD-Bäume im {repo_name}
 </div>
-<div class="max-w-6xl mx-auto px-6 py-6">
- <h1 class="text-2xl font-bold text-orange-700 mb-2">Sitemap — {repo_name} Klickdummies</h1>
- <p class="text-sm text-gray-600 mb-6">Alle KD-Bäume mit Knoten-Hierarchie, Off-Ramp-Status (platform:ADR-211 §I3) und Spec-ID (§I4).
-  Tour-Mode: hänge <code class="text-xs bg-gray-200 px-1 rounded">?tour=1</code> an die URL eines Knotens, um den Walkthrough zu starten.</p>
- <div class="text-xs text-gray-500 mb-4" data-testid="stats">
+<div class="kd-page">
+ <h1 class="kd-title">Sitemap — {repo_name} Klickdummies</h1>
+ <p class="kd-subtitle">Alle KD-Bäume mit Knoten-Hierarchie, Off-Ramp-Status (platform:ADR-211 §I3) und Spec-ID (§I4).
+  Tour-Mode: hänge <code class="kd-kbd">?tour=1</code> an die URL eines Knotens, um den Walkthrough zu starten.</p>
+ <div class="kd-stats" data-testid="stats">
   {domain_stat}<b>{len(tree["roots"])}</b> Wurzeln · <b>{len(tree["order"])}</b> Knoten gesamt · {sum(1 for n in nodes.values() if n["off_ramp_status"] == "parity-green")} parity-green
  </div>
  {"".join(sections)}
  {orphan_block}
- <p class="text-xs text-gray-400 mt-6">Generiert: <code class="text-[10px]">klickdummy-gen-sitemap</code> (iil-klickdummy). Quelle: jede <code class="text-[10px]">screens-spec.yaml</code> im klickdummy/-Baum (platform:ADR-211 I1).</p>
+ <p class="kd-footer">Generiert: <code class="kd-spec-id">klickdummy-gen-sitemap</code> (iil-klickdummy). Quelle: jede <code class="kd-spec-id">screens-spec.yaml</code> im klickdummy/-Baum (platform:ADR-211 I1).</p>
 </div>
-<script>
-const PH=[{{id:"sitemap",t:"Sitemap"}}];
-let idx=0;
-function go(){{lucide.createIcons();}}
-go();
-</script>
 <script src="../_shared/kd-nav.js" data-sitemap="index.html" data-spec-id="{repo_name}:klickdummy-spec-sitemap"></script>
 </body></html>
 """
@@ -473,9 +551,19 @@ screens:
 
 
 def generate(
-    repo_root: pathlib.Path, adr_local: str, repo_name: str | None = None
+    repo_root: pathlib.Path,
+    adr_local: str,
+    repo_name: str | None = None,
+    tokens_css: str | None = None,
 ) -> dict[str, Any]:
-    """Baut Sitemap + kd-tree für `repo_root`, schreibt alle Artefakte. Gibt den Tree zurück (für Tests/CI-Diff)."""
+    """Baut Sitemap + kd-tree für `repo_root`, schreibt alle Artefakte. Gibt den Tree zurück (für Tests/CI-Diff).
+
+    `tokens_css`: bereits aufgelöster Inhalt einer `tokens.css` (dev-hub#320
+    Welle 0) — wird als erster `<style>`-Block in die Sitemap eingebettet.
+    Die Auflösung selbst (`--tokens-css` / `--profile` / IIL-Fallback) liegt
+    bei der CLI (`main()`), nicht hier — `generate()` bleibt so direkt aus
+    Tests/anderen Aufrufern nutzbar, auch ohne design-hub verfügbar zu haben.
+    """
     kd_root = repo_root / "klickdummy"
     name = repo_name or repo_root.name
     specs = _load_specs(kd_root)
@@ -484,7 +572,9 @@ def generate(
     _write_kd_nav_js(kd_root / "_shared")
     out_dir = kd_root / "sitemap"
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "index.html").write_text(_render_sitemap(tree, name), encoding="utf-8")
+    (out_dir / "index.html").write_text(
+        _render_sitemap(tree, name, tokens_css), encoding="utf-8"
+    )
     (out_dir / "screens-spec.yaml").write_text(
         _render_sitemap_spec(
             name, adr_local, _stable_spec_date(out_dir / "screens-spec.yaml")
@@ -510,19 +600,109 @@ def _stable_spec_date(existing_spec_path: pathlib.Path) -> str:
     return datetime.date.today().isoformat()
 
 
+class TokensResolveError(Exception):
+    """Tokens-CSS lässt sich nicht auflösen (--tokens-css/--profile/Fallback). CLI: Exit 2."""
+
+
+def _default_design_hub_dir() -> pathlib.Path:
+    """`$GITHUB_DIR/design-hub`, sonst `~/github/design-hub` (dev-hub#320 Welle 0)."""
+    github_dir = os.environ.get("GITHUB_DIR")
+    base = pathlib.Path(github_dir) if github_dir else pathlib.Path.home() / "github"
+    return base / "design-hub"
+
+
+def _resolve_tokens_css(
+    tokens_css_path: pathlib.Path | None,
+    profile_path: pathlib.Path | None,
+    design_hub_dir: pathlib.Path | None,
+) -> str:
+    """Löst den Inhalt der einzubettenden `tokens.css` auf — Priorität:
+    `--tokens-css` (Datei roh einbetten) > `--profile` (design-hub-Profil ->
+    `gen_tokens.generate()`) > IIL-Fallback (`<design-hub>/profiles/iil-extern.yaml`).
+    Ohne alle drei Optionen: `--design-hub` (oder dessen Default) muss ein
+    lesbares `profiles/iil-extern.yaml` enthalten, sonst `TokensResolveError`
+    (CLI: Exit 2). Keine Kopie des IIL-Profils im Paket — design-hub bleibt
+    einzige Quelle (Owner-Entscheid dev-hub#320 Welle 0)."""
+    if tokens_css_path is not None:
+        try:
+            return tokens_css_path.read_text(encoding="utf-8")
+        except OSError as e:
+            raise TokensResolveError(
+                f"--tokens-css nicht lesbar: {tokens_css_path} ({e})"
+            ) from e
+
+    if profile_path is not None:
+        resolved_profile_path = profile_path
+    else:
+        design_hub = design_hub_dir or _default_design_hub_dir()
+        resolved_profile_path = design_hub / "profiles" / "iil-extern.yaml"
+        if not resolved_profile_path.is_file():
+            raise TokensResolveError(
+                f"IIL-Fallback braucht design-hub unter {design_hub}; "
+                "--tokens-css oder --profile angeben"
+            )
+
+    try:
+        profile = gen_tokens._load_profile(resolved_profile_path)
+        return gen_tokens.generate(
+            profile, generator_version=gen_tokens._generator_version()
+        )
+    except (OSError, yaml.YAMLError, gen_tokens.TokenGenError) as e:
+        raise TokensResolveError(
+            f"Profil {resolved_profile_path} nicht verwendbar: {e}"
+        ) from e
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) < 2:
+    positional: list[str] = []
+    tokens_css_path: pathlib.Path | None = None
+    profile_path: pathlib.Path | None = None
+    design_hub_dir: pathlib.Path | None = None
+
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg in ("--tokens-css", "--profile", "--design-hub"):
+            i += 1
+            if i >= len(argv):
+                print(f"FEHLER: {arg} braucht einen Pfad", file=sys.stderr)
+                return 2
+            value = pathlib.Path(argv[i])
+            if arg == "--tokens-css":
+                tokens_css_path = value
+            elif arg == "--profile":
+                profile_path = value
+            else:
+                design_hub_dir = value
+        else:
+            positional.append(arg)
+        i += 1
+
+    if len(positional) < 2:
         print(
             "Usage: klickdummy-gen-sitemap <repo_root> <adr_local> [repo_name]\n"
             "  <repo_root>:  Consumer-Repo (mit klickdummy/*/screens-spec.yaml)\n"
             "  <adr_local>:  lokale Klickdummy-ADR-Referenz, z.B. risk-hub:ADR-046\n"
-            "  [repo_name]:  Anzeigename (Default: repo_root-Verzeichnisname)"
+            "  [repo_name]:  Anzeigename (Default: repo_root-Verzeichnisname)\n"
+            "  --tokens-css <pfad>:  tokens.css roh als ersten <style>-Block einbetten\n"
+            "  --profile <yaml>:     design-hub-Profil -> Tokens zur Laufzeit erzeugen\n"
+            "  --design-hub <dir>:   design-hub-Checkout fuer den IIL-Fallback "
+            "(Default: $GITHUB_DIR/design-hub, sonst ~/github/design-hub)\n"
+            "  Ohne --tokens-css/--profile: IIL-Fallback aus "
+            "<design-hub>/profiles/iil-extern.yaml (sonst Exit 2)."
         )
         return 2
-    repo_root = pathlib.Path(argv[0])
-    adr_local = argv[1]
-    repo_name = argv[2] if len(argv) > 2 else None
-    tree = generate(repo_root, adr_local, repo_name)
+    repo_root = pathlib.Path(positional[0])
+    adr_local = positional[1]
+    repo_name = positional[2] if len(positional) > 2 else None
+
+    try:
+        tokens_css = _resolve_tokens_css(tokens_css_path, profile_path, design_hub_dir)
+    except TokensResolveError as e:
+        print(f"FEHLER: {e}", file=sys.stderr)
+        return 2
+
+    tree = generate(repo_root, adr_local, repo_name, tokens_css=tokens_css)
     print(
         "  wrote klickdummy/sitemap/index.html + klickdummy/sitemap/screens-spec.yaml"
     )
