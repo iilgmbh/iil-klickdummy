@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import pathlib
 
+import pytest
+
 from iil_klickdummy import check_i5
 
 
@@ -281,3 +283,63 @@ def test_should_have_zero_hex_in_bundled_tailwind_tokens_snippet():
     text = snippet.read_text(encoding="utf-8")
     assert findings == []
     assert "var(--kd-" in text
+
+
+# ----------------------------------------------------------------------------
+# 3-Shade-Band-Karte (iilgmbh/iil-klickdummy#238, dev-hub#320 Welle-4-
+# Folgebefund) — jede der 22 Familien deckt alle 11 Stufen ab, und
+# `bg-<f>-100`/`text-<f>-700` derselben Familie zeigen auf verschiedene
+# Tokens (Positivkontrolle gegen Ton-in-Ton-Badges).
+# ----------------------------------------------------------------------------
+
+_SHADES = (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950)
+
+
+def _evaluate_bundled_tailwind_colors():
+    """Führt das ausgelieferte Snippet mit Node aus und liest die
+    `window.tailwind.config.theme.extend.colors`-Struktur als JSON zurück
+    — kein Nachbau der `shadeMap`-Logik in Python (Drift-Gefahr), sondern
+    ein echter Lauf des ausgelieferten Codes."""
+    import json
+    import shutil
+    import subprocess
+    from importlib.resources import files
+
+    if shutil.which("node") is None:
+        pytest.skip("node nicht verfügbar")
+
+    snippet = files("iil_klickdummy") / "snippets" / "_shared" / "tailwind-tokens.js"
+    snippet_text = snippet.read_text(encoding="utf-8")
+    script = (
+        "var window = globalThis;\n"
+        + snippet_text
+        + "\nprocess.stdout.write(JSON.stringify("
+        "window.tailwind.config.theme.extend.colors));"
+    )
+    result = subprocess.run(
+        ["node", "-e", script], capture_output=True, text=True, timeout=10
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_should_define_all_eleven_shades_for_every_family():
+    colors = _evaluate_bundled_tailwind_colors()
+    assert set(colors.keys()) == set(check_i5.TAILWIND_COLOUR_FAMILIES)
+    for family, shade_map in colors.items():
+        defined = {int(s) for s in shade_map.keys()}
+        assert defined == set(_SHADES), f"{family}: {sorted(defined)}"
+        for shade, token in shade_map.items():
+            assert token, f"{family}-{shade}: leerer Token"
+            assert "var(--kd-" in token, f"{family}-{shade}: kein Token: {token!r}"
+
+
+def test_should_map_light_and_dark_shade_to_different_tokens_per_family():
+    """Positivkontrolle gegen Ton-in-Ton: `bg-<f>-100` (hell) und
+    `text-<f>-700` (dunkel) derselben Familie müssen verschiedene Tokens
+    ergeben — sonst wird ein Status-Badge (Hintergrund + Text) unlesbar."""
+    colors = _evaluate_bundled_tailwind_colors()
+    for family, shade_map in colors.items():
+        light = shade_map["100"]
+        dark = shade_map["700"]
+        assert light != dark, f"{family}: bg-100 == text-700 ({light!r})"

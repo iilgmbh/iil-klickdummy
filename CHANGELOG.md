@@ -3,6 +3,10 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## 1.41.0 — 2026-09-04
+
+- fix(snippets): `tailwind-tokens.js` mappt jede Farbfamilie jetzt auf drei Shade-Bänder (hell/mittel/dunkel) statt eines einzigen Kern-Tokens — vorher wurden Status-Badges wie `bg-amber-100 text-amber-800` Text-auf-gleicher-Farbe (unlesbar). `orange` zählt jetzt als Marken-Familie (→ `--kd-primary`/`--kd-accent-1`) statt als Warnfarbe, damit KDs mit Orange als Hauptfarbe nicht komplett in `--kd-warning` landen (iilgmbh/iil-klickdummy#238, risk-hub#736, dev-hub#320 Welle 4 Folgebefund).
+
 ## 1.40.1 — 2026-09-04
 
 - fix(snippets): `kd-nav.js` escapt Titel und Tour-Links vor `innerHTML` (CodeQL `js/xss-through-dom`, gemeldet in risk-hub#736; Stelle bestand seit v1.35.0).
