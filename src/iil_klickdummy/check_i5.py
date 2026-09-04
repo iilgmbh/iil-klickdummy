@@ -27,13 +27,16 @@ Vier Regeln:
   (4) Farben nur aus Tokens: kein literaler Hex-Farbwert
       (`#abc`, `#a1b2c3`, optional `#a1b2c3d4`) in `*.html`/`*.css`/`*.js`
       — außer in `_shared/tokens.css`, `_shared/semantic.css`,
-      `assets/tokens.css`, `assets/semantic.css` und `sitemap/index.html`
-      (dort ist der Hex-Wert die Quelle, nicht der Verstoß — `sitemap/
-      index.html` bettet `tokens.css` roh als ersten <style>-Block ein,
-      s. `gen_sitemap.py`). Ausgenommen von der Erkennung sind außerdem
-      Issue-Referenzen wie `#320` (rein numerisch, kein a-f-Buchstabe, bei
-      3-stelligen Werten) und CSS-Anker wie `#fb-fab` (Bindestrich bricht die
-      Hex-Ziffernfolge).
+      `assets/tokens.css`, `assets/semantic.css` (Datei-Ausnahme: dort ist
+      der Hex-Wert die Quelle). `sitemap/index.html` bettet `tokens.css`
+      roh als ersten <style>-Block ein (s. `gen_sitemap.py`) — statt die
+      ganze Datei auszunehmen (das würde eine von Hand gesetzte Farbe im
+      selben File nie fangen), wird nur der EINE <style>-Block ausgeblendet,
+      dessen Inhalt mit der Generator-Kopfzeile beginnt (`/* tokens.css —
+      generiert aus design-hub-Profil`); der Rest der Datei bleibt im Scan.
+      Ausgenommen von der Erkennung sind außerdem Issue-Referenzen wie
+      `#320` (rein numerisch, kein a-f-Buchstabe, bei 3-stelligen Werten)
+      und CSS-Anker wie `#fb-fab` (Bindestrich bricht die Hex-Ziffernfolge).
 
 Aufruf:  python3 scripts/klickdummy/check_i5.py <klickdummy_dir_or_root> [...]
 Exit:    0 = PASS, 1 = FAIL, 2 = Setup-Fehler
@@ -73,19 +76,37 @@ HEX_COLOUR_RE = re.compile(
 )
 
 # Dateien, in denen der Hex-Wert die Quelle ist, nicht der Verstoß.
-# `sitemap/index.html` bettet `tokens.css` roh als ersten <style>-Block ein
-# (dev-hub#320 Welle 0, Selbstenthaltung — s. gen_sitemap.py `_render_sitemap`)
-# und ist damit in der Sache dieselbe Tokens-Quelle wie `tokens.css` selbst,
-# nur inline statt referenziert (real gegen apo-hub verifiziert: ohne diese
-# Ausnahme meldet Regel 4 dort 15 Treffer, die 1:1 aus dem eingebetteten
-# tokens.css-Block stammen, nicht aus eigenem Sitemap-Markup).
 HEX_GATE_AUSNAHMEN = {
     ("_shared", "tokens.css"),
     ("_shared", "semantic.css"),
     ("assets", "tokens.css"),
     ("assets", "semantic.css"),
-    ("sitemap", "index.html"),
 }
+
+# `sitemap/index.html` bettet `tokens.css` roh als ersten <style>-Block ein
+# (dev-hub#320 Welle 0, Selbstenthaltung — s. gen_sitemap.py `_render_sitemap`).
+# Eine pauschale Datei-Ausnahme wäre zu grob (eine von Hand gesetzte Farbe im
+# selben File würde nie gefangen) — stattdessen wird nur der EINE <style>-Block
+# ausgeblendet, dessen Inhalt mit der Generator-Kopfzeile beginnt; der Rest der
+# Datei (weitere <style>-Blöcke, restliches Markup) bleibt im Scan.
+_STYLE_BLOCK_RE = re.compile(
+    r"(<style\b[^>]*>)(.*?)(</style>)", re.IGNORECASE | re.DOTALL
+)
+_GENERATED_TOKENS_MARKER = "/* tokens.css — generiert aus design-hub-Profil"
+
+
+def _mask_generated_tokens_style_blocks(text: str) -> str:
+    """Blendet <style>-Blöcke aus, deren Inhalt mit der Tokens-Generator-
+    Kopfzeile beginnt — Zeilenzahl bleibt erhalten (Ersatz durch gleich viele
+    Leerzeilen), damit Zeilennummern für den Rest der Datei stimmen."""
+
+    def _mask(m: "re.Match[str]") -> str:
+        open_tag, body, close_tag = m.group(1), m.group(2), m.group(3)
+        if body.lstrip().startswith(_GENERATED_TOKENS_MARKER):
+            return open_tag + ("\n" * body.count("\n")) + close_tag
+        return m.group(0)
+
+    return _STYLE_BLOCK_RE.sub(_mask, text)
 
 
 def _is_excluded(path: pathlib.Path, root: pathlib.Path) -> bool:
@@ -126,6 +147,7 @@ def check_hex_colours_file(path: pathlib.Path) -> list[tuple[int, str]]:
         text = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         return findings
+    text = _mask_generated_tokens_style_blocks(text)
     for lineno, line in enumerate(text.splitlines(), start=1):
         for m in HEX_COLOUR_RE.finditer(line):
             findings.append(

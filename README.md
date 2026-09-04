@@ -129,12 +129,17 @@ zusätzlich `*.css`/`*.js`:
 4. **Farben nur aus Tokens (v1.39):** kein literaler Hex-Farbwert
    (`#abc`, `#a1b2c3`, optional `#a1b2c3d4`) in `*.html`/`*.css`/`*.js` —
    außer in `_shared/tokens.css`, `_shared/semantic.css`,
-   `assets/tokens.css`, `assets/semantic.css` und `sitemap/index.html`
-   (bettet `tokens.css` roh als ersten `<style>`-Block ein, dieselbe Quelle
-   nur inline). Gedacht für die Welle-3-Shells (eigene Klickdummy-Shells in
-   11 Repos, dev-hub#320): die Meldung nennt je Datei die Trefferanzahl,
-   damit ein Repo den Umbau auf Tokens planen kann. Issue-Referenzen
-   (`#320`) und CSS-Anker (`#fb-fab`) lösen bewusst keinen Treffer aus.
+   `assets/tokens.css`, `assets/semantic.css` (Datei-Ausnahme: dort ist der
+   Hex-Wert die Quelle). `sitemap/index.html` bettet `tokens.css` roh als
+   ersten `<style>`-Block ein — statt die ganze Datei auszunehmen (das würde
+   eine von Hand gesetzte Farbe im selben File nie fangen), wird nur der
+   EINE `<style>`-Block ausgeblendet, dessen Inhalt mit der
+   Generator-Kopfzeile beginnt (`/* tokens.css — generiert aus
+   design-hub-Profil`); der Rest der Datei bleibt im Scan. Gedacht für die
+   Welle-3-Shells (eigene Klickdummy-Shells in 11 Repos, dev-hub#320): die
+   Meldung nennt je Datei die Trefferanzahl, damit ein Repo den Umbau auf
+   Tokens planen kann. Issue-Referenzen (`#320`) und CSS-Anker (`#fb-fab`)
+   lösen bewusst keinen Treffer aus.
 
 Rollout: `snippets/gates.mk` definiert das Target `klickdummy-i5` (verteilt
 über `klickdummy-install-snippets`); der reusable Workflow

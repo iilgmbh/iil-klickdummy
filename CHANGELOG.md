@@ -22,6 +22,12 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
   Treffer aus: 3-stellige Hex-Kandidaten brauchen mindestens einen
   a-f-Buchstaben, 6-/8-stellige zählen immer (Issue-Nummern sind ≤ 4
   Ziffern), ein Bindestrich (`#fb-fab`) bricht die Hex-Ziffernfolge ohnehin.
+  `sitemap/index.html` bettet `tokens.css` roh als ersten `<style>`-Block
+  ein — statt die ganze Datei auszunehmen (das würde eine von Hand gesetzte
+  Farbe im selben File nie fangen), wird nur der EINE `<style>`-Block
+  ausgeblendet, dessen Inhalt mit der Generator-Kopfzeile beginnt
+  (`/* tokens.css — generiert aus design-hub-Profil`); der Rest der Datei
+  bleibt im Scan.
 
 ## [1.38.0] - 2026-09-04
 
