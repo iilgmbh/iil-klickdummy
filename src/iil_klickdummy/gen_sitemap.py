@@ -22,6 +22,8 @@ import datetime
 import json
 import os
 import pathlib
+import re
+import subprocess
 import sys
 from importlib.resources import files
 from typing import Any
@@ -550,6 +552,79 @@ screens:
 """
 
 
+class RepoNameResolveError(Exception):
+    """Repo-Name laesst sich nicht sicher bestimmen (leer/ungueltig nach allen
+    Fallbacks). CLI: Exit 2."""
+
+
+# Positivkontrolle fuer den `spec_id`, den `generate()` fuer die Sitemap-Spec
+# selbst schreibt (`<repo>:klickdummy-spec-sitemap`) — dieselbe Konvention wie
+# `screens-spec.schema.json`s `spec_id`-Pattern, hier zusaetzlich VOR dem
+# Schreiben geprueft statt erst nachtraeglich von einem Consumer (Portal-
+# Safety-Gate `kd_loss`, oder einem I1-Lauf, der die Sitemap-Spec ueberhaupt
+# scannt) entdeckt zu werden. `_resolve_repo_name()` blockt `:`/Leerzeichen
+# im Repo-Namen bereits, dieser Check ist die zweite, unabhaengige Huerde
+# (z.B. gegen einen Repo-Namen, der nicht mit `[a-z0-9]` beginnt).
+_SITEMAP_SPEC_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*:[a-z][a-z0-9_-]*$")
+
+
+def _repo_name_from_git_remote(repo_root: pathlib.Path) -> str | None:
+    """`origin`-Remote-Basename ohne `.git`, oder `None` (kein Git-Repo, kein
+    `origin`, `git` fehlt). Bewusst still — der Aufrufer entscheidet, ob ein
+    fehlender Remote-Name ein Fehler ist."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    url = result.stdout.strip().rstrip("/")
+    if not url:
+        return None
+    if url.endswith(".git"):
+        url = url[:-4]
+    name = url.rsplit("/", 1)[-1]
+    return name or None
+
+
+def _resolve_repo_name(repo_root: pathlib.Path, repo_name: str | None) -> str:
+    """Robuste Bestimmung des Sitemap-Anzeigenamens (Teil von `spec_id`).
+
+    Reihenfolge: explizites `repo_name`-Argument > `git remote get-url
+    origin` (Basename ohne `.git`) > `repo_root.resolve().name`.
+
+    Grund fuer die Reihenfolge: `repo_root.name` (ohne `.resolve()`) ist bei
+    `repo_root == Path(".")` ein leerer String — Portal-Safety-Gate `kd_loss`,
+    Realfall dms-hub 2026-09-04, `spec_id: :klickdummy-spec-sitemap`. Auch
+    `repo_root.resolve().name` allein ist in einem Session-Worktree falsch
+    (liefert den Worktree-Ordnernamen, nicht den Repo-Namen) — deshalb zuerst
+    die Remote-URL, die in einem Worktree auf dasselbe Origin-Repo zeigt.
+
+    Ergebnis leer oder enthaelt `:`/Leerzeichen (unbrauchbar als `spec_id`-
+    Praefix) -> `RepoNameResolveError` statt eine kaputte Spec zu schreiben.
+    """
+    name: str | None
+    if repo_name is not None and repo_name.strip():
+        name = repo_name.strip()
+    else:
+        name = _repo_name_from_git_remote(repo_root)
+        if not name:
+            name = repo_root.resolve().name
+    if not name or ":" in name or any(ch.isspace() for ch in name):
+        raise RepoNameResolveError(
+            f"Repo-Name leer oder ungueltig ({name!r}) - [repo_name] als "
+            "drittes CLI-Argument angeben oder KLICKDUMMY_REPO_NAME setzen "
+            "(vor `include gates.mk` im Adopter-Makefile)."
+        )
+    return name
+
+
 def generate(
     repo_root: pathlib.Path,
     adr_local: str,
@@ -565,7 +640,14 @@ def generate(
     Tests/anderen Aufrufern nutzbar, auch ohne design-hub verfügbar zu haben.
     """
     kd_root = repo_root / "klickdummy"
-    name = repo_name or repo_root.name
+    name = _resolve_repo_name(repo_root, repo_name)
+    sitemap_spec_id = f"{name}:klickdummy-spec-sitemap"
+    if not _SITEMAP_SPEC_ID_RE.match(sitemap_spec_id):
+        raise RepoNameResolveError(
+            f"Repo-Name {name!r} ergibt eine ungueltige spec_id "
+            f"({sitemap_spec_id!r}, erwartet <repo>:<slug>) - [repo_name] als "
+            "drittes CLI-Argument angeben oder KLICKDUMMY_REPO_NAME setzen."
+        )
     specs = _load_specs(kd_root)
     tree = _build_tree(specs)
     _write_kd_tree_json(kd_root / "_shared", tree)
@@ -683,7 +765,8 @@ def main(argv: list[str]) -> int:
             "Usage: klickdummy-gen-sitemap <repo_root> <adr_local> [repo_name]\n"
             "  <repo_root>:  Consumer-Repo (mit klickdummy/*/screens-spec.yaml)\n"
             "  <adr_local>:  lokale Klickdummy-ADR-Referenz, z.B. risk-hub:ADR-046\n"
-            "  [repo_name]:  Anzeigename (Default: repo_root-Verzeichnisname)\n"
+            "  [repo_name]:  Anzeigename (Default: git remote origin, sonst "
+            "repo_root-Verzeichnisname; leer/ungueltig -> Exit 2)\n"
             "  --tokens-css <pfad>:  tokens.css roh als ersten <style>-Block einbetten\n"
             "  --profile <yaml>:     design-hub-Profil -> Tokens zur Laufzeit erzeugen\n"
             "  --design-hub <dir>:   design-hub-Checkout fuer den IIL-Fallback "
@@ -702,7 +785,11 @@ def main(argv: list[str]) -> int:
         print(f"FEHLER: {e}", file=sys.stderr)
         return 2
 
-    tree = generate(repo_root, adr_local, repo_name, tokens_css=tokens_css)
+    try:
+        tree = generate(repo_root, adr_local, repo_name, tokens_css=tokens_css)
+    except RepoNameResolveError as e:
+        print(f"FEHLER: {e}", file=sys.stderr)
+        return 2
     print(
         "  wrote klickdummy/sitemap/index.html + klickdummy/sitemap/screens-spec.yaml"
     )

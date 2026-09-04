@@ -34,7 +34,7 @@
 #   -include platform-snippets/klickdummy/gates.mk   # `-` = optional, fehlt beim allerersten Lauf
 #
 # Optionale Overrides (vor dem include setzen):
-#   KLICKDUMMY_REPO_NAME     Anzeigename fuer die Sitemap (Default: Verzeichnisname)
+#   KLICKDUMMY_REPO_NAME     Anzeigename fuer die Sitemap (Default: origin-Remote-Basename, sonst Verzeichnisname)
 #   KLICKDUMMY_VENV          venv-Pfad (Default: .venv-klickdummy)
 #
 # Pitfall (aus dem Issue, nicht vom Snippet automatisierbar): *.manifest.json in
@@ -52,11 +52,19 @@
 # ---------------------------------------------------------------------------
 
 KLICKDUMMY_VENV ?= .venv-klickdummy
-# KLICKDUMMY_REPO_NAME bewusst ohne Default hier: klickdummy-gen-sitemap fällt
-# selbst auf den Verzeichnisnamen zurück, wenn das 3. Arg fehlt/leer ist — ein
-# Default via CURDIR hier würde bei leerem (statt fehlendem) CI-Env-Var
-# (`?=` überschreibt keine bereits gesetzte — auch leere — Umgebungsvariable)
-# in einer echten Leerstring-Übergabe enden statt im CLI-Fallback.
+# KLICKDUMMY_REPO_NAME: Default via `origin`-Remote-Basename (ohne `.git`) —
+# derselbe Fallback wie in klickdummy-gen-sitemap selbst (_resolve_repo_name).
+# Grund fuer den Default HIER statt nur im CLI-Fallback: `.` als repo_root
+# (Zeile unten) macht `repo_root.resolve().name` in einem Session-Worktree
+# zum Worktree-Ordnernamen statt zum Repo-Namen — die Remote-URL zeigt in
+# einem Worktree weiter aufs Origin-Repo. Portal-Safety-Gate `kd_loss`,
+# Realfall dms-hub 2026-09-04: `$(KLICKDUMMY_REPO_NAME)` war leer,
+# `klickdummy-gen-sitemap` bekam gar kein 3. Arg uebergeben (kein Leerstring —
+# ein fehlendes Wort), `repo_root.name` bei `Path(".")` ist `""` ->
+# `spec_id: :klickdummy-spec-sitemap`. `?=` bleibt bewusst: eine explizit
+# (auch leer) gesetzte CI-Env-Var wird NICHT ueberschrieben, der generator-
+# seitige Guard (Exit 2 bei leer/ungueltig) faengt diesen Fall stattdessen ab.
+KLICKDUMMY_REPO_NAME ?= $(shell git remote get-url origin 2>/dev/null | sed -E 's#.*/##; s#\.git$$##')
 
 .PHONY: klickdummy-parity-drift klickdummy-sitemap klickdummy-sitemap-drift klickdummy-i5
 
