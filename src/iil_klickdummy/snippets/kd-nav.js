@@ -187,17 +187,20 @@
 
     const prevHref = prevId ? tourOn(nodePath(prevId)) : null;
     const nextHref = nextId ? tourOn(nodePath(nextId)) : null;
-    const currentTitle = (nodes[specId] && nodes[specId].title) || specId || "(unbekannt)";
+    // CodeQL js/xss-through-dom (risk-hub#736): Titel und Ziele stammen aus kd-tree.json bzw. der
+    // URL — vor dem Einbau in innerHTML escapen, damit ein praeparierter Spec-Titel kein Markup wird.
+    const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const currentTitle = esc((nodes[specId] && nodes[specId].title) || specId || "(unbekannt)");
 
     bar.innerHTML =
       `<span style="background:var(--kd-accent-2);color:var(--kd-text);padding:2px 6px;border-radius:4px;font-size:10px;">TOUR</span>` +
       `<span style="opacity:0.85;font-weight:400;" data-testid="tour-pos">Schritt ${pos + 1} / ${order.length}</span>` +
       `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-testid="tour-title">${currentTitle}</span>` +
       (prevHref
-        ? `<a href="${prevHref}" data-testid="tour-prev" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-primary);border-radius:4px;">← Zurück</a>`
+        ? `<a href="${esc(prevHref)}" data-testid="tour-prev" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-primary);border-radius:4px;">← Zurück</a>`
         : `<span data-testid="tour-prev" style="opacity:0.4;padding:4px 10px;">← Zurück</span>`) +
       (nextHref
-        ? `<a href="${nextHref}" data-testid="tour-next" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-primary);border-radius:4px;">Weiter →</a>`
+        ? `<a href="${esc(nextHref)}" data-testid="tour-next" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-primary);border-radius:4px;">Weiter →</a>`
         : `<span data-testid="tour-next" style="opacity:0.4;padding:4px 10px;">Weiter →</span>`) +
       `<a href="${sitemapHref}" data-testid="tour-exit" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-accent-1);border-radius:4px;">× Tour beenden</a>`;
     document.body.appendChild(bar);
