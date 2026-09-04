@@ -153,31 +153,62 @@ Target (I1-I4, siehe z. B. apo-hub/Makefile) lebt dagegen historisch
 handgepflegt im jeweiligen Adopter-Makefile — dort muss `klickdummy-i5`
 weiterhin manuell ergänzt werden, das Snippet holt das nicht automatisch nach.
 
-### Tailwind-Klickdummies (v1.40, dev-hub#320 Welle 4)
+### Tailwind-Klickdummies (v1.41, dev-hub#320 Welle 4)
 
 Manche Repos (z. B. risk-hub, 24 Klickdummies) nutzen einen **vendorten**
 `_shared/tailwind.js` (Play-CDN-Build, lokal, kein CDN-Zugriff zur Laufzeit)
 mit Tailwind-Utility-Farbklassen (`bg-indigo-700` etc.). Regel 2 verbietet
 das grundsätzlich (Farben nur aus `var(--kd-*)`) — statt die Regel
 aufzuweichen, mappt `snippets/_shared/tailwind-tokens.js` jede
-Tailwind-Farbfamilie auf ein `var(--kd-*)`-Token (Marken-Familien →
-`--kd-primary`/`-dark`/`--kd-accent-1`, Grau-Familien → `--kd-bg-light`/
-`-zebra`/`--kd-border`/`-line`/`--kd-text`/`-muted`, Status-Familien →
-`--kd-success`/`-warning`/`-danger`/`-info` mit CSS-Fallback auf ein
-Kern-Token, s. Kopf-Kommentar der Datei für die volle Tabelle).
+Tailwind-Farbfamilie auf ein `var(--kd-*)`-Token, mit je DREI Shade-Bändern
+(hell/mittel/dunkel statt eines einzigen Kern-Tokens — Fix für
+iilgmbh/iil-klickdummy#238: sonst wird z. B. `bg-amber-100 text-amber-800`
+Text-auf-gleicher-Farbe):
 
-Einbindung: `_shared/tailwind-tokens.js` **vor** `_shared/tailwind.js` laden
-(Tailwind Play-CDN liest `window.tailwind.config` beim Laden):
+| Familie | 50–200 (hell) | 300–500 (mittel) | 600–950 (dunkel) |
+|---|---|---|---|
+| Marken (indigo, blue, violet, purple, fuchsia, pink, teal, **orange**) | `--kd-bg-light` | `--kd-accent-1` | `--kd-primary` |
+| Grau (slate, gray, zinc, neutral, stone) | `--kd-bg-light`/`-zebra` | `--kd-border`/`-line` | `--kd-text`/`-muted` |
+| Erfolg (green, emerald, lime) | `--kd-success-bg` | `--kd-success` | `--kd-success-dark` |
+| Warnung (yellow, amber) | `--kd-warning-bg` | `--kd-warning` | `--kd-warning-dark` |
+| Fehler (red, rose) | `--kd-danger-bg` | `--kd-danger` | `--kd-danger-dark` |
+| Info (cyan, sky) | `--kd-info-bg` | `--kd-info` | `--kd-info-dark` |
+
+Status-Tokens haben eine CSS-Fallback-Kette auf ein garantiert vorhandenes
+Kern-Token (`--kd-bg-light`/`--kd-text`/`--kd-accent-1`/`-2`/`--kd-primary-dark`),
+falls das Profil das optionale `-bg`/`-dark`-Token nicht liefert. **`orange`
+zählt bewusst als Marken-Familie, nicht als Warnfarbe** — sonst landen KDs,
+die Orange als Hauptfarbe nutzen, komplett in `--kd-warning`. Volle Tabelle
+inkl. Begründung: Kopf-Kommentar der Datei.
+
+Einbindung — Reihenfolge zu `_shared/tailwind.js` ist seit v1.41.0 EGAL
+(iilgmbh/iil-klickdummy#241, s. u.), empfohlen bleibt trotzdem "davor" für
+Lesbarkeit im Markup:
 
 ```html
 <script src="_shared/tailwind-tokens.js"></script>
 <script src="_shared/tailwind.js"></script>
 ```
 
+**Laufzeit-Wirksamkeit (#241):** empirisch gegen den echten Play CDN
+geprüft (cdn.tailwindcss.com, 3.4.17) — ein `window.tailwind.config`, das
+VOR dem Laden von `tailwind.js` gesetzt wird, verwirft `tailwind.js` beim
+eigenen Bootstrap vollständig; nur eine Zuweisung an `tailwind.config`
+NACH dem Laden löst den offiziell unterstützten Re-Build aus. Die bis
+v1.41.0 dokumentierte Reihenfolge war damit für einen frisch vom Play CDN
+vendorten `tailwind.js` wirkungslos. `tailwind-tokens.js` wendet die Config
+seit v1.41.0 deshalb selbst nach dem Laden erneut an: primär über einen
+`load`-Listener auf dem `<script src=".../tailwind.js">`-Geschwisterelement
+(gefunden über `document.currentScript`, kein Polling nötig), mit einem auf
+~2s gedeckelten Polling-Fallback (Erkennungsmerkmal
+`window.tailwind.resolveConfig`) plus `console.warn`, falls auch das
+ausbleibt — das deckt beide Ladereihenfolgen ab.
+
 `klickdummy-i5` erkennt ein vorhandenes `_shared/tailwind-tokens.js` und
 prüft: (a) ist jede im Baum tatsächlich verwendete Farbfamilie darin
-gemappt — fehlt eine, Fehler mit Familienname; (b) lädt jede HTML-Datei mit
-Tailwind-Farbklassen das Mapping vor `tailwind.js` — sonst Fehler „Mapping
+gemappt — fehlt eine, Fehler mit Familienname; (b) bindet jede HTML-Datei
+mit Tailwind-Farbklassen das Mapping überhaupt ein (Reihenfolge zu
+`tailwind.js` seit #241 egal) — fehlt die Einbindung ganz, Fehler „Mapping
 nicht geladen: <datei>". Sind beide Bedingungen erfüllt, gelten
 Tailwind-Farbklassen als token-gemappt (Info-Zeile „Regel 2:
 Tailwind-Klassen token-gemappt (N Familien)" statt Fehlerliste). Ohne

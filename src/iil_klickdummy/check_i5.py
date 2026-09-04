@@ -30,9 +30,12 @@ Vier Regeln:
       Tailwind-Farbklassen als token-gemappt — kein Fehler, stattdessen eine
       Info-Zeile. Fehlt eine verwendete Familie im Mapping → Fehler mit
       Familienname. Zusätzlich muss jede HTML-Datei mit Tailwind-Farbklassen,
-      die `tailwind.js` einbindet, `tailwind-tokens.js` VOR `tailwind.js`
-      laden (Tailwind Play-CDN liest `window.tailwind.config` beim Laden) —
-      sonst Fehler „Mapping nicht geladen: <datei>". Ohne `tailwind-tokens.js`
+      die `tailwind.js` einbindet, `tailwind-tokens.js` IRGENDWO einbinden
+      (Reihenfolge zu `tailwind.js` ist seit iilgmbh/iil-klickdummy#241 EGAL —
+      das Snippet wirkt seither in beiden Reihenfolgen per `load`-Event +
+      gedeckeltem Polling-Fallback, s. Kopf-Kommentar dort; „davor" reichte
+      beim echten Play CDN nachweislich NICHT, s. #241) — fehlt die Einbindung
+      ganz, Fehler „Mapping nicht geladen: <datei>". Ohne `tailwind-tokens.js`
       im Baum bleibt Regel 2 wie bisher: jede Klasse ein Fehler.
   (3) liegt `_shared/kd-nav.js` vor, muss `_shared/tokens.css` daneben
       existieren — sonst injiziert `kd-nav.js` beim ersten Aufruf einen toten
@@ -177,7 +180,7 @@ def check_html_file(
 
     `suppress_tailwind`: Regel-2-Ausnahme (Welle 4) greift für diesen Wurzel-
     baum — Tailwind-Farbklassen werden hier NICHT als Fund gemeldet (die
-    Familien-Abdeckung + Script-Reihenfolge wird separat in `main()` je Root/
+    Familien-Abdeckung + Mapping-Einbindung wird separat in `main()` je Root/
     Datei geprüft, s. `_find_tailwind_tokens_mapping`)."""
     findings: list[tuple[int, str]] = []
     try:
@@ -225,13 +228,20 @@ def _mapped_tailwind_families(tokens_js_text: str) -> set[str]:
 
 
 def _tailwind_script_order_ok(text: str) -> bool:
-    """`tailwind-tokens.js` muss als <script src> VOR `tailwind.js` stehen
-    (Tailwind Play-CDN liest `window.tailwind.config` beim Laden)."""
+    """`tailwind-tokens.js` muss als <script src> IRGENDWO im Dokument stehen,
+    wenn `tailwind.js` eingebunden wird — die Reihenfolge zueinander ist seit
+    iilgmbh/iil-klickdummy#241 EGAL. Empirisch am echten Play CDN geprüft:
+    ein vorab gesetztes `window.tailwind.config` wird beim Bootstrap von
+    `tailwind.js` verworfen, `tailwind-tokens.js` (ab 1.41.0) wendet die
+    Config deshalb selbst per `load`-Event + gedeckeltem Polling-Fallback
+    erneut an, sobald `tailwind.js` fertig geladen ist — unabhängig davon,
+    in welcher Reihenfolge die beiden <script>-Tags stehen. Name der
+    Funktion bewusst beibehalten (nur noch Existenz- statt Reihenfolge-
+    Prüfung), um den Diff in `main()` klein zu halten."""
     m_tw = _TAILWIND_JS_SCRIPT_RE.search(text)
     if not m_tw:
         return True  # Datei bindet tailwind.js gar nicht ein — nichts zu prüfen
-    m_tokens = _TAILWIND_TOKENS_JS_SCRIPT_RE.search(text)
-    return bool(m_tokens) and m_tokens.start() < m_tw.start()
+    return bool(_TAILWIND_TOKENS_JS_SCRIPT_RE.search(text))
 
 
 def _is_hex_exempt(path: pathlib.Path) -> bool:
