@@ -5,6 +5,30 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.39.0] - 2026-09-04
+
+### Added
+
+- **`klickdummy-i5`: Regel (4) „Farben nur aus Tokens" — Hex-Farbwerte
+  gegated (iilgmbh/iil-klickdummy#232, dev-hub#320 Welle 3).** `check_i5.py`
+  prüft jetzt zusätzlich alle `*.css`/`*.js` (neben `*.html`) unter den
+  übergebenen Klickdummy-Verzeichnissen auf literale Hex-Farbwerte
+  (`#abc`, `#a1b2c3`, optional `#a1b2c3d4`) — außer in `_shared/tokens.css`,
+  `_shared/semantic.css`, `assets/tokens.css`, `assets/semantic.css` (dort
+  ist der Hex-Wert die Quelle). Die Meldung nennt je Datei die Trefferanzahl,
+  damit ein Repo den Umbau planen kann — gedacht für die Welle-3-Shells
+  (eigene Klickdummy-Shells in 11 Repos, 10–55 Hex-Treffer je Datei).
+  Issue-Referenzen (`#320`) und CSS-Anker (`#fb-fab`) lösen bewusst keinen
+  Treffer aus: 3-stellige Hex-Kandidaten brauchen mindestens einen
+  a-f-Buchstaben, 6-/8-stellige zählen immer (Issue-Nummern sind ≤ 4
+  Ziffern), ein Bindestrich (`#fb-fab`) bricht die Hex-Ziffernfolge ohnehin.
+  `sitemap/index.html` bettet `tokens.css` roh als ersten `<style>`-Block
+  ein — statt die ganze Datei auszunehmen (das würde eine von Hand gesetzte
+  Farbe im selben File nie fangen), wird nur der EINE `<style>`-Block
+  ausgeblendet, dessen Inhalt mit der Generator-Kopfzeile beginnt
+  (`/* tokens.css — generiert aus design-hub-Profil`); der Rest der Datei
+  bleibt im Scan.
+
 ## [1.38.0] - 2026-09-04
 
 ### Added

@@ -33,7 +33,8 @@ klickdummy-i2 <spec>:<schema> ...          # 4-Pattern (strict-mode)
 klickdummy-i3 <spec>:<schema> ...          # Off-Ramp + Sunset
 klickdummy-i4 docs/                        # Cross-Repo-Ref-Format
 klickdummy-i5 klickdummy [...]             # Laufzeit-Gate: kein CDN, keine Tailwind-Farbklassen,
-                                           #   tokens.css neben kd-nav.js (v1.38, Issue #232)
+                                           #   tokens.css neben kd-nav.js (v1.38, Issue #232),
+                                           #   keine Hex-Farben außerhalb Tokens (v1.39, dev-hub#320)
 klickdummy-extract-requirements <spec>     # Spec → UC/FR/NFR/Lasten/Pflicht
 klickdummy-gen-e2e <spec> [--output <dir>] [--strict-selectors]
                                            # Spec → ausführbare Playwright/pytest-Parity-Suite
@@ -112,18 +113,33 @@ optionalen `--kd-success/-warning/-danger/-info` (aus `colours.success/
 warning/danger/info` im design-hub-Profil, `gen_tokens.py` rendert jeden
 `colours`-Key generisch) bleiben dafür ungenutzt.
 
-## I5 — Laufzeit-Gate: kein CDN, keine Tailwind-Farbklassen (v1.38, Issue #232)
+## I5 — Laufzeit-Gate: kein CDN, keine Tailwind-Farbklassen, keine Hex-Farben (v1.39, Issue #232, dev-hub#320 Welle 3)
 
 ```bash
 klickdummy-i5 klickdummy [klickdummy/mod2 ...]
 ```
 
 Prüft alle `*.html` unter den übergebenen Klickdummy-Verzeichnissen
-(inkl. `sitemap/`, ohne `dist/`, `_archiv/`, `archive/`):
+(inkl. `sitemap/`, ohne `dist/`, `_archiv/`, `archive/`); Regel (4) prüft
+zusätzlich `*.css`/`*.js`:
 
 1. kein `<script src="http(s)://...">` / `<link href="http(s)://...">` (CDN)
 2. keine Tailwind-Farb-Utility-Klassen (`text-blue-600` etc.)
 3. liegt `_shared/kd-nav.js` vor, muss `_shared/tokens.css` daneben existieren
+4. **Farben nur aus Tokens (v1.39):** kein literaler Hex-Farbwert
+   (`#abc`, `#a1b2c3`, optional `#a1b2c3d4`) in `*.html`/`*.css`/`*.js` —
+   außer in `_shared/tokens.css`, `_shared/semantic.css`,
+   `assets/tokens.css`, `assets/semantic.css` (Datei-Ausnahme: dort ist der
+   Hex-Wert die Quelle). `sitemap/index.html` bettet `tokens.css` roh als
+   ersten `<style>`-Block ein — statt die ganze Datei auszunehmen (das würde
+   eine von Hand gesetzte Farbe im selben File nie fangen), wird nur der
+   EINE `<style>`-Block ausgeblendet, dessen Inhalt mit der
+   Generator-Kopfzeile beginnt (`/* tokens.css — generiert aus
+   design-hub-Profil`); der Rest der Datei bleibt im Scan. Gedacht für die
+   Welle-3-Shells (eigene Klickdummy-Shells in 11 Repos, dev-hub#320): die
+   Meldung nennt je Datei die Trefferanzahl, damit ein Repo den Umbau auf
+   Tokens planen kann. Issue-Referenzen (`#320`) und CSS-Anker (`#fb-fab`)
+   lösen bewusst keinen Treffer aus.
 
 Rollout: `snippets/gates.mk` definiert das Target `klickdummy-i5` (verteilt
 über `klickdummy-install-snippets`); der reusable Workflow
