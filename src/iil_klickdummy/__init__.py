@@ -1,7 +1,7 @@
 """iil-klickdummy — shared infrastructure for platform:ADR-211 Rev 14.
 
 Public surface:
-    check_i1, check_i2, check_i3, check_i4 — invariant checks
+    check_i1, check_i2, check_i3, check_i4, check_i5 — invariant checks
     extract_requirements                    — Spec → UC/FR/NFR/Lasten/Pflicht
     gen_e2e                                 — Spec → ausführbare E2E-Parity-Suite (v1.6, Keystone)
     inventory                               — S11 Cross-Repo Legacy-Inventur
@@ -33,6 +33,7 @@ from . import (  # noqa: F401
     check_i2,
     check_i3,
     check_i4,
+    check_i5,
     extract_requirements,
     gen_e2e,
     inventory,

@@ -20,6 +20,24 @@
  *   - prev/next halten ?tour=1 am href; "Tour beenden" entfernt es
  *
  * Konvention: keine externe Library; nur natives DOM.
+ *
+ * Farben (dev-hub#320 Welle 3, iilgmbh/iil-klickdummy#232): ausschließlich
+ * `var(--kd-*)`-Tokens aus `_shared/tokens.css` (siehe gen_tokens.py) — keine
+ * Hex-Literale. Keine der hier verbauten Farben ist ein echter Ampel-/Status-
+ * wert (kein Pass/Fail-Indikator); es sind reine Navigations-Chrome-Akzente,
+ * daher genügen die Kern-Tokens (--kd-primary/-dark, --kd-text/-muted,
+ * --kd-bg-light, --kd-accent-1/-2) — die optionalen --kd-success/-warning/
+ * -danger/-info (gen_tokens.py, falls im Profil vorhanden) werden hier
+ * bewusst NICHT gebraucht.
+ *
+ * Beim Start prüft das Skript, ob `--kd-primary` bereits auf `:root`
+ * definiert ist. Wenn nicht (Host-Seite bindet `tokens.css` nicht selbst
+ * ein), lädt es `tokens.css` relativ zum EIGENEN Skriptpfad nach
+ * (`document.currentScript.src`, nicht die rohe `data-sitemap`-Relativ-
+ * Logik oben — ein <link> im <head> löst relative Pfade gegen die Basis-URL
+ * des Dokuments auf, nicht gegen den Skript-Pfad). Bewusst KEIN Hex-Fallback:
+ * fehlt `tokens.css` neben `kd-nav.js`, bleibt die Chrome ungestylt (sichtbar)
+ * statt geraten — I5 (`klickdummy-i5`) prüft genau das als Laufzeit-Gate.
  */
 (function () {
   "use strict";
@@ -34,6 +52,32 @@
     return src.replace(/kd-nav\.js$/, "");
   })();
   const treeJsUrl = sharedDir + "kd-tree.js";
+
+  // --- tokens.css sicherstellen (dev-hub#320 Welle 3) ---
+  // `sharedDir` (oben) bleibt bewusst die ROHE, relative data-sitemap-Logik
+  // für treeJsUrl/sitemapHref. Für den <link>-Nachlade-Fall hier brauchen wir
+  // dagegen die vom Browser AUFGELÖSTE Skript-URL (`script.src`, nicht
+  // `getAttribute("src")`) — ein <link href="..."> im <head> löst relative
+  // Pfade gegen die Basis-URL des Dokuments auf, nicht gegen den Pfad des
+  // <script>-Tags, das es eingebunden hat.
+  function ensureTokensCss() {
+    let alreadyDefined = false;
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(
+        "--kd-primary"
+      );
+      alreadyDefined = !!(v && v.trim());
+    } catch (_e) {
+      alreadyDefined = false;
+    }
+    if (alreadyDefined) return;
+    const resolvedSrc = script.src || script.getAttribute("src") || "";
+    const scriptDir = resolvedSrc.replace(/kd-nav\.js(?:[?#].*)?$/, "");
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = scriptDir + "tokens.css";
+    document.head.appendChild(link);
+  }
 
   const isTour = (function () {
     try {
@@ -55,15 +99,21 @@
       "right:8px",
       "z-index:9999",
       "padding:4px 10px",
-      "background:#1f2937",
-      "color:#fff",
+      "background:var(--kd-text)",
+      "color:var(--kd-bg-light)",
       "border-radius:6px",
       "text-decoration:none",
-      "font:600 11px/1.2 system-ui,sans-serif",
+      "font:600 11px/1.2 var(--kd-font-primary, system-ui, sans-serif)",
       "box-shadow:0 1px 3px rgba(0,0,0,0.2)",
     ].join(";");
-    a.addEventListener("mouseenter", () => (a.style.background = "#374151"));
-    a.addEventListener("mouseleave", () => (a.style.background = "#1f2937"));
+    a.addEventListener(
+      "mouseenter",
+      () => (a.style.background = "var(--kd-text-muted)")
+    );
+    a.addEventListener(
+      "mouseleave",
+      () => (a.style.background = "var(--kd-text)")
+    );
     document.body.appendChild(a);
   }
 
@@ -79,12 +129,12 @@
       "right:110px",
       "z-index:9999",
       "padding:4px 10px",
-      "background:#4b5563",
-      "color:#fff",
+      "background:var(--kd-text-muted)",
+      "color:var(--kd-bg-light)",
       "border:0",
       "border-radius:6px",
       "cursor:pointer",
-      "font:600 11px/1.2 system-ui,sans-serif",
+      "font:600 11px/1.2 var(--kd-font-primary, system-ui, sans-serif)",
       "box-shadow:0 1px 3px rgba(0,0,0,0.2)",
     ].join(";");
     b.addEventListener("click", () => window.history.back());
@@ -126,12 +176,12 @@
       "bottom:0",
       "z-index:9998",
       "padding:8px 16px",
-      "background:#312e81",
-      "color:#fff",
+      "background:var(--kd-primary-dark)",
+      "color:var(--kd-bg-light)",
       "display:flex",
       "align-items:center",
       "gap:12px",
-      "font:600 12px/1.4 system-ui,sans-serif",
+      "font:600 12px/1.4 var(--kd-font-primary, system-ui, sans-serif)",
       "box-shadow:0 -2px 8px rgba(0,0,0,0.25)",
     ].join(";");
 
@@ -140,16 +190,16 @@
     const currentTitle = (nodes[specId] && nodes[specId].title) || specId || "(unbekannt)";
 
     bar.innerHTML =
-      `<span style="background:#fbbf24;color:#1f2937;padding:2px 6px;border-radius:4px;font-size:10px;">TOUR</span>` +
+      `<span style="background:var(--kd-accent-2);color:var(--kd-text);padding:2px 6px;border-radius:4px;font-size:10px;">TOUR</span>` +
       `<span style="opacity:0.85;font-weight:400;" data-testid="tour-pos">Schritt ${pos + 1} / ${order.length}</span>` +
       `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-testid="tour-title">${currentTitle}</span>` +
       (prevHref
-        ? `<a href="${prevHref}" data-testid="tour-prev" style="color:#fff;text-decoration:none;padding:4px 10px;background:#4338ca;border-radius:4px;">← Zurück</a>`
+        ? `<a href="${prevHref}" data-testid="tour-prev" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-primary);border-radius:4px;">← Zurück</a>`
         : `<span data-testid="tour-prev" style="opacity:0.4;padding:4px 10px;">← Zurück</span>`) +
       (nextHref
-        ? `<a href="${nextHref}" data-testid="tour-next" style="color:#fff;text-decoration:none;padding:4px 10px;background:#4338ca;border-radius:4px;">Weiter →</a>`
+        ? `<a href="${nextHref}" data-testid="tour-next" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-primary);border-radius:4px;">Weiter →</a>`
         : `<span data-testid="tour-next" style="opacity:0.4;padding:4px 10px;">Weiter →</span>`) +
-      `<a href="${sitemapHref}" data-testid="tour-exit" style="color:#fff;text-decoration:none;padding:4px 10px;background:#dc2626;border-radius:4px;">× Tour beenden</a>`;
+      `<a href="${sitemapHref}" data-testid="tour-exit" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-accent-1);border-radius:4px;">× Tour beenden</a>`;
     document.body.appendChild(bar);
 
     // Body etwas Luft am Fuß geben, damit der Footer nichts überdeckt
@@ -170,6 +220,7 @@
   }
 
   function init() {
+    ensureTokensCss();
     injectHauptmenu();
     injectBackButton();
     if (isTour) {

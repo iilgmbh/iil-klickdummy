@@ -53,6 +53,29 @@ def test_should_render_font_primary_line_exactly_as_specified():
     assert '--kd-font-mono: "JetBrains Mono", monospace;' in css
 
 
+def test_should_emit_optional_status_colours_when_present_in_profile():
+    """dev-hub#320 Welle 3: colours.success/warning/danger/info sind KEIN
+    Pflichtschlüssel und haben keine feste Sonderbehandlung im Generator
+    (_colour_lines rendert generisch jeden Key) — legt ein Profil sie an,
+    tauchen sie 1:1 als --kd-success etc. auf; kd-nav.js selbst braucht sie
+    aktuell nicht (nur Kern-Tokens, s. Snippet-Kommentar)."""
+    profile = _load_fixture()
+    profile["colours"]["success"] = "#22C55E"
+    profile["colours"]["danger"] = "#DC2626"
+    css = generate(profile, generator_version="1.38.0")
+    assert "--kd-success: #22C55E;" in css
+    assert "--kd-danger: #DC2626;" in css
+
+
+def test_should_omit_optional_status_colours_when_absent_from_profile():
+    profile = _load_fixture()
+    css = generate(profile, generator_version="1.38.0")
+    assert "--kd-success" not in css
+    assert "--kd-warning" not in css
+    assert "--kd-danger" not in css
+    assert "--kd-info" not in css
+
+
 def test_should_raise_on_missing_required_key():
     profile = _load_fixture()
     del profile["colours"]["text"]

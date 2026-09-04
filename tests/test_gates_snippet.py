@@ -102,6 +102,7 @@ def test_gates_mk_declares_expected_targets():
         "klickdummy-parity-drift",
         "klickdummy-sitemap",
         "klickdummy-sitemap-drift",
+        "klickdummy-i5",
     ):
         assert f"{target}:" in text, f"Target {target} fehlt in gates.mk"
 
@@ -193,6 +194,11 @@ def test_make_dry_run_parses_klickdummy_sitemap_drift(tmp_path):
     _run_make_dry_run(tmp_path, "klickdummy-sitemap-drift")
 
 
+def test_make_dry_run_parses_klickdummy_i5(tmp_path):
+    out = _run_make_dry_run(tmp_path, "klickdummy-i5")
+    assert "klickdummy-i5 klickdummy" in out
+
+
 # ------------------------------------------------------- reusable workflow (YAML)
 
 
@@ -221,6 +227,17 @@ def test_workflow_does_not_hardcode_self_hosted_runner():
     assert (
         doc[on_key]["workflow_call"]["inputs"]["runs_on"]["default"] == "ubuntu-latest"
     )
+
+
+def test_workflow_runs_klickdummy_i5_step():
+    """dev-hub#320 Welle 3 (Issue #232): I5 läuft automatisch mit, sobald ein
+    Adopter diesen reusable Workflow @main referenziert — kein lokaler
+    Makefile-Edit nötig (im Gegensatz zum lokalen `klickdummy:` I1-I4
+    Composite-Target, das je Repo handgepflegt bleibt)."""
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = doc["jobs"]["klickdummy-parity-drift"]["steps"]
+    runs = [s.get("run", "") for s in steps]
+    assert any("klickdummy-i5" in r for r in runs)
 
 
 # ------------------------------------------------------- caller snippet

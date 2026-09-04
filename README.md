@@ -1,7 +1,7 @@
 # `iil-klickdummy` — Shared Infrastructure for `platform:ADR-211` (Rev 22)
 
 > Versioniertes pip-Paket mit allem, was Klickdummy-Konformität braucht:
-> Schemas, Konformitäts-Checks (I1–I4), Requirements-Bridge, S11-Inventur,
+> Schemas, Konformitäts-Checks (I1–I5), Requirements-Bridge, S11-Inventur,
 > Feedback-Widget v0.5 (Co-Creation-Loop, GitHub-Direkt-API) **und** ab v1.1
 > einen Multi-Klickdummy-Browser mit Versions-Switcher.
 
@@ -32,6 +32,8 @@ klickdummy-i1 <spec>:<schema> ...          # Spec ↔ Route Coverage
 klickdummy-i2 <spec>:<schema> ...          # 4-Pattern (strict-mode)
 klickdummy-i3 <spec>:<schema> ...          # Off-Ramp + Sunset
 klickdummy-i4 docs/                        # Cross-Repo-Ref-Format
+klickdummy-i5 klickdummy [...]             # Laufzeit-Gate: kein CDN, keine Tailwind-Farbklassen,
+                                           #   tokens.css neben kd-nav.js (v1.38, Issue #232)
 klickdummy-extract-requirements <spec>     # Spec → UC/FR/NFR/Lasten/Pflicht
 klickdummy-gen-e2e <spec> [--output <dir>] [--strict-selectors]
                                            # Spec → ausführbare Playwright/pytest-Parity-Suite
@@ -96,6 +98,41 @@ Browser-side, opt-in via `?feedback=on`. Submit-Modes:
 <script src="platform-snippets/klickdummy/feedback-widget/widget.js" defer></script>
 ```
 
+## kd-nav.js — Tokens statt Hex (v1.38, dev-hub#320 Welle 3)
+
+`_shared/kd-nav.js` (Hauptmenü-Button, Zurück-Button, Tour-Footer) verwendet
+ausschließlich `var(--kd-*)`-Tokens, keine Hex-Literale. Beim Start prüft es,
+ob `--kd-primary` bereits auf `:root` definiert ist (`getComputedStyle`);
+falls nicht, lädt es `_shared/tokens.css` relativ zum eigenen, vom Browser
+aufgelösten Skriptpfad (`document.currentScript.src`) nach. Bewusst KEIN
+Hex-Fallback — fehlt `tokens.css`, bleibt die Chrome sichtbar ungestylt statt
+geraten; `klickdummy-i5` prüft das als Laufzeit-Gate (siehe unten). Keine
+Ampel-/Statusfarbe wird gebraucht (reines Navigations-Chrome) — die
+optionalen `--kd-success/-warning/-danger/-info` (aus `colours.success/
+warning/danger/info` im design-hub-Profil, `gen_tokens.py` rendert jeden
+`colours`-Key generisch) bleiben dafür ungenutzt.
+
+## I5 — Laufzeit-Gate: kein CDN, keine Tailwind-Farbklassen (v1.38, Issue #232)
+
+```bash
+klickdummy-i5 klickdummy [klickdummy/mod2 ...]
+```
+
+Prüft alle `*.html` unter den übergebenen Klickdummy-Verzeichnissen
+(inkl. `sitemap/`, ohne `dist/`, `_archiv/`, `archive/`):
+
+1. kein `<script src="http(s)://...">` / `<link href="http(s)://...">` (CDN)
+2. keine Tailwind-Farb-Utility-Klassen (`text-blue-600` etc.)
+3. liegt `_shared/kd-nav.js` vor, muss `_shared/tokens.css` daneben existieren
+
+Rollout: `snippets/gates.mk` definiert das Target `klickdummy-i5` (verteilt
+über `klickdummy-install-snippets`); der reusable Workflow
+`klickdummy-parity-gate.yml@main` ruft `make klickdummy-i5` automatisch mit
+auf, sobald ein Repo ihn referenziert. Der lokale `klickdummy:`-Composite-
+Target (I1-I4, siehe z. B. apo-hub/Makefile) lebt dagegen historisch
+handgepflegt im jeweiligen Adopter-Makefile — dort muss `klickdummy-i5`
+weiterhin manuell ergänzt werden, das Snippet holt das nicht automatisch nach.
+
 ## Schemas (importlib.resources)
 
 ```python
@@ -109,6 +146,7 @@ schema = json.loads(files("iil_klickdummy.schemas").joinpath("screens-spec.schem
 - `platform:ADR-211` (aktuell Rev 22) — Konvention + Distribution + Co-Creation-Pfade (seit Rev 13)
 - `platform:ADR-212` — Traefik-Ingress (für künftige PyPI-Selbsthost)
 - `platform:ADR-213` — Cross-Repo-Ref-Format (was `klickdummy-i4` prüft)
+- `achimdehnert/dev-hub#320` (Welle 3) / `iilgmbh/iil-klickdummy#232` — `klickdummy-i5` Laufzeit-Gate + kd-nav.js auf Tokens
 
 ## v1.2 — klickdummy-sync (Stufe 2)
 
