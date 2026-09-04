@@ -3,30 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // dev-hub#320 Welle 3 Teil 3 (iilgmbh/iil-klickdummy#232/#233-Analogie):
+  // (a) tokens.css nachladen wie kd-nav.js, wenn --kd-primary noch nicht auf
+  //     :root definiert ist — relativer Pfad "_shared/tokens.css" (Konvention
+  //     wie kd-nav.js/check_i5.py). Anders als kd-nav.js (Skript in einem
+  //     Host-Dokument) braucht diese Seite selbst keine Skript-Pfad-Auflösung
+  //     — sie IST das Dokument, ein relativer <link>-href löst schon gegen
+  //     ihre eigene Basis-URL auf. Bewusst KEIN Hex-Fallback: fehlt die Datei,
+  //     bleibt die Chrome ungestylt statt geraten.
+  // (b) [data-theme="dark"] auf <html> setzen, wenn die OS-Präferenz dunkel
+  //     ist — ersetzt den vorherigen hartkodierten `@media (prefers-color-
+  //     scheme: dark)`-Hex-Block; tokens.css liefert (falls vom Profil per
+  //     `colours_dark` unterstützt, siehe gen_tokens.py) selbst einen
+  //     `[data-theme="dark"]`-Block. Fehlt der im Profil, bleibt es beim
+  //     Hell-Layout — kein zweiter Hex-Quellcode hier.
+  (function () {
+    try {
+      var v = getComputedStyle(document.documentElement).getPropertyValue('--kd-primary');
+      if (!v || !v.trim()) {
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '_shared/tokens.css';
+        document.head.appendChild(link);
+      }
+    } catch (e) { /* Chrome bleibt ungestylt statt geraten */ }
+    try {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var applyTheme = function () { document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light'; };
+      applyTheme();
+      if (mq.addEventListener) mq.addEventListener('change', applyTheme);
+      else if (mq.addListener) mq.addListener(applyTheme);
+    } catch (e) { /* matchMedia nicht verfügbar — Hell-Theme bleibt aktiv */ }
+  })();
+</script>
 <title>Klickdummy-Browser · __REPO_LABEL__</title>
 <style>
   :root {
     /* Zwei-Layer-Token-System (platform:ADR-049) — lokale --pui-*-Bridge, keine
-       shared UI-Lib (ADR-200 paused). Ersetzt hartkodierte Hex-Farben (AP-007). */
-    --pui-primary:   #1a3a6c;
-    --pui-surface:   #f8fafc;
-    --pui-surface-2: #ffffff;
-    --pui-border:    #d8e0e8;
-    --pui-muted:     #6a7888;
-    --pui-success:   #22c55e;
+       shared UI-Lib (ADR-200 paused). Werte kommen seit dev-hub#320 Welle 3
+       Teil 3 aus `var(--kd-*)`-Tokens (tokens.css, gen_tokens.py) statt aus
+       Hex-Literalen (AP-007) — Kern-Tokens ohne Fallback (Konvention wie
+       kd-nav.js), optionale Tokens mit Fallback-Kette auf ein Kern-Token. */
+    --pui-primary:   var(--kd-primary);
+    --pui-surface:   var(--kd-zebra, var(--kd-bg-light));
+    --pui-surface-2: var(--kd-bg-light);
+    --pui-border:    var(--kd-border);
+    --pui-muted:     var(--kd-text-muted);
+    --pui-success:   var(--kd-success, var(--kd-accent-2));
     --pui-space-1: 4px;
     --pui-space-2: 8px;
     --pui-space-3: 12px;
     --pui-space-4: 16px;
     --pui-radius:   6px;
     --pui-radius-lg: 8px;
-    --pui-badge-mock-bg: #e0f2fe;      --pui-badge-mock-fg: #075985;
-    --pui-badge-stub-bg: #fef3c7;      --pui-badge-stub-fg: #92400e;
-    --pui-badge-story-bg: #f3e8ff;     --pui-badge-story-fg: #6b21a8;
-    --pui-badge-specdemo-bg: #dcfce7;  --pui-badge-specdemo-fg: #166534;
+    --pui-badge-mock-bg: var(--kd-info, var(--kd-accent-1));         --pui-badge-mock-fg: var(--kd-bg-light);
+    --pui-badge-stub-bg: var(--kd-warning, var(--kd-accent-1));      --pui-badge-stub-fg: var(--kd-text);
+    --pui-badge-story-bg: var(--kd-accent-2, var(--kd-accent-1));    --pui-badge-story-fg: var(--kd-bg-light);
+    --pui-badge-specdemo-bg: var(--kd-success, var(--kd-accent-2));  --pui-badge-specdemo-fg: var(--kd-bg-light);
     /* aktiver Stepper-Eintrag — vorher Inline-Hex im Selektor (AP-007-Rest) */
-    --pui-step-active-bg:     #e8eef8;
-    --pui-step-active-border: #c5d5ec;
+    --pui-step-active-bg:     var(--kd-zebra, var(--kd-bg-light));
+    --pui-step-active-border: var(--kd-primary);
   }
   *, *::before, *::after { box-sizing: border-box; }
   /* [hidden] robust durchsetzen — sonst überschreibt display:flex/block das
@@ -89,26 +126,15 @@
   }
 
   /* Dark Mode: nur die Token-Ebene wird umdefiniert — alle Regeln oben greifen
-     unverändert weiter (das ist der Zweck des --pui-*-Layers, ADR-049). */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --pui-primary:   #cfe0f7;
-      --pui-surface:   #131922;
-      --pui-surface-2: #1b2330;
-      --pui-border:    #2c3849;
-      --pui-muted:     #93a2b8;
-      --pui-badge-mock-bg: #0c3550;      --pui-badge-mock-fg: #bae6fd;
-      --pui-badge-stub-bg: #4a3208;      --pui-badge-stub-fg: #fde68a;
-      --pui-badge-story-bg: #3b1d5c;     --pui-badge-story-fg: #e9d5ff;
-      --pui-badge-specdemo-bg: #10381f;  --pui-badge-specdemo-fg: #bbf7d0;
-      --pui-step-active-bg:     #22304a;
-      --pui-step-active-border: #3a4d6d;
-    }
-    body { background: var(--pui-surface-2); }
-    /* Der aktive Modus-Button färbt Text mit --pui-surface-2 — im Dunkeln wäre
-       das Text auf Text. Hier explizit gegen die dunkle Fläche setzen. */
-    .mode-toggle button[aria-pressed="true"] { background: var(--pui-primary); color: var(--pui-surface); }
-  }
+     unverändert weiter (das ist der Zweck des --pui-*-Layers, ADR-049).
+     dev-hub#320 Welle 3 Teil 3: die `--kd-*`-Werte selbst kommen jetzt aus
+     tokens.css' `[data-theme="dark"]`-Block (gen_tokens.py `colours_dark`,
+     vom Bootstrap-Script oben anhand der OS-Präferenz gesetzt) — hier bleiben
+     nur die zwei strukturellen Regeln, die kein zweites Hex brauchen. */
+  [data-theme="dark"] body { background: var(--pui-surface-2); }
+  /* Der aktive Modus-Button färbt Text mit --pui-surface-2 — im Dunkeln wäre
+     das Text auf Text. Hier explizit gegen die dunkle Fläche setzen. */
+  [data-theme="dark"] .mode-toggle button[aria-pressed="true"] { background: var(--pui-primary); color: var(--pui-surface); }
 </style>
 </head>
 <body>

@@ -75,9 +75,11 @@ klickdummy-browser --output klickdummy-browser.html
 
 **Cross-Repo-Modus** (`--cross-repo --base ~/github`) ist v1.2-Roadmap.
 
-## Feedback-Widget (v0.5)
+## Feedback-Widget (v0.6, Tokens statt Hex seit dev-hub#320 Welle 3 Teil 3)
 
-Browser-side, opt-in via `?feedback=on`. Submit-Modes:
+Browser-side, opt-in via `?feedback=on`. Farben ausschließlich `var(--kd-*)`
+(kein Hex-Literal, wie `kd-nav.js`) — lädt `tokens.css` relativ zum eigenen
+Skriptpfad nach, wenn `--kd-primary` noch nicht definiert ist. Submit-Modes:
 
 | Mode | Was passiert |
 |---|---|
@@ -113,7 +115,7 @@ optionalen `--kd-success/-warning/-danger/-info` (aus `colours.success/
 warning/danger/info` im design-hub-Profil, `gen_tokens.py` rendert jeden
 `colours`-Key generisch) bleiben dafür ungenutzt.
 
-## I5 — Laufzeit-Gate: kein CDN, keine Tailwind-Farbklassen, keine Hex-Farben (v1.39, Issue #232, dev-hub#320 Welle 3)
+## I5 — Laufzeit-Gate: kein CDN, keine Tailwind-Farbklassen, keine Hex-Farben (v1.40, Issue #232, dev-hub#320 Welle 3/4)
 
 ```bash
 klickdummy-i5 klickdummy [klickdummy/mod2 ...]
@@ -124,7 +126,9 @@ Prüft alle `*.html` unter den übergebenen Klickdummy-Verzeichnissen
 zusätzlich `*.css`/`*.js`:
 
 1. kein `<script src="http(s)://...">` / `<link href="http(s)://...">` (CDN)
-2. keine Tailwind-Farb-Utility-Klassen (`text-blue-600` etc.)
+2. keine Tailwind-Farb-Utility-Klassen (`text-blue-600` etc.) — AUSNAHME
+   (v1.40, s. „Tailwind-Klickdummies" unten): token-gemapptes Tailwind via
+   `_shared/tailwind-tokens.js`.
 3. liegt `_shared/kd-nav.js` vor, muss `_shared/tokens.css` daneben existieren
 4. **Farben nur aus Tokens (v1.39):** kein literaler Hex-Farbwert
    (`#abc`, `#a1b2c3`, optional `#a1b2c3d4`) in `*.html`/`*.css`/`*.js` —
@@ -148,6 +152,37 @@ auf, sobald ein Repo ihn referenziert. Der lokale `klickdummy:`-Composite-
 Target (I1-I4, siehe z. B. apo-hub/Makefile) lebt dagegen historisch
 handgepflegt im jeweiligen Adopter-Makefile — dort muss `klickdummy-i5`
 weiterhin manuell ergänzt werden, das Snippet holt das nicht automatisch nach.
+
+### Tailwind-Klickdummies (v1.40, dev-hub#320 Welle 4)
+
+Manche Repos (z. B. risk-hub, 24 Klickdummies) nutzen einen **vendorten**
+`_shared/tailwind.js` (Play-CDN-Build, lokal, kein CDN-Zugriff zur Laufzeit)
+mit Tailwind-Utility-Farbklassen (`bg-indigo-700` etc.). Regel 2 verbietet
+das grundsätzlich (Farben nur aus `var(--kd-*)`) — statt die Regel
+aufzuweichen, mappt `snippets/_shared/tailwind-tokens.js` jede
+Tailwind-Farbfamilie auf ein `var(--kd-*)`-Token (Marken-Familien →
+`--kd-primary`/`-dark`/`--kd-accent-1`, Grau-Familien → `--kd-bg-light`/
+`-zebra`/`--kd-border`/`-line`/`--kd-text`/`-muted`, Status-Familien →
+`--kd-success`/`-warning`/`-danger`/`-info` mit CSS-Fallback auf ein
+Kern-Token, s. Kopf-Kommentar der Datei für die volle Tabelle).
+
+Einbindung: `_shared/tailwind-tokens.js` **vor** `_shared/tailwind.js` laden
+(Tailwind Play-CDN liest `window.tailwind.config` beim Laden):
+
+```html
+<script src="_shared/tailwind-tokens.js"></script>
+<script src="_shared/tailwind.js"></script>
+```
+
+`klickdummy-i5` erkennt ein vorhandenes `_shared/tailwind-tokens.js` und
+prüft: (a) ist jede im Baum tatsächlich verwendete Farbfamilie darin
+gemappt — fehlt eine, Fehler mit Familienname; (b) lädt jede HTML-Datei mit
+Tailwind-Farbklassen das Mapping vor `tailwind.js` — sonst Fehler „Mapping
+nicht geladen: <datei>". Sind beide Bedingungen erfüllt, gelten
+Tailwind-Farbklassen als token-gemappt (Info-Zeile „Regel 2:
+Tailwind-Klassen token-gemappt (N Familien)" statt Fehlerliste). Ohne
+`tailwind-tokens.js` im Baum bleibt Regel 2 unverändert: jede Klasse ein
+Fehler.
 
 ## Schemas (importlib.resources)
 
