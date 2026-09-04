@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 import pathlib
+import subprocess
 
+import pytest
 import yaml
 
 
@@ -584,3 +586,151 @@ def test_should_render_each_node_exactly_once_on_cycle_fallback(tmp_path):
 
     assert html.count('data-testid="row-acme-spec-a"') == 1
     assert html.count('data-testid="row-acme-spec-b"') == 1
+
+
+# --------------------------------------------------------------------------
+# Portal-Safety-Gate `kd_loss` (dms-hub, 2026-09-04): `klickdummy-gen-sitemap
+# . dms-hub:ADR-001` (kein 3. Arg, gates.mk-Aufruf mit unbesetzter
+# KLICKDUMMY_REPO_NAME) schrieb `spec_id: :klickdummy-spec-sitemap` — der
+# Repo-Teil war leer, weil `repo_root.name` bei `Path(".")` `""` ist.
+# `_resolve_repo_name()` ersetzt diesen einen Fallback durch eine Kette:
+# Argument > `git remote get-url origin` > `repo_root.resolve().name`, mit
+# Exit-2-Guard statt einer leeren/ungueltigen spec_id.
+# --------------------------------------------------------------------------
+
+
+def _init_git_repo_with_origin(repo_root: pathlib.Path, origin_url: str) -> None:
+    repo_root.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["git", "init", "-q"], cwd=repo_root, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", origin_url],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+    )
+
+
+def test_should_resolve_repo_name_from_git_remote_when_arg_missing(tmp_path):
+    """Fallback 1: `git remote get-url origin`, Basename ohne `.git`.
+
+    Verzeichnisname (`workdir`) weicht bewusst vom Remote-Basename
+    (`dms-hub`) ab — ein Session-Worktree ist genau so ein Fall: der
+    Ordnername ist der Worktree-Name, nicht der Repo-Name. Der Remote
+    gewinnt."""
+    from iil_klickdummy import gen_sitemap
+
+    repo_root = tmp_path / "workdir"
+    _init_git_repo_with_origin(repo_root, "https://github.com/meiki-lra/dms-hub.git")
+    kd_root = repo_root / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("dms-hub:klickdummy-spec-hub", "Hub"))
+
+    tree = gen_sitemap.generate(repo_root, adr_local="dms-hub:ADR-001")
+
+    assert tree["roots"] == ["dms-hub:klickdummy-spec-hub"]
+    spec = yaml.safe_load((kd_root / "sitemap" / "screens-spec.yaml").read_text())
+    assert spec["spec_id"] == "dms-hub:klickdummy-spec-sitemap"
+
+
+def test_should_prefer_explicit_repo_name_over_git_remote(tmp_path):
+    """Explizites Argument sticht den Remote-Fallback."""
+    from iil_klickdummy import gen_sitemap
+
+    repo_root = tmp_path / "workdir"
+    _init_git_repo_with_origin(repo_root, "https://github.com/meiki-lra/dms-hub.git")
+    kd_root = repo_root / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("custom:klickdummy-spec-hub", "Hub"))
+
+    tree = gen_sitemap.generate(
+        repo_root, adr_local="custom:ADR-001", repo_name="custom"
+    )
+
+    assert tree["roots"] == ["custom:klickdummy-spec-hub"]
+
+
+def test_should_fall_back_to_directory_name_without_git_remote(tmp_path):
+    """Fallback 2: kein Git-Repo/kein `origin` -> Verzeichnisname (bereits
+    von `test_generate_defaults_repo_name_to_directory_name` implizit
+    gedeckt; hier explizit als eigener Fallback-Fall benannt)."""
+    from iil_klickdummy import gen_sitemap
+
+    repo_root = tmp_path / "plain-dir"
+    kd_root = repo_root / "klickdummy"
+    _write_spec(kd_root, "hub", _root_spec("plain-dir:klickdummy-spec-hub", "Hub"))
+
+    tree = gen_sitemap.generate(repo_root, adr_local="plain-dir:ADR-001")
+
+    assert tree["roots"] == ["plain-dir:klickdummy-spec-hub"]
+    spec = yaml.safe_load((kd_root / "sitemap" / "screens-spec.yaml").read_text())
+    assert spec["spec_id"] == "plain-dir:klickdummy-spec-sitemap"
+
+
+def test_should_raise_repo_name_resolve_error_when_name_stays_empty(monkeypatch):
+    """Bleiben alle Fallbacks leer (kein Remote, `repo_root.resolve().name`
+    leer — reproduziert z.B. bei `repo_root == Path("/")`), bricht die
+    Auflösung mit `RepoNameResolveError` ab statt eine kaputte spec_id zu
+    schreiben."""
+    from iil_klickdummy import gen_sitemap
+
+    monkeypatch.setattr(
+        gen_sitemap, "_repo_name_from_git_remote", lambda repo_root: None
+    )
+
+    with pytest.raises(gen_sitemap.RepoNameResolveError):
+        gen_sitemap._resolve_repo_name(pathlib.Path("/"), None)
+
+
+def test_should_raise_repo_name_resolve_error_on_colon_in_name():
+    """Ein Repo-Name mit `:` wuerde eine mehrdeutige/kaputte spec_id
+    erzeugen (`<repo>` selbst enthaelt dann einen Doppelpunkt)."""
+    from iil_klickdummy import gen_sitemap
+
+    with pytest.raises(gen_sitemap.RepoNameResolveError):
+        gen_sitemap._resolve_repo_name(pathlib.Path("/tmp"), "dms:hub")
+
+
+def test_should_raise_repo_name_resolve_error_on_whitespace_in_name():
+    from iil_klickdummy import gen_sitemap
+
+    with pytest.raises(gen_sitemap.RepoNameResolveError):
+        gen_sitemap._resolve_repo_name(pathlib.Path("/tmp"), "dms hub")
+
+
+def test_generate_exits_2_via_cli_when_repo_name_cannot_be_resolved(
+    monkeypatch, capsys
+):
+    """CLI-Vertrag: `RepoNameResolveError` -> Exit 2 + `FEHLER:`-Meldung auf
+    stderr (analog `TokensResolveError`), NIE eine geschriebene Spec mit
+    leerer/ungueltiger spec_id."""
+    from iil_klickdummy import gen_sitemap
+
+    def _boom(repo_root, adr_local, repo_name=None, tokens_css=None):
+        raise gen_sitemap.RepoNameResolveError("Repo-Name leer oder ungueltig")
+
+    monkeypatch.setattr(gen_sitemap, "generate", _boom)
+    monkeypatch.setattr(
+        gen_sitemap,
+        "_resolve_tokens_css",
+        lambda *a, **k: "",
+    )
+
+    rc = gen_sitemap.main([".", "acme:ADR-001"])
+
+    assert rc == 2
+    assert "FEHLER" in capsys.readouterr().err
+
+
+def test_repo_name_from_git_remote_returns_none_outside_git_repo(tmp_path):
+    from iil_klickdummy import gen_sitemap
+
+    assert gen_sitemap._repo_name_from_git_remote(tmp_path) is None
+
+
+def test_repo_name_from_git_remote_strips_dot_git_suffix(tmp_path):
+    from iil_klickdummy import gen_sitemap
+
+    repo_root = tmp_path / "repo"
+    _init_git_repo_with_origin(repo_root, "git@github.com:meiki-lra/frist-hub.git")
+
+    assert gen_sitemap._repo_name_from_git_remote(repo_root) == "frist-hub"
