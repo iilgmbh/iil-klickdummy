@@ -49,6 +49,9 @@ klickdummy-sync                            # Klickdummy-Meta → pgvector-Orches
 klickdummy-manage                          # Verwaltungs-CLI (list/status/topics/versions/diff)
 klickdummy-tokens --profile <p.yaml> --out tokens.css [--check]
                                            # design-hub-Profil → CSS-Tokens (v1.36)
+klickdummy-gen-sitemap <repo_root> <adr_local> [repo_name]
+             [--tokens-css <pfad> | --profile <yaml> | --design-hub <dir>]
+                                           # Sitemap ohne CDN, Farben/Schriften aus Tokens (v1.37)
 ```
 
 ## v1.1 — Browser-Feature (Stufe 1+2)
@@ -212,3 +215,22 @@ klickdummy-tokens --profile design-hub/profiles/meiki-lra.yaml --out klickdummy/
 ungültiger Farbwert (kein `#RRGGBB`) → Exit 2 mit Schlüsselnennung.
 
 Exit 1 bei Warnings (für CI-Hooks).
+
+## v1.37 — `klickdummy-gen-sitemap` ohne CDN (Tokens statt Tailwind/lucide)
+
+Die Sitemap lädt kein `cdn.tailwindcss.com`/`unpkg.com` mehr — Layout kommt
+aus einem eingebetteten `<style>`-Block, der ausschließlich `var(--kd-*)`-
+Tokens nutzt (dev-hub#320 Welle 0). Drei Wege, die Tokens einzubetten
+(Priorität von oben nach unten):
+
+```bash
+klickdummy-gen-sitemap . repo:ADR-NNN --tokens-css klickdummy/_shared/tokens.css
+klickdummy-gen-sitemap . repo:ADR-NNN --profile design-hub/profiles/meiki-lra.yaml
+klickdummy-gen-sitemap . repo:ADR-NNN   # IIL-Fallback: <design-hub>/profiles/iil-extern.yaml
+```
+
+Ohne `--tokens-css`/`--profile` sucht der Generator `iil-extern.yaml` unter
+`--design-hub <dir>` (Default `$GITHUB_DIR/design-hub`, sonst
+`~/github/design-hub`); fehlt die Datei, bricht er mit Exit 2 ab, statt eine
+Sitemap ohne jede Farbe zu schreiben. Keine Kopie des IIL-Profils im Paket —
+design-hub bleibt einzige Quelle.
