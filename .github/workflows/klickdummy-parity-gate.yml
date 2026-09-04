@@ -5,6 +5,8 @@
 # ║  Issue #162 — Stufe 1 (Spec<->Suite-Drift + Sitemap-Freshness) als         ║
 # ║  ausrollbarer Baustein, Gegenstueck zu snippets/gates.mk (Makefile-Seite). ║
 # ║  Stufe 2 (Live-Renderer-#2-Parity) ist repo-spezifisch und bleibt draussen.║
+# ║  Plus I5 (Issue #232, dev-hub#320 Welle 3): Laufzeit-Gate gegen CDN-      ║
+# ║  Skripte/Stylesheets + Tailwind-Farbklassen + fehlende tokens.css.        ║
 # ╚═══════════════════════════════════════════════════════════════════════════╝
 
 name: Klickdummy Parity-Drift-Gate (reusable)
@@ -59,3 +61,6 @@ jobs:
           KLICKDUMMY_ADR_REF: ${{ inputs.adr_ref }}
           KLICKDUMMY_REPO_NAME: ${{ inputs.repo_name }}
         run: make klickdummy-sitemap-drift
+
+      - name: Laufzeit-Gate — kein CDN, keine Tailwind-Farbklassen, tokens.css (Issue #232)
+        run: make klickdummy-i5

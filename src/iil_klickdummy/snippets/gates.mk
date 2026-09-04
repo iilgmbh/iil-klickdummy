@@ -39,6 +39,16 @@
 #
 # Pitfall (aus dem Issue, nicht vom Snippet automatisierbar): *.manifest.json in
 # die Adopter-.gitignore aufnehmen, sonst Pseudo-Drift (Issue #160/#156-Muster).
+#
+# klickdummy-i5 (dev-hub#320 Welle 3, Issue #232): Laufzeit-Gate gegen CDN-
+# Skripte/Stylesheets, Tailwind-Farbklassen und fehlende tokens.css neben
+# kd-nav.js — läuft automatisch mit, sobald ein Repo den reusable Workflow
+# `klickdummy-parity-gate.yml@main` nutzt (Schritt unten in dieser Datei).
+# WICHTIG: der lokale `klickdummy:`-Composite-Target (I1-I4) lebt NICHT hier,
+# sondern historisch handgepflegt im Adopter-Makefile selbst (siehe z.B.
+# apo-hub/Makefile) — `klickdummy-i5` dort zusätzlich als Prerequisite
+# einzutragen, holt dieses Snippet NICHT automatisch nach; das bleibt ein
+# manueller Schritt pro Repo (im PR-Bericht als Auslassung benannt).
 # ---------------------------------------------------------------------------
 
 KLICKDUMMY_VENV ?= .venv-klickdummy
@@ -48,7 +58,7 @@ KLICKDUMMY_VENV ?= .venv-klickdummy
 # (`?=` überschreibt keine bereits gesetzte — auch leere — Umgebungsvariable)
 # in einer echten Leerstring-Übergabe enden statt im CLI-Fallback.
 
-.PHONY: klickdummy-parity-drift klickdummy-sitemap klickdummy-sitemap-drift
+.PHONY: klickdummy-parity-drift klickdummy-sitemap klickdummy-sitemap-drift klickdummy-i5
 
 klickdummy-parity-drift: ## ADR-211 S13: Executable-Parity-Suite-Drift — auto-discovers alle klickdummy/*/screens-spec.yaml
 	@echo "ADR-211 S13 - Parity-Suite-Drift: re-generieren + git diff (alle Adopter)"
@@ -77,3 +87,6 @@ klickdummy-sitemap-drift: klickdummy-sitemap ## ADR-211 Rev 24 (S14): Sitemap-Fr
 	@git diff --exit-code -- klickdummy/sitemap klickdummy/_shared/kd-tree.json klickdummy/_shared/kd-tree.js \
 	  && echo "ok Sitemap aktuell (kein Drift)" \
 	  || { echo "x Sitemap veraltet - re-generieren + committen (make klickdummy-sitemap)"; exit 1; }
+
+klickdummy-i5: ## Issue #232 (dev-hub#320 Welle 3): Laufzeit-Gate — kein CDN, keine Tailwind-Farbklassen, tokens.css neben kd-nav.js
+	@$(KLICKDUMMY_VENV)/bin/klickdummy-i5 klickdummy

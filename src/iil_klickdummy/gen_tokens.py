@@ -91,6 +91,17 @@ def _font_mono_value(fonts: dict[str, Any]) -> str | None:
 
 
 def _colour_lines(colours: dict[str, Any]) -> list[str]:
+    """Rendert JEDEN Key aus `colours`/`colours_dark` als `--kd-<key>`.
+
+    Bewusst generisch statt einer festen Allow-Liste (dev-hub#320 Welle 3):
+    optionale Ampel-/Statusfarben (`colours.success/warning/danger/info`)
+    brauchen dadurch KEINE eigene Sonderbehandlung hier — legt ein Profil sie
+    an, entstehen automatisch `--kd-success` etc.; fehlen sie im Profil, gibt
+    es die Variablen schlicht nicht (kein zweiter Quell-/Default-Mechanismus
+    im Paket). Konsumenten wie `kd-nav.js`, die keine echte Ampel-/Status-
+    farbe brauchen, verwenden ohnehin nur die Kern-Tokens und bleiben von
+    dieser Optionalität unberührt.
+    """
     lines: list[str] = []
     for key, value in colours.items():
         if not isinstance(value, str) or not _COLOR_RE.match(value):

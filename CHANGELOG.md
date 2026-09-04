@@ -5,6 +5,43 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.38.0] - 2026-09-04
+
+### Added
+
+- **`klickdummy-i5`: Laufzeit-Gate gegen CDN und Tailwind-Farbklassen
+  (iilgmbh/iil-klickdummy#232, dev-hub#320 Welle 3).** Neuer Check
+  `check_i5.py` (Console-Script `klickdummy-i5 <klickdummy_dir> [...]`) prüft
+  alle `*.html` unter den übergebenen Klickdummy-Verzeichnissen (inkl.
+  `sitemap/`, ohne `dist/`/`_archiv/`/`archive/`): (1) kein
+  `<script src="http(s)://...">`/`<link href="http(s)://...">`, (2) keine
+  Tailwind-Farb-Utility-Klassen (`text-blue-600` etc.), (3) liegt
+  `_shared/kd-nav.js` vor, muss `_shared/tokens.css` daneben existieren.
+  `snippets/gates.mk` bekommt dafür ein neues Target `klickdummy-i5`; der
+  reusable Workflow `klickdummy-parity-gate.yml` ruft es automatisch mit auf
+  (kein lokaler Makefile-Edit für Adopter dieses Workflows nötig). Der lokale
+  `klickdummy:`-Composite-Target (I1-I4) bleibt dagegen handgepflegt je Repo
+  — dort muss `klickdummy-i5` weiterhin manuell ergänzt werden.
+
+### Changed
+
+- **`kd-nav.js` auf `var(--kd-*)`-Tokens umgestellt (dev-hub#320 Welle 3).**
+  Alle 8 vormals fest verdrahteten Hex-Farbwerte (Hauptmenü-/Zurück-Button,
+  Tour-Footer, TOUR-Badge, prev/next/exit) sind durch Kern-Tokens ersetzt
+  (`--kd-text[-muted]`, `--kd-bg-light`, `--kd-primary[-dark]`,
+  `--kd-accent-1/-2`); keine Ampel-/Statusfarbe wird gebraucht (reines
+  Navigations-Chrome). Beim Start prüft das Skript per `getComputedStyle`,
+  ob `--kd-primary` auf `:root` definiert ist; fehlt sie, lädt es
+  `_shared/tokens.css` relativ zum aufgelösten Skriptpfad
+  (`document.currentScript.src`) nach — bewusst kein Hex-Fallback,
+  `klickdummy-i5` macht ein fehlendes `tokens.css` sichtbar statt es zu
+  kaschieren.
+- **`gen_tokens.py`: optionale Ampel-/Statusfarben dokumentiert.**
+  `colours.success/warning/danger/info` im design-hub-Profil werden — wie
+  jeder andere `colours`-Key — generisch als `--kd-success` etc. gerendert
+  (keine neue Sonderbehandlung nötig, `_colour_lines` war schon generisch);
+  fehlen sie im Profil, gibt es die Variablen schlicht nicht.
+
 ## [1.37.0] - 2026-09-04
 
 ### Changed
