@@ -181,18 +181,34 @@ zählt bewusst als Marken-Familie, nicht als Warnfarbe** — sonst landen KDs,
 die Orange als Hauptfarbe nutzen, komplett in `--kd-warning`. Volle Tabelle
 inkl. Begründung: Kopf-Kommentar der Datei.
 
-Einbindung: `_shared/tailwind-tokens.js` **vor** `_shared/tailwind.js` laden
-(Tailwind Play-CDN liest `window.tailwind.config` beim Laden):
+Einbindung — Reihenfolge zu `_shared/tailwind.js` ist seit v1.41.0 EGAL
+(iilgmbh/iil-klickdummy#241, s. u.), empfohlen bleibt trotzdem "davor" für
+Lesbarkeit im Markup:
 
 ```html
 <script src="_shared/tailwind-tokens.js"></script>
 <script src="_shared/tailwind.js"></script>
 ```
 
+**Laufzeit-Wirksamkeit (#241):** empirisch gegen den echten Play CDN
+geprüft (cdn.tailwindcss.com, 3.4.17) — ein `window.tailwind.config`, das
+VOR dem Laden von `tailwind.js` gesetzt wird, verwirft `tailwind.js` beim
+eigenen Bootstrap vollständig; nur eine Zuweisung an `tailwind.config`
+NACH dem Laden löst den offiziell unterstützten Re-Build aus. Die bis
+v1.41.0 dokumentierte Reihenfolge war damit für einen frisch vom Play CDN
+vendorten `tailwind.js` wirkungslos. `tailwind-tokens.js` wendet die Config
+seit v1.41.0 deshalb selbst nach dem Laden erneut an: primär über einen
+`load`-Listener auf dem `<script src=".../tailwind.js">`-Geschwisterelement
+(gefunden über `document.currentScript`, kein Polling nötig), mit einem auf
+~2s gedeckelten Polling-Fallback (Erkennungsmerkmal
+`window.tailwind.resolveConfig`) plus `console.warn`, falls auch das
+ausbleibt — das deckt beide Ladereihenfolgen ab.
+
 `klickdummy-i5` erkennt ein vorhandenes `_shared/tailwind-tokens.js` und
 prüft: (a) ist jede im Baum tatsächlich verwendete Farbfamilie darin
-gemappt — fehlt eine, Fehler mit Familienname; (b) lädt jede HTML-Datei mit
-Tailwind-Farbklassen das Mapping vor `tailwind.js` — sonst Fehler „Mapping
+gemappt — fehlt eine, Fehler mit Familienname; (b) bindet jede HTML-Datei
+mit Tailwind-Farbklassen das Mapping überhaupt ein (Reihenfolge zu
+`tailwind.js` seit #241 egal) — fehlt die Einbindung ganz, Fehler „Mapping
 nicht geladen: <datei>". Sind beide Bedingungen erfüllt, gelten
 Tailwind-Farbklassen als token-gemappt (Info-Zeile „Regel 2:
 Tailwind-Klassen token-gemappt (N Familien)" statt Fehlerliste). Ohne

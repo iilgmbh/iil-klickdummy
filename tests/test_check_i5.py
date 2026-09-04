@@ -242,7 +242,11 @@ def test_should_fail_with_family_name_when_tailwind_family_not_mapped(tmp_path, 
     assert "emerald" in out
 
 
-def test_should_fail_when_tailwind_js_loaded_before_tokens_mapping(tmp_path, capsys):
+def test_should_pass_regardless_of_tailwind_script_order(tmp_path):
+    """iilgmbh/iil-klickdummy#241: die Reihenfolge von `tailwind-tokens.js`
+    zu `tailwind.js` ist seit 1.41.0 egal — das Snippet wendet die Config
+    laufzeitseitig in beiden Reihenfolgen an (load-Event + Polling-Fallback),
+    Regel 2 prüft entsprechend nur noch Existenz, nicht mehr Reihenfolge."""
     kd = tmp_path / "klickdummy"
     (kd / "_shared").mkdir(parents=True)
     (kd / "_shared" / "tailwind-tokens.js").write_text(
@@ -252,6 +256,26 @@ def test_should_fail_when_tailwind_js_loaded_before_tokens_mapping(tmp_path, cap
     (kd / "screen.html").write_text(
         '<html><head><script src="_shared/tailwind.js"></script>'
         '<script src="_shared/tailwind-tokens.js"></script></head>'
+        '<body><div class="bg-indigo-700">hi</div></body></html>',
+        encoding="utf-8",
+    )
+    assert check_i5.main([str(kd)]) == 0
+
+
+def test_should_fail_with_mapping_not_loaded_when_tokens_script_missing_entirely(
+    tmp_path, capsys
+):
+    """Bindet eine HTML-Datei `tailwind.js` ein, aber `tailwind-tokens.js`
+    gar nicht (obwohl die Datei im Baum liegt) — das bleibt ein Fehler,
+    unabhängig von der jetzt egalen Reihenfolge."""
+    kd = tmp_path / "klickdummy"
+    (kd / "_shared").mkdir(parents=True)
+    (kd / "_shared" / "tailwind-tokens.js").write_text(
+        _TAILWIND_TOKENS_JS_MINIMAL, encoding="utf-8"
+    )
+    (kd / "_shared" / "tailwind.js").write_text("/* vendored */", encoding="utf-8")
+    (kd / "screen.html").write_text(
+        '<html><head><script src="_shared/tailwind.js"></script></head>'
         '<body><div class="bg-indigo-700">hi</div></body></html>',
         encoding="utf-8",
     )
@@ -295,32 +319,54 @@ def test_should_have_zero_hex_in_bundled_tailwind_tokens_snippet():
 _SHADES = (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950)
 
 
-def _evaluate_bundled_tailwind_colors():
-    """Führt das ausgelieferte Snippet mit Node aus und liest die
-    `window.tailwind.config.theme.extend.colors`-Struktur als JSON zurück
-    — kein Nachbau der `shadeMap`-Logik in Python (Drift-Gefahr), sondern
-    ein echter Lauf des ausgelieferten Codes."""
+def _bundled_tailwind_tokens_snippet_text() -> str:
+    from importlib.resources import files
+
+    snippet = files("iil_klickdummy") / "snippets" / "_shared" / "tailwind-tokens.js"
+    return snippet.read_text(encoding="utf-8")
+
+
+def _run_node(setup_js: str, after_js: str, *, timeout: float = 10):
+    """Führt `setup_js` + das ausgelieferte Snippet + `after_js` als EIN
+    Node-Skript aus (kein Nachbau der Snippet-Logik in Python — Drift-
+    Gefahr) und liefert das (als JSON geparste) stdout zurück. `setup_js`
+    baut bei Bedarf ein minimales `document`-Mock (das Snippet braucht nur
+    `document.currentScript.parentNode.querySelectorAll(...)` + Kind-
+    Elemente mit `getAttribute`/`addEventListener`, s. Kopf-Kommentar dort
+    zu #241) VOR dem Snippet auf; `after_js` muss `process.stdout.write(...)`
+    + `process.exit(0)` aufrufen (verhindert Warten auf den ~2s-Polling-
+    Fallback, falls der in einem Szenario noch läuft)."""
     import json
     import shutil
     import subprocess
-    from importlib.resources import files
 
     if shutil.which("node") is None:
         pytest.skip("node nicht verfügbar")
 
-    snippet = files("iil_klickdummy") / "snippets" / "_shared" / "tailwind-tokens.js"
-    snippet_text = snippet.read_text(encoding="utf-8")
     script = (
         "var window = globalThis;\n"
-        + snippet_text
-        + "\nprocess.stdout.write(JSON.stringify("
-        "window.tailwind.config.theme.extend.colors));"
+        + setup_js
+        + "\n"
+        + _bundled_tailwind_tokens_snippet_text()
+        + "\n"
+        + after_js
     )
     result = subprocess.run(
-        ["node", "-e", script], capture_output=True, text=True, timeout=10
+        ["node", "-e", script], capture_output=True, text=True, timeout=timeout
     )
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
+
+
+def _evaluate_bundled_tailwind_colors():
+    """Standardlauf ohne `document`-Mock (Snippet ist dagegen robust, s.
+    `typeof document !== "undefined"`-Guard) — liest die berechnete
+    `window.tailwind.config.theme.extend.colors`-Struktur direkt aus."""
+    return _run_node(
+        "",
+        "process.stdout.write(JSON.stringify("
+        "window.tailwind.config.theme.extend.colors));process.exit(0);",
+    )
 
 
 def test_should_define_all_eleven_shades_for_every_family():
@@ -343,3 +389,95 @@ def test_should_map_light_and_dark_shade_to_different_tokens_per_family():
         light = shade_map["100"]
         dark = shade_map["700"]
         assert light != dark, f"{family}: bg-100 == text-700 ({light!r})"
+
+
+# ----------------------------------------------------------------------------
+# Laufzeit-Wirksamkeit unabhängig von der Script-Reihenfolge (iilgmbh/
+# iil-klickdummy#241) — echte Play-CDN-Läufe (nicht Node) sind der letzte
+# Beweis (s. PR #240/#241-Bericht), diese drei Tests decken die Snippet-
+# eigene Logik ab (load-Event-Pfad, Sofort-Pfad, gedeckelter Polling-
+# Fallback), mit einem minimalen `document`-Mock statt einem echten DOM.
+# ----------------------------------------------------------------------------
+
+
+def test_should_apply_immediately_when_tailwind_engine_already_loaded():
+    """Reihenfolge "tailwind.js zuerst": beim Ausführen des Snippets ist die
+    echte Engine (Merkmal `resolveConfig`) schon da — kein Polling nötig,
+    der Sofort-Pfad reicht."""
+    result = _run_node(
+        # `resolveConfig` ist das Erkennungsmerkmal für "echte Engine da"
+        # (s. `isEngineReady()` im Snippet).
+        "window.tailwind = { resolveConfig: function () {}, config: {} };",
+        "process.stdout.write(JSON.stringify({"
+        "orange700: window.tailwind.config.theme.extend.colors.orange['700']"
+        "}));process.exit(0);",
+    )
+    assert result["orange700"] == "var(--kd-primary)"
+
+
+def test_should_reapply_via_load_event_when_tailwind_js_loads_after():
+    """Reihenfolge "tailwind-tokens.js zuerst" (dokumentiert empfohlen):
+    kein `window.tailwind` beim Ausführen — das Snippet findet das
+    `<script src=".../tailwind.js">`-Geschwisterelement über
+    `document.currentScript` und hängt einen `load`-Listener an. Simuliert
+    hier das Fertigladen von `tailwind.js` (Engine-Merkmal erscheint) +
+    das `load`-Event und prüft, dass die Config danach angewendet ist."""
+    setup = """
+var loadHandlers = [];
+var fakeTailwindScript = {
+  getAttribute: function (name) {
+    return name === "src" ? "_shared/tailwind.js" : null;
+  },
+  addEventListener: function (evt, cb) {
+    if (evt === "load") loadHandlers.push(cb);
+  }
+};
+var document = {
+  currentScript: {
+    parentNode: { querySelectorAll: function () { return [fakeTailwindScript]; } }
+  }
+};
+"""
+    after = """
+// Vor dem simulierten Laden: Engine noch nicht da, Config noch der
+// Platzhalter aus dem Sofort-Pfad oben im Snippet.
+var beforeReady = typeof window.tailwind.resolveConfig === "function";
+// tailwind.js "wird fertig geladen":
+window.tailwind.resolveConfig = function () {};
+loadHandlers.forEach(function (fn) { fn(); });
+process.stdout.write(JSON.stringify({
+  beforeReady: beforeReady,
+  handlerCount: loadHandlers.length,
+  orange700: window.tailwind.config.theme.extend.colors.orange["700"]
+}));
+process.exit(0);
+"""
+    result = _run_node(setup, after)
+    assert result["beforeReady"] is False
+    assert result["handlerCount"] == 1
+    assert result["orange700"] == "var(--kd-primary)"
+
+
+def test_should_warn_and_stop_polling_after_about_two_seconds_without_sibling():
+    """Kein `<script src="tailwind.js">`-Geschwister UND die Engine wird nie
+    bereit (z. B. dynamisch nachgeladenes/fehlendes tailwind.js) — das
+    Sicherheitsnetz pollt begrenzt (hier per Test-Knob beschleunigt) und
+    gibt danach mit `console.warn` auf, statt endlos weiterzulaufen (#241)."""
+    setup = """
+var document = {
+  currentScript: { parentNode: { querySelectorAll: function () { return []; } } }
+};
+window.__KD_TW_TOKENS_POLL_MS = 5;
+window.__KD_TW_TOKENS_MAX_ATTEMPTS = 3; // ~15ms statt ~2s, nur fuer den Test
+var warnings = [];
+console.warn = function (msg) { warnings.push(msg); };
+"""
+    after = """
+setTimeout(function () {
+  process.stdout.write(JSON.stringify({ warnings: warnings }));
+  process.exit(0);
+}, 300);
+"""
+    result = _run_node(setup, after, timeout=10)
+    assert len(result["warnings"]) == 1
+    assert "iilgmbh/iil-klickdummy#241" in result["warnings"][0]

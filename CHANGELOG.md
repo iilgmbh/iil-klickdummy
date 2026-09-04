@@ -6,6 +6,7 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 ## 1.41.0 — 2026-09-04
 
 - fix(snippets): `tailwind-tokens.js` mappt jede Farbfamilie jetzt auf drei Shade-Bänder (hell/mittel/dunkel) statt eines einzigen Kern-Tokens — vorher wurden Status-Badges wie `bg-amber-100 text-amber-800` Text-auf-gleicher-Farbe (unlesbar). `orange` zählt jetzt als Marken-Familie (→ `--kd-primary`/`--kd-accent-1`) statt als Warnfarbe, damit KDs mit Orange als Hauptfarbe nicht komplett in `--kd-warning` landen (iilgmbh/iil-klickdummy#238, risk-hub#736, dev-hub#320 Welle 4 Folgebefund).
+- fix(snippets): `tailwind-tokens.js` wirkt jetzt tatsächlich mit dem echten Tailwind Play CDN, unabhängig von der Ladereihenfolge zu `tailwind.js` — empirisch (cdn.tailwindcss.com 3.4.17) geprüft, dass ein VOR dem Laden gesetztes `window.tailwind.config` beim Bootstrap von `tailwind.js` komplett verworfen wurde; die bis dahin dokumentierte „immer davor"-Reihenfolge war für einen frisch vom Play CDN vendorten `tailwind.js` wirkungslos. Fix: die Config wird jetzt zusätzlich per `load`-Event auf dem `tailwind.js`-Geschwister-Script erneut angewendet, mit einem auf ~2s gedeckelten Polling-Fallback + `console.warn`, falls kein solches Script gefunden wird. `check_i5.py` Regel 2 prüft entsprechend nur noch, ob `tailwind-tokens.js` überhaupt eingebunden ist, nicht mehr die Reihenfolge (iilgmbh/iil-klickdummy#241).
 
 ## 1.40.1 — 2026-09-04
 

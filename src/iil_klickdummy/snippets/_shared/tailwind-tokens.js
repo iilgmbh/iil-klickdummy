@@ -1,7 +1,7 @@
 /**
  * tailwind-tokens.js — mappt jede Tailwind-Farbfamilie (Play-CDN,
- * `_shared/tailwind.js`) auf `var(--kd-*)`-Tokens, BEVOR `tailwind.js`
- * geladen wird (dev-hub#320 Welle 4, iilgmbh/iil-klickdummy#232-Analogie).
+ * `_shared/tailwind.js`) auf `var(--kd-*)`-Tokens (dev-hub#320 Welle 4,
+ * iilgmbh/iil-klickdummy#232-Analogie).
  *
  * Hintergrund: vendorte Tailwind-Klickdummies (z. B. risk-hub, 24 KD auf
  * einem lokalen Play-CDN-Build) nutzen Tailwind-Utility-Farbklassen wie
@@ -14,26 +14,52 @@
  * Mapping (Familien-Scan, s. dort) und lässt Tailwind-Farbklassen dann
  * durchgehen.
  *
- * Einbindung IMMER vor tailwind.js (Tailwind Play-CDN liest
- * `window.tailwind.config` beim Laden des Scripts, nicht danach):
+ * Einbindung — Reihenfolge zu `tailwind.js` ist seit #241 EGAL (s. u.),
+ * empfohlen bleibt trotzdem "davor" für Lesbarkeit im Markup:
  *   <script src="_shared/tailwind-tokens.js"></script>
  *   <script src="_shared/tailwind.js"></script>
  *
- * ABWEICHUNG von 1.40.0 (iilgmbh/iil-klickdummy#238, risk-hub#736,
- * dev-hub#320 Welle 4 Folgebefund): die 1.40.0-Karte hatte zwei Kontrast-
- * Bugs, per Playwright in risk-hub verifiziert (dsb-vorfaelle: Status-Spalte
- * komplett unsichtbar) — (a) Marken-Familien mappten Shade 50–300 auf
- * `--kd-accent-1`, einen im Profil "iil-extern" DUNKLEN Ton, wodurch das
- * Idiom `bg-indigo-100 text-indigo-700` (heller Chip + dunkler Text) zu
+ * ABWEICHUNG von 1.40.0 (iilgmbh/iil-klickdummy#238, #241,
+ * risk-hub#736, dev-hub#320 Welle 4 Folgebefunde):
+ *
+ * (1) #238 — Kontrast: die 1.40.0-Karte hatte zwei Bugs, per Playwright in
+ * risk-hub verifiziert (dsb-vorfaelle: Status-Spalte komplett unsichtbar) —
+ * (a) Marken-Familien mappten Shade 50–300 auf `--kd-accent-1`, einen im
+ * Profil "iil-extern" DUNKLEN Ton, wodurch das Idiom
+ * `bg-indigo-100 text-indigo-700` (heller Chip + dunkler Text) zu
  * dunkel-auf-dunkel wurde; (b) jede Status-Familie mappte ALLE Shades auf
  * EIN Kern-Token, wodurch `bg-amber-100 text-amber-800` (Status-Badge) zu
- * Text-auf-gleicher-Farbe wurde. Fix (dieses Snippet): jede Familie bekommt
- * DREI Shade-Bänder (hell/mittel/dunkel) statt eines einzigen Ziels, analog
- * zum lokalen Fix in risk-hub — dort mit einer projektlokalen
- * `semantic.css`, hier mit den Paket-eigenen `--kd-*`-Tokens + Fallback-Kette.
- * Zusätzlich zieht `orange` aus den Warnfarben zu den Marken-Familien
- * (Begründung s. Tabelle unten) — Markenfarben von KDs, die Orange als
- * Hauptfarbe nutzen, landeten sonst komplett in `--kd-warning`.
+ * Text-auf-gleicher-Farbe wurde. Fix: jede Familie bekommt DREI Shade-Bänder
+ * (hell/mittel/dunkel) statt eines einzigen Ziels. Zusätzlich zieht `orange`
+ * aus den Warnfarben zu den Marken-Familien (s. Tabelle unten) — Marken-KDs
+ * mit Orange als Hauptfarbe landeten sonst komplett in `--kd-warning`.
+ *
+ * (2) #241 — Wirksamkeit: EMPIRISCH geprüft gegen den echten Play CDN
+ * (cdn.tailwindcss.com, Version 3.4.17, nicht risk-hubs vorgepatchte lokale
+ * Kopie): ein `window.tailwind.config`, das VOR dem Laden von `tailwind.js`
+ * gesetzt wird, wird beim eigenen Bootstrap von `tailwind.js` VERWORFEN —
+ * das Skript ersetzt `window.tailwind` durch ein frisches Objekt
+ * (`config` danach wieder `{}`). Nur eine Zuweisung an `tailwind.config`
+ * NACHDEM `tailwind.js` fertig geladen ist, löst den offiziell
+ * unterstützten Re-Build der generierten Utilities aus (verifiziert:
+ * `<script src="tailwind.js"></script><script>tailwind.config={...}</script>`
+ * wirkt, die umgekehrte Reihenfolge nicht). Die bis 1.41.0 dokumentierte
+ * Reihenfolge ("immer davor") war damit für einen frisch vom Play CDN
+ * vendorten `tailwind.js` WIRKUNGSLOS — nur risk-hubs lokal vorgepatchte
+ * `tailwind.js` (Default-Palette selbst auf `var(--kd-*)` umgehängt)
+ * täuschte bislang eine Wirkung vor. Fix: das Snippet setzt die Config
+ * weiterhin sofort (deckt "tailwind.js schon geladen" ab, d. h. Einbindung
+ * NACH `tailwind.js`), UND hängt zusätzlich einen `load`-Listener an das
+ * `<script src=".../tailwind.js">`-Geschwisterelement (gefunden über
+ * `document.currentScript`), der die Config nach dessen Laden erneut
+ * zuweist — deckt die dokumentierte Reihenfolge ("davor") ab. Findet sich
+ * kein solches Geschwister-Element (z. B. dynamisch nachgeladenes
+ * `tailwind.js`), pollt ein Sicherheitsnetz bis zu ~2s (Erkennungsmerkmal:
+ * `window.tailwind.resolveConfig`, das nur die echte Engine anlegt) und
+ * zieht sich danach mit `console.warn` zurück (kein endloses Polling).
+ * `check_i5.py` Regel 2 verlangt entsprechend nur noch, dass
+ * `tailwind-tokens.js` IRGENDWO im Dokument eingebunden ist, nicht mehr
+ * "davor" (s. dort).
  *
  * Mapping-Tabelle (Familie → Ziel-Tokens nach Shade-Band; alle Bänder
  * folgen demselben Prinzip: helle Stufen 50–200 → Flächen-Token, mittlere
@@ -81,6 +107,13 @@
  */
 (function () {
   "use strict";
+
+  // Synchron sichern — nur während der ersten (synchronen) Ausführung des
+  // eigenen <script>-Tags gültig, danach liefert document.currentScript null.
+  // `typeof document` gecheckt statt direkt referenziert: robust in
+  // Nicht-Browser-Testläufen (Node, s. tests/test_check_i5.py), ohne das
+  // Browser-Verhalten zu ändern.
+  var OWN_SCRIPT = typeof document !== "undefined" ? document.currentScript : null;
 
   // Tailwind-Standard-Shades (Play-CDN-Default-Palette).
   var SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
@@ -175,13 +208,93 @@
     sky: INFO,
   };
 
-  window.tailwind = window.tailwind || {};
-  window.tailwind.config = window.tailwind.config || {};
-  window.tailwind.config.theme = window.tailwind.config.theme || {};
-  window.tailwind.config.theme.extend = window.tailwind.config.theme.extend || {};
-  window.tailwind.config.theme.extend.colors = Object.assign(
-    {},
-    window.tailwind.config.theme.extend.colors || {},
-    colors
-  );
+  // Baut IMMER ein frisches config-Objekt (statt in `window.tailwind.config`
+  // hinein zu mutieren) — eine neue Objekt-Referenz je Aufruf stellt sicher,
+  // dass eine erneute Zuweisung `tailwind.config = ...` beim echten Play CDN
+  // (das `.config` nach dem Laden als Setter mit Re-Build-Seiteneffekt
+  // führt, s. Kopf-Kommentar #241) nicht an einer Referenzgleichheits-Prüfung
+  // hängen bleibt. Bereits gesetzte fremde Config-Felder bleiben erhalten.
+  function buildConfig() {
+    var base = (window.tailwind && window.tailwind.config) || {};
+    var baseTheme = base.theme || {};
+    var baseExtend = baseTheme.extend || {};
+    return Object.assign({}, base, {
+      theme: Object.assign({}, baseTheme, {
+        extend: Object.assign({}, baseExtend, {
+          colors: Object.assign({}, baseExtend.colors || {}, colors),
+        }),
+      }),
+    });
+  }
+
+  function applyConfig() {
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = buildConfig();
+  }
+
+  function isEngineReady() {
+    // Play CDNs echte Engine legt `resolveConfig` (u. a.) an — unser eigener
+    // Platzhalter (`window.tailwind = window.tailwind || {}` oben) hat das
+    // nicht. Zuverlässigeres Merkmal als bloßes `window.tailwind`-Vorhandensein.
+    return !!(window.tailwind && typeof window.tailwind.resolveConfig === "function");
+  }
+
+  // Sofort anwenden — deckt "tailwind.js ist beim Ausführen dieses Skripts
+  // schon geladen" ab (Einbindung NACH tailwind.js; klassische <script>-Tags
+  // laufen synchron in Dokumentreihenfolge, die Engine ist dann bereits da).
+  applyConfig();
+  if (isEngineReady()) {
+    return;
+  }
+
+  var reapplied = false;
+  function reapplyOnce() {
+    if (reapplied) return;
+    reapplied = true;
+    applyConfig();
+  }
+
+  // Bevorzugter Pfad (kein Polling nötig): `load`-Event auf dem
+  // `<script src=".../tailwind.js">`-Geschwisterelement — deckt die
+  // dokumentierte Reihenfolge ("davor") ab.
+  var foundSibling = false;
+  if (OWN_SCRIPT && OWN_SCRIPT.parentNode) {
+    var siblings = OWN_SCRIPT.parentNode.querySelectorAll("script[src]");
+    for (var i = 0; i < siblings.length; i++) {
+      var src = siblings[i].getAttribute("src") || "";
+      if (/(^|\/)tailwind\.js(\?|#|$)/.test(src)) {
+        foundSibling = true;
+        siblings[i].addEventListener("load", reapplyOnce);
+        break;
+      }
+    }
+  }
+
+  // Sicherheitsnetz: kein <script>-Geschwister gefunden (z. B. dynamisch
+  // nachgeladenes tailwind.js) — bis ~2s pollen, dann aufgeben statt endlos
+  // weiterzulaufen (#241). `window.__KD_TW_TOKENS_*` sind NUR ein Test-Knob
+  // (schnelleres Polling in der Testsuite), kein Consumer-API.
+  var pollMs = window.__KD_TW_TOKENS_POLL_MS || 50;
+  var maxAttempts = window.__KD_TW_TOKENS_MAX_ATTEMPTS || 40; // 40 * 50ms = 2s
+  var attempts = 0;
+  var timer = setInterval(function () {
+    attempts++;
+    if (isEngineReady()) {
+      clearInterval(timer);
+      reapplyOnce();
+      return;
+    }
+    if (attempts >= maxAttempts) {
+      clearInterval(timer);
+      if (!reapplied && typeof console !== "undefined" && console.warn) {
+        console.warn(
+          "tailwind-tokens.js: tailwind.js nicht innerhalb ~2s erkannt (" +
+            (foundSibling
+              ? "load-Event nicht ausgelöst"
+              : 'kein <script src="tailwind.js"> gefunden') +
+            ") — Farbmapping evtl. wirkungslos (iilgmbh/iil-klickdummy#241)."
+        );
+      }
+    }
+  }, pollMs);
 })();
