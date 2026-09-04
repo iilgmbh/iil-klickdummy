@@ -3,6 +3,10 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## 1.40.1 — 2026-09-04
+
+- fix(snippets): `kd-nav.js` escapt Titel und Tour-Links vor `innerHTML` (CodeQL `js/xss-through-dom`, gemeldet in risk-hub#736; Stelle bestand seit v1.35.0).
+
 ## [Unreleased]
 
 ## [1.40.0] - 2026-09-04
