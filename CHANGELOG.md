@@ -5,6 +5,44 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+## [1.40.0] - 2026-09-04
+
+### Added
+
+- **Feedback-Widget (`widget.js`) und Klickdummy-Browser
+  (`browser.html.tmpl`) auf `var(--kd-*)`-Tokens umgestellt — keine
+  Hex-Literale mehr (dev-hub#320 Welle 3 Teil 3, Analogie zu `kd-nav.js`
+  #233).** `widget.js` (55 Hex-Treffer vorher) lädt `tokens.css` relativ zum
+  eigenen Skriptpfad nach (`document.currentScript.src`, wie `kd-nav.js`),
+  bewusst kein Hex-Fallback. `browser.html.tmpl` (31 Hex-Treffer vorher) ist
+  ein eigenständiges Dokument (kein Host-Skript) — ein Bootstrap-Script im
+  `<head>` lädt `_shared/tokens.css` relativ zur eigenen Dokument-URL nach
+  und setzt `[data-theme="dark"]` auf `<html>` anhand der OS-Präferenz
+  (`matchMedia`), sodass die `--pui-*`-Bridge (ADR-049) weiter funktioniert
+  und Dark Mode weiter automatisch reagiert — der Wert selbst kommt jetzt
+  aus tokens.css' optionalem `[data-theme="dark"]`-Block statt aus einem
+  zweiten hartkodierten Hex-Satz. Layout/Verhalten unverändert, bestehende
+  Tests bleiben grün.
+- **`klickdummy-i5`: Regel-2-Ausnahme für token-gemapptes Tailwind
+  (iilgmbh/iil-klickdummy#232-Analogie, dev-hub#320 Welle 4).** Neues
+  Snippet `snippets/_shared/tailwind-tokens.js` mappt vor dem Laden von
+  `tailwind.js` jede Tailwind-Farbfamilie (Play-CDN-Palette, Stufen 50–950)
+  auf `var(--kd-*)`-Tokens (Marken-Familien → primary/-dark/accent-1,
+  Grau-Familien nach Shade → bg-light/zebra/border/line/text/-muted,
+  Status-Familien → success/warning/danger/info mit CSS-Fallback-Kette auf
+  ein Kern-Token). `check_i5.py` Regel 2 erkennt ein vorhandenes
+  `_shared/tailwind-tokens.js`, prüft Familien-Abdeckung root-weit (fehlende
+  Familie → Fehler mit Namen) und pro Datei die Script-Reihenfolge
+  (`tailwind-tokens.js` muss vor `tailwind.js` laden, sonst „Mapping nicht
+  geladen: <datei>") — sind beide erfüllt, gelten Tailwind-Farbklassen als
+  token-gemappt statt als Fehler. Ohne `tailwind-tokens.js` im Baum bleibt
+  Regel 2 unverändert scharf. Verifiziert gegen eine Kopie von
+  risk-hub/klickdummy (24 KD, 10 tatsächlich genutzte Farbfamilien, 296
+  Hex-Treffer aus Regel 4 unverändert rot): mit `_shared/tailwind-tokens.js`
+  installiert und in `art15-vorgang/index.html` vor `tailwind.js`
+  eingebunden meldet Regel 2 für diese Datei „token-gemappt (10 Familien)",
+  für die übrigen 36 Dateien „Mapping nicht geladen".
+
 ## [1.39.0] - 2026-09-04
 
 ### Added

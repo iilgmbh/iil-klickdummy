@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """I5 Laufzeit-Gate — keine fremden Skripte/Stylesheets, keine Tailwind-
-Farbklassen, keine Hex-Farben außerhalb der Token-Dateien.
+Farbklassen (außer token-gemappt), keine Hex-Farben außerhalb der Token-
+Dateien.
 
-Kontext: iilgmbh/iil-klickdummy#232, achimdehnert/dev-hub#320 Welle 3.
+Kontext: iilgmbh/iil-klickdummy#232, achimdehnert/dev-hub#320 Welle 3/4.
 `kd-nav.js` (und andere Snippets) sind seit Welle 2/3 auf `--kd-*`-Tokens
 umgestellt statt CDN/Hex — I5 macht das als Laufzeit-Gate verbindlich, statt
 sich auf Code-Review zu verlassen. Regel (4) (Hex-Farben) kam mit Welle 3
-dazu, um die 11 Repo-eigenen Klickdummy-Shells zu gaten (dev-hub#320).
+dazu, um die 11 Repo-eigenen Klickdummy-Shells zu gaten (dev-hub#320). Die
+Regel-2-Ausnahme (token-gemapptes Tailwind) kam mit Welle 4 dazu, um
+vendorte Tailwind-Klickdummies (z. B. risk-hub) zu entsperren, ohne
+Regel 2 selbst aufzuweichen.
 
 Prüft alle `*.html` unter den übergebenen Klickdummy-Verzeichnissen
 (rekursiv, inkl. z. B. `sitemap/`), außer unter `dist/`, `_archiv/` und
@@ -19,7 +23,17 @@ Vier Regeln:
       Fähigkeit, ADR-211).
   (2) keine Tailwind-Farb-Utility-Klassen (`text-blue-600` etc.) — Farben
       kommen aus `var(--kd-*)`, nicht aus einer zweiten, unkontrollierten
-      Farbquelle im Markup.
+      Farbquelle im Markup. AUSNAHME (Welle 4, dev-hub#320): liegt unter dem
+      geprüften Wurzelverzeichnis ein `_shared/tailwind-tokens.js`
+      (s. `snippets/_shared/tailwind-tokens.js`) UND ist jede tatsächlich verwendete
+      Tailwind-Farbfamilie darin auf ein `var(--kd-*)`-Token gemappt, gelten
+      Tailwind-Farbklassen als token-gemappt — kein Fehler, stattdessen eine
+      Info-Zeile. Fehlt eine verwendete Familie im Mapping → Fehler mit
+      Familienname. Zusätzlich muss jede HTML-Datei mit Tailwind-Farbklassen,
+      die `tailwind.js` einbindet, `tailwind-tokens.js` VOR `tailwind.js`
+      laden (Tailwind Play-CDN liest `window.tailwind.config` beim Laden) —
+      sonst Fehler „Mapping nicht geladen: <datei>". Ohne `tailwind-tokens.js`
+      im Baum bleibt Regel 2 wie bisher: jede Klasse ein Fehler.
   (3) liegt `_shared/kd-nav.js` vor, muss `_shared/tokens.css` daneben
       existieren — sonst injiziert `kd-nav.js` beim ersten Aufruf einen toten
       `<link>` auf eine fehlende Datei (kd-nav.js hat bewusst keinen Hex-
@@ -56,12 +70,51 @@ FOREIGN_SCRIPT_RE = re.compile(
 )
 FOREIGN_LINK_RE = re.compile(r"<link\b[^>]*\bhref\s*=\s*[\"']https?://", re.IGNORECASE)
 
+# Tailwind-Palette — eine Liste, sowohl für den Klassen-Regex (Regel 2) als
+# auch für den Familien-Scan in `tailwind-tokens.js` (Regel-2-Ausnahme,
+# Welle 4), damit beide nie auseinanderdriften können.
+TAILWIND_COLOUR_FAMILIES = (
+    "slate",
+    "gray",
+    "zinc",
+    "neutral",
+    "stone",
+    "red",
+    "orange",
+    "amber",
+    "yellow",
+    "lime",
+    "green",
+    "emerald",
+    "teal",
+    "cyan",
+    "sky",
+    "blue",
+    "indigo",
+    "violet",
+    "purple",
+    "fuchsia",
+    "pink",
+    "rose",
+)
+
 # Tailwind-Farb-Utility-Klassen (Farb-Prefixes × Tailwind-Palette × Shade).
 TAILWIND_COLOUR_RE = re.compile(
     r"\b(?:hover:|focus:)?(?:text|bg|border|ring|from|to|via)-"
-    r"(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|"
-    r"emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)"
+    rf"(?:{'|'.join(TAILWIND_COLOUR_FAMILIES)})"
     r"-\d{2,3}\b"
+)
+_TAILWIND_FAMILY_FROM_CLASS_RE = re.compile(
+    rf"(?:{'|'.join(TAILWIND_COLOUR_FAMILIES)})(?=-\d{{2,3}}\b)"
+)
+
+# `_shared/tailwind.js` (Play-CDN, vendored) — Skript-Dateiname exakt, damit
+# `tailwind-tokens.js` (endet nicht auf ".../tailwind.js") nicht mitmatcht.
+_TAILWIND_JS_SCRIPT_RE = re.compile(
+    r"<script\b[^>]*\bsrc\s*=\s*[\"'][^\"']*tailwind\.js[\"']", re.IGNORECASE
+)
+_TAILWIND_TOKENS_JS_SCRIPT_RE = re.compile(
+    r"<script\b[^>]*\bsrc\s*=\s*[\"'][^\"']*tailwind-tokens\.js[\"']", re.IGNORECASE
 )
 
 # Literale Hex-Farbwerte: 3-, 6- und (optional) 8-stellig. Für den 3-stelligen
@@ -117,8 +170,15 @@ def _is_excluded(path: pathlib.Path, root: pathlib.Path) -> bool:
     return any(part in EXCLUDE_PATH_PARTS for part in rel_parts)
 
 
-def check_html_file(path: pathlib.Path) -> list[tuple[int, str]]:
-    """Gibt (zeilen_nr, hinweis)-Liste zurück; leer = ok."""
+def check_html_file(
+    path: pathlib.Path, *, suppress_tailwind: bool = False
+) -> list[tuple[int, str]]:
+    """Gibt (zeilen_nr, hinweis)-Liste zurück; leer = ok.
+
+    `suppress_tailwind`: Regel-2-Ausnahme (Welle 4) greift für diesen Wurzel-
+    baum — Tailwind-Farbklassen werden hier NICHT als Fund gemeldet (die
+    Familien-Abdeckung + Script-Reihenfolge wird separat in `main()` je Root/
+    Datei geprüft, s. `_find_tailwind_tokens_mapping`)."""
     findings: list[tuple[int, str]] = []
     try:
         text = path.read_text(encoding="utf-8")
@@ -129,9 +189,49 @@ def check_html_file(path: pathlib.Path) -> list[tuple[int, str]]:
             findings.append((lineno, 'fremdes <script src="http(s)://...">'))
         if FOREIGN_LINK_RE.search(line):
             findings.append((lineno, 'fremdes <link href="http(s)://...">'))
-        for m in TAILWIND_COLOUR_RE.finditer(line):
-            findings.append((lineno, f"Tailwind-Farbklasse {m.group(0)!r}"))
+        if not suppress_tailwind:
+            for m in TAILWIND_COLOUR_RE.finditer(line):
+                findings.append((lineno, f"Tailwind-Farbklasse {m.group(0)!r}"))
     return findings
+
+
+def _used_tailwind_families(text: str) -> set[str]:
+    """Farbfamilien, die tatsächlich in Tailwind-Utility-Klassen vorkommen."""
+    return {m.group(0) for m in _TAILWIND_FAMILY_FROM_CLASS_RE.finditer(text)}
+
+
+def _find_tailwind_tokens_mapping(root: pathlib.Path) -> pathlib.Path | None:
+    """`_shared/tailwind-tokens.js` — Regel-2-Ausnahme (Welle 4). Erstes
+    Vorkommen direkt unter einem `_shared/`-Verzeichnis, nicht ausgeschlossen."""
+    for candidate in sorted(root.rglob("tailwind-tokens.js")):
+        if candidate.parent.name == "_shared" and not _is_excluded(candidate, root):
+            return candidate
+    return None
+
+
+def _mapped_tailwind_families(tokens_js_text: str) -> set[str]:
+    """Farbfamilien, die in `tailwind-tokens.js` als Objekt-Schlüssel auf ein
+    `var(--kd-*)`-Token gemappt sind. Regex-basiert wie der Rest von
+    check_i5.py, kein JS-Parser: verlangt `<familie>:` als Objekt-Key UND
+    mindestens ein `var(--kd-` irgendwo in der Datei (echtes Token-Mapping,
+    kein Blindwert ohne Token-Bezug)."""
+    if "var(--kd-" not in tokens_js_text:
+        return set()
+    return {
+        fam
+        for fam in TAILWIND_COLOUR_FAMILIES
+        if re.search(rf"(?<![\w-]){fam}\s*:", tokens_js_text)
+    }
+
+
+def _tailwind_script_order_ok(text: str) -> bool:
+    """`tailwind-tokens.js` muss als <script src> VOR `tailwind.js` stehen
+    (Tailwind Play-CDN liest `window.tailwind.config` beim Laden)."""
+    m_tw = _TAILWIND_JS_SCRIPT_RE.search(text)
+    if not m_tw:
+        return True  # Datei bindet tailwind.js gar nicht ein — nichts zu prüfen
+    m_tokens = _TAILWIND_TOKENS_JS_SCRIPT_RE.search(text)
+    return bool(m_tokens) and m_tokens.start() < m_tw.start()
 
 
 def _is_hex_exempt(path: pathlib.Path) -> bool:
@@ -182,12 +282,57 @@ def main(argv: list[str]) -> int:
     print("== I5 Laufzeit-Gate (CDN/Farbklassen/Tokens/Hex) ==")
     errs = 0
     for root in roots:
-        for path in sorted(root.rglob("*.html")):
-            if _is_excluded(path, root):
-                continue
-            findings = list(check_html_file(path))
+        html_paths = [
+            p for p in sorted(root.rglob("*.html")) if not _is_excluded(p, root)
+        ]
+
+        # Regel-2-Ausnahme (Welle 4): tailwind-tokens.js vorhanden? Dann
+        # Familien-Abdeckung root-weit prüfen, bevor die Dateien einzeln
+        # durchlaufen werden — kein Fund → Info-Zeile statt Fehlerliste.
+        tw_tokens_path = _find_tailwind_tokens_mapping(root)
+        tailwind_mapped_ok = False
+        if tw_tokens_path is not None:
+            try:
+                tw_tokens_text = tw_tokens_path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                tw_tokens_text = ""
+            mapped_families = _mapped_tailwind_families(tw_tokens_text)
+            used_families: set[str] = set()
+            for p in html_paths:
+                try:
+                    used_families |= _used_tailwind_families(
+                        p.read_text(encoding="utf-8")
+                    )
+                except (UnicodeDecodeError, OSError):
+                    continue
+            missing_families = sorted(used_families - mapped_families)
+            if missing_families:
+                for fam in missing_families:
+                    print(
+                        f"  ✗ Regel 2: Familie nicht in {tw_tokens_path} "
+                        f"gemappt: {fam!r}"
+                    )
+                    errs += 1
+            else:
+                tailwind_mapped_ok = True
+                print(
+                    f"  Regel 2: Tailwind-Klassen token-gemappt "
+                    f"({len(used_families)} Familien, {tw_tokens_path})"
+                )
+
+        for path in html_paths:
+            findings = list(check_html_file(path, suppress_tailwind=tailwind_mapped_ok))
             if not _is_hex_exempt(path):
                 findings += check_hex_colours_file(path)
+            if tailwind_mapped_ok:
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    text = ""
+                if _used_tailwind_families(text) and not _tailwind_script_order_ok(
+                    text
+                ):
+                    findings.append((0, f"Mapping nicht geladen: {path}"))
             if findings:
                 findings.sort(key=lambda f: f[0])
                 print(f"  · {path} ({len(findings)})")
@@ -214,9 +359,10 @@ def main(argv: list[str]) -> int:
         return 0
     print(
         f"I5 → FAIL ({errs}) — fremde Skripte/Stylesheets entfernen, "
-        "Tailwind-Farbklassen durch var(--kd-*) ersetzen, tokens.css "
-        "neben kd-nav.js bereitstellen, Hex-Farbwerte durch var(--kd-*) "
-        "ersetzen (Ausnahme: tokens.css/semantic.css)"
+        "Tailwind-Farbklassen durch var(--kd-*) ersetzen oder via "
+        "_shared/tailwind-tokens.js token-mappen, tokens.css neben "
+        "kd-nav.js bereitstellen, Hex-Farbwerte durch var(--kd-*) ersetzen "
+        "(Ausnahme: tokens.css/semantic.css)"
     )
     return 1
 

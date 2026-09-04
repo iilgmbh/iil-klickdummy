@@ -5,6 +5,8 @@ fehlende `tokens.css` neben `kd-nav.js`.
 
 from __future__ import annotations
 
+import pathlib
+
 from iil_klickdummy import check_i5
 
 
@@ -188,3 +190,94 @@ def test_should_ignore_hex_colours_under_dist_and_archive(tmp_path):
     (kd / "_archiv" / "old.js").write_text("const c='#abc';", encoding="utf-8")
 
     assert check_i5.main([str(kd)]) == 0
+
+
+# ----------------------------------------------------------------------------
+# Regel-2-Ausnahme: token-gemapptes Tailwind (dev-hub#320 Welle 4, #234-Folge)
+# ----------------------------------------------------------------------------
+
+_TAILWIND_TOKENS_JS_MINIMAL = (
+    "(function(){window.tailwind=window.tailwind||{};"
+    "window.tailwind.config={theme:{extend:{colors:{"
+    "indigo: 'var(--kd-primary)',"
+    "blue: 'var(--kd-primary)'"
+    "}}}};})();"
+)
+
+
+def test_should_pass_tailwind_colour_class_when_family_mapped_in_tokens_js(tmp_path):
+    kd = tmp_path / "klickdummy"
+    (kd / "_shared").mkdir(parents=True)
+    (kd / "_shared" / "tailwind-tokens.js").write_text(
+        _TAILWIND_TOKENS_JS_MINIMAL, encoding="utf-8"
+    )
+    (kd / "_shared" / "tailwind.js").write_text("/* vendored */", encoding="utf-8")
+    (kd / "screen.html").write_text(
+        '<html><head><script src="_shared/tailwind-tokens.js"></script>'
+        '<script src="_shared/tailwind.js"></script></head>'
+        '<body><div class="bg-indigo-700">hi</div></body></html>',
+        encoding="utf-8",
+    )
+    assert check_i5.main([str(kd)]) == 0
+
+
+def test_should_fail_with_family_name_when_tailwind_family_not_mapped(tmp_path, capsys):
+    kd = tmp_path / "klickdummy"
+    (kd / "_shared").mkdir(parents=True)
+    (kd / "_shared" / "tailwind-tokens.js").write_text(
+        _TAILWIND_TOKENS_JS_MINIMAL, encoding="utf-8"
+    )
+    (kd / "_shared" / "tailwind.js").write_text("/* vendored */", encoding="utf-8")
+    (kd / "screen.html").write_text(
+        '<html><head><script src="_shared/tailwind-tokens.js"></script>'
+        '<script src="_shared/tailwind.js"></script></head>'
+        '<body><div class="bg-emerald-500">hi</div></body></html>',
+        encoding="utf-8",
+    )
+    rc = check_i5.main([str(kd)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "emerald" in out
+
+
+def test_should_fail_when_tailwind_js_loaded_before_tokens_mapping(tmp_path, capsys):
+    kd = tmp_path / "klickdummy"
+    (kd / "_shared").mkdir(parents=True)
+    (kd / "_shared" / "tailwind-tokens.js").write_text(
+        _TAILWIND_TOKENS_JS_MINIMAL, encoding="utf-8"
+    )
+    (kd / "_shared" / "tailwind.js").write_text("/* vendored */", encoding="utf-8")
+    (kd / "screen.html").write_text(
+        '<html><head><script src="_shared/tailwind.js"></script>'
+        '<script src="_shared/tailwind-tokens.js"></script></head>'
+        '<body><div class="bg-indigo-700">hi</div></body></html>',
+        encoding="utf-8",
+    )
+    rc = check_i5.main([str(kd)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "Mapping nicht geladen" in out
+
+
+def test_should_flag_tailwind_colour_class_as_before_without_mapping_file(tmp_path):
+    """Ohne `_shared/tailwind-tokens.js` im Baum bleibt Regel 2 wie bisher —
+    jede Tailwind-Farbklasse ein Fehler (kein stiller Freifahrtschein)."""
+    kd = tmp_path / "klickdummy"
+    kd.mkdir()
+    (kd / "screen.html").write_text(
+        '<html><body><div class="bg-indigo-700">hi</div></body></html>',
+        encoding="utf-8",
+    )
+    assert check_i5.main([str(kd)]) == 1
+
+
+def test_should_have_zero_hex_in_bundled_tailwind_tokens_snippet():
+    """Das ausgelieferte Snippet selbst darf kein Hex enthalten — nur
+    `var(--kd-*)`-Referenzen (Analogie zu `kd-nav.js`)."""
+    from importlib.resources import files
+
+    snippet = files("iil_klickdummy") / "snippets" / "_shared" / "tailwind-tokens.js"
+    findings = check_i5.check_hex_colours_file(pathlib.Path(str(snippet)))
+    text = snippet.read_text(encoding="utf-8")
+    assert findings == []
+    assert "var(--kd-" in text
