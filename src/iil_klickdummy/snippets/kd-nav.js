@@ -202,7 +202,7 @@
       (nextHref
         ? `<a href="${esc(nextHref)}" data-testid="tour-next" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-primary);border-radius:4px;">Weiter →</a>`
         : `<span data-testid="tour-next" style="opacity:0.4;padding:4px 10px;">Weiter →</span>`) +
-      `<a href="${sitemapHref}" data-testid="tour-exit" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-accent-1);border-radius:4px;">× Tour beenden</a>`;
+      `<a href="${esc(sitemapHref)}" data-testid="tour-exit" style="color:var(--kd-bg-light);text-decoration:none;padding:4px 10px;background:var(--kd-accent-1);border-radius:4px;">× Tour beenden</a>`;
     document.body.appendChild(bar);
 
     // Body etwas Luft am Fuß geben, damit der Footer nichts überdeckt
