@@ -488,7 +488,7 @@ def _render_sitemap_spec(repo_name: str, adr_local: str, spec_date: str) -> str:
     return f"""# platform:ADR-211 — I1 Spec (maschinenlesbar) — Sitemap-Knoten (Top-Level)
 # Konformität: klickdummy-i1 klickdummy/sitemap/screens-spec.yaml:<schema>
 # HTML-Renderer: klickdummy/sitemap/index.html (auto-generiert von klickdummy-gen-sitemap)
-$schema: https://raw.githubusercontent.com/achimdehnert/platform/main/packages/iil-klickdummy/src/iil_klickdummy/schemas/screens-spec.schema.json
+$schema: https://raw.githubusercontent.com/iilgmbh/iil-klickdummy/main/src/iil_klickdummy/schemas/screens-spec.schema.json
 
 spec_id: {repo_name}:klickdummy-spec-sitemap
 spec_version: "0.1"

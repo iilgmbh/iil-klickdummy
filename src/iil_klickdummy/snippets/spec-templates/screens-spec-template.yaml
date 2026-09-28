@@ -1,5 +1,5 @@
 # Template — platform:ADR-211 Rev 13. Kopieren + Felder mit ↳ anpassen.
-$schema: https://raw.githubusercontent.com/achimdehnert/platform/main/packages/iil-klickdummy/src/iil_klickdummy/schemas/screens-spec.schema.json
+$schema: https://raw.githubusercontent.com/iilgmbh/iil-klickdummy/main/src/iil_klickdummy/schemas/screens-spec.schema.json
 spec_id: REPO:klickdummy-spec-NAME        # ↳ anpassen
 spec_version: "0.1"
 spec_schema_version: "1.1"                # Schema-Generation: 1.1 = + screen.use_cases[] (Spec-Layer/X-Ray)

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/achimdehnert/platform/main/packages/iil-klickdummy/src/iil_klickdummy/schemas/feedback-payload.schema.json",
+  "$id": "https://raw.githubusercontent.com/iilgmbh/iil-klickdummy/main/src/iil_klickdummy/schemas/feedback-payload.schema.json",
   "title": "Klickdummy Feedback-Payload (platform:ADR-211 Rev 13)",
   "description": "Widget v0.5 Payload. Empirie meiki-Iter. 1-7. Pfad A 'github' = User-Token-Direkt-API.",
   "type": "object",
