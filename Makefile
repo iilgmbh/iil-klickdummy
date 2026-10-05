@@ -4,7 +4,8 @@ PIP    := $(VENV)/bin/pip
 RUFF   := $(VENV)/bin/ruff
 
 .PHONY: install setup test lint format clean \
-        klickdummy-i1 klickdummy-i3 klickdummy-parity-drift klickdummy-gates
+        klickdummy-i1 klickdummy-i3 klickdummy-parity-drift klickdummy-gates \
+        render-browser-setup test-render-browser
 
 # Eigene Klickdummies dieses Repos (Selbst-Konsument). Bewusst NICHT via
 # snippets/gates.mk: das Snippet ist für Adopter gebaut und zieht sich das
@@ -60,6 +61,17 @@ klickdummy-parity-drift: ## ADR-211 S13 — Parity-Suite neu generieren, kompili
 	  || { echo "x Parity-Suite veraltet - 'make klickdummy-parity-drift' laufen lassen + committen"; exit 1; }
 
 klickdummy-gates: klickdummy-i1 klickdummy-i3 klickdummy-parity-drift ## alle Selbst-Gates
+
+# Render-Fallback im echten Browser (meiki-hub#549). KD_RENDER_BROWSER=1 macht
+# fehlendes Playwright/Chromium zum Fehler statt zum Skip.
+PLAYWRIGHT := playwright==1.63.0
+
+render-browser-setup: ## Playwright + Chromium ins .venv
+	$(PIP) install -q "$(PLAYWRIGHT)"
+	$(PYTHON) -m playwright install chromium
+
+test-render-browser: ## Render-Fallback-Verhalten in Chromium prüfen
+	KD_RENDER_BROWSER=1 $(PYTHON) -m pytest tests/test_render_browser.py -v --tb=short
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
