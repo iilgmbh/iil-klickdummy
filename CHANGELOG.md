@@ -3,6 +3,12 @@
 Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 [Keep a Changelog](https://keepachangelog.com/); Versionierung SemVer.
 
+## 1.41.2 — 2026-10-13
+
+- fix(schemas): Schema-URLs zeigen auf `iilgmbh/iil-klickdummy` statt auf den toten `achimdehnert/platform`-Pfad — betrifft `gen_sitemap.py` (`$schema` der erzeugten Sitemap-Spec), `feedback-payload.schema.json` und `screens-spec-template.yaml` (#245, platform#3234 K3). Konsumenten, die ihre Sitemap-Spec schon von Hand umgestellt haben, sehen ohne dieses Release in der Parity-Drift-Prüfung eine Abweichung (risk-hub#759).
+- test(render): Browser-Tests für den Render-Fallback (#247, meiki-hub#549).
+- chore(deps): Renovate an platform-Config angebunden (#244); actions-Gruppe aktualisiert (#229).
+
 ## 1.41.1 — 2026-09-04
 
 - fix(sitemap): `klickdummy-gen-sitemap` schrieb bei fehlendem 3. Argument (`[repo_name]`) und `repo_root == "."` eine Sitemap-Spec mit leerem Repo-Teil (`spec_id: :klickdummy-spec-sitemap`) — Portal-Ingest safety gate `kd_loss` blockte dms-hub (Run 33877638260). Ursache: `gates.mk`s `klickdummy-sitemap`-Target übergibt `$(KLICKDUMMY_REPO_NAME)` ungeprüft; ist die Variable nicht gesetzt, entfällt das 3. CLI-Argument komplett, und `generate()` fiel auf `repo_root.name` zurück — bei `Path(".").name` ist das `""`. `_resolve_repo_name()` ersetzt den Fallback durch eine Kette (explizites Argument > `git remote get-url origin`-Basename ohne `.git` > `repo_root.resolve().name`) und bricht mit `RepoNameResolveError` (CLI: Exit 2) ab, wenn das Ergebnis leer ist oder `:`/Leerzeichen enthält — nie mehr eine kaputte `spec_id` schreiben. `gates.mk` setzt `KLICKDUMMY_REPO_NAME` jetzt standardmäßig aus `git remote get-url origin`, damit der 3. CLI-Parameter in einem Session-Worktree (Ordnername ≠ Repo-Name) korrekt gefüllt wird. Zusätzliche Positivkontrolle in `generate()`: die geschriebene Sitemap-`spec_id` wird vor dem Schreiben gegen `^[a-z0-9][a-z0-9_-]*:[a-z][a-z0-9_-]*$` geprüft (iilgmbh/iil-klickdummy, dev-hub#320).
