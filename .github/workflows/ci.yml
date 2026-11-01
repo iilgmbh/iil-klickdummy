@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   ci:
-    uses: iilgmbh/shared-ci/.github/workflows/_ci-pypi.yml@v1.1.20
+    uses: iilgmbh/shared-ci/.github/workflows/_ci-pypi.yml@v1.1.30
     with:
       python_versions: '["3.10","3.11","3.12"]'
       install_extra: 'dev'
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.12'
       - name: Install package
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.12'
       - name: Install package + Playwright
