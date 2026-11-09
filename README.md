@@ -251,6 +251,14 @@ Das Sync-Modul produziert **NDJSON** (eine Zeile pro Memory-Entry). Der eigentli
 - via CC/Cascade-Session mit gebundenem `orchestrator__agent_memory_upsert`
 - via nightly GitHub-Action mit Orchestrator-API-Token
 
+Die Organisationskennung für Registry und Sync kommt aus dem lokal konfigurierten
+Leit-Remote: `forgejo`, wenn vorhanden, sonst `origin`. Ungültige oder mehrdeutige
+Fetch-URLs und Git-Fehler ergeben `(unknown-org)`; ein defektes `forgejo` fällt
+nicht auf einen anderen Owner aus `origin` zurück. Das ist keine Freigabe zum
+Upsert. Der Repositoryname kommt weiterhin aus dem Arbeitsordner: Der Konsument
+muss kanonische Checkouts auswählen, Gov-Projekte ausschließen und unbekannte
+oder abweichende NDJSON-Identitäten vor einem Schreibzugriff stoppen.
+
 **Warum getrennt:** das Paket bleibt MCP-frei und unter PyPI-Standards. Auth zum Orchestrator ist Sache des Konsumenten (Org-spezifisch).
 
 ### Entry-Typen

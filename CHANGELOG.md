@@ -24,6 +24,8 @@ Alle nennenswerten Änderungen an `iil-klickdummy`. Format lose nach
 
 ## [Unreleased]
 
+- fix(sync): Registry und Sync lesen das vorhandene Leit-Remote `forgejo`, sonst `origin`. Mehrere Fetch-URLs und eine defekte führende Bindung bleiben ungeklärt, ohne auf einen anderen Owner zurückzufallen (platform #301, iil-klickdummy #2).
+
 ## [1.40.0] - 2026-09-04
 
 ### Added

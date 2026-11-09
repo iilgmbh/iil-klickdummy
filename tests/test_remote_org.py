@@ -148,6 +148,134 @@ def test_should_share_sync_fallback_for_missing_origin(sample_repo):
     )
 
 
+@pytest.mark.parametrize("org", ["iilgmbh", "meiki-lra", "ttz-lif"])
+def test_should_preserve_complete_entries_when_forgejo_becomes_leading_remote(
+    sample_repo, capsys, org
+):
+    _git(
+        sample_repo,
+        "remote",
+        "add",
+        "origin",
+        f"https://github.com/{org}/synthetic-repo.git",
+    )
+
+    def entries():
+        assert sync.main(["--repo", str(sample_repo)]) == 0
+        return capsys.readouterr().out
+
+    before = entries()
+    _git(
+        sample_repo,
+        "remote",
+        "add",
+        "forgejo",
+        f"https://forger.iil.pet/{org}/synthetic-repo.git",
+    )
+    # Ein veraltetes origin darf weder Schlüssel noch Gov-Einstufung bestimmen.
+    _git(
+        sample_repo,
+        "remote",
+        "set-url",
+        "origin",
+        "https://github.com/stale-owner/synthetic-repo.git",
+    )
+    assert (
+        registry.discover_cross_repo(sample_repo.parent, [sample_repo.name])[0][0]
+        == org
+    )
+    assert entries() == before
+    _git(sample_repo, "remote", "remove", "origin")
+    assert entries() == before
+    for entry in map(json.loads, before.splitlines()):
+        assert f":{org}:synthetic-repo:" in entry["entry_key"]
+        assert f"klickdummy:org:{org}" in entry["tags"]
+        if entry["entry_type"] == "repo_context":
+            assert ("gov-data" in entry["tags"]) == (org in {"meiki-lra", "ttz-lif"})
+
+
+@pytest.mark.parametrize("remote", ["forgejo", "origin"])
+def test_should_reject_multiple_fetch_urls(sample_repo, remote):
+    _git(
+        sample_repo,
+        "remote",
+        "add",
+        remote,
+        "https://forger.iil.pet/first/synthetic-repo.git",
+    )
+    _git(
+        sample_repo,
+        "config",
+        "--add",
+        f"remote.{remote}.url",
+        "https://forger.iil.pet/second/synthetic-repo.git",
+    )
+    assert registry._detect_org(sample_repo) == "(unknown-org)"
+    assert sync._detect_org(sample_repo) == "(unknown-org)"
+
+
+@pytest.mark.parametrize(
+    "url", ["/tmp/TESTDATEN-local", "https://host/owner/repo/extra", ""]
+)
+def test_should_not_fall_back_from_invalid_forgejo_to_origin(sample_repo, url):
+    _git(
+        sample_repo,
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/stale-owner/synthetic-repo.git",
+    )
+    _git(sample_repo, "config", "remote.forgejo.url", url)
+    assert registry._detect_org(sample_repo) == "(unknown-org)"
+
+
+def test_should_not_fall_back_when_existing_forgejo_has_no_url(sample_repo):
+    _git(
+        sample_repo,
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/stale-owner/synthetic-repo.git",
+    )
+    _git(
+        sample_repo,
+        "config",
+        "remote.forgejo.fetch",
+        "+refs/heads/*:refs/remotes/forgejo/*",
+    )
+    assert "forgejo" in _git(sample_repo, "remote").stdout.splitlines()
+    assert registry._detect_org(sample_repo) == "(unknown-org)"
+
+
+def test_should_use_leading_owner_and_gov_tags_for_real_identity_change(
+    sample_repo, capsys
+):
+    _git(
+        sample_repo,
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/iilgmbh/synthetic-repo.git",
+    )
+    before = sync.sync_repo(sample_repo)
+    _git(
+        sample_repo,
+        "remote",
+        "add",
+        "forgejo",
+        "https://forger.iil.pet/meiki-lra/synthetic-repo.git",
+    )
+    after = sync.sync_repo(sample_repo)
+    assert {e["entry_key"] for e in before} != {e["entry_key"] for e in after}
+    assert all(":meiki-lra:synthetic-repo:" in e["entry_key"] for e in after)
+    assert all("klickdummy:org:meiki-lra" in e["tags"] for e in after)
+    assert all(
+        "gov-data" in e["tags"] for e in after if e["entry_type"] == "repo_context"
+    )
+    assert "https://" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("stage", ["remote_names", "remote_url"])
 @pytest.mark.parametrize(
     "failure",
     [
@@ -159,10 +287,17 @@ def test_should_share_sync_fallback_for_missing_origin(sample_repo):
     ],
 )
 def test_should_use_one_fallback_without_logging_remote_on_git_failure(
-    monkeypatch, capsys, tmp_path, failure
+    monkeypatch, capsys, tmp_path, failure, stage
 ):
     def run(command, **kwargs):
-        assert command == ["git", "-C", str(tmp_path), "remote", "get-url", "origin"]
+        prefix = ["git", "-C", str(tmp_path), "remote"]
+        if command == prefix and stage == "remote_url":
+            return subprocess.CompletedProcess(command, 0, "forgejo\norigin\n", "")
+        assert command == (
+            prefix
+            if stage == "remote_names"
+            else prefix + ["get-url", "--all", "forgejo"]
+        )
         assert kwargs == {
             "check": False,
             "capture_output": True,

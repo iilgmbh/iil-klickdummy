@@ -292,10 +292,27 @@ def _org_from_remote_url(remote: str) -> str:
 
 
 def _detect_org(repo_root: pathlib.Path) -> str:
-    """Read origin locally; unavailable/ambiguous identity has one fallback."""
+    """Read the leading remote locally: forgejo if present, otherwise origin.
+
+    Failure to resolve a configured forgejo must not silently select another
+    identity from origin. Multiple fetch URLs are deliberately ambiguous.
+    """
     try:
+        remotes = subprocess.run(
+            ["git", "-C", str(repo_root), "remote"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if remotes.returncode != 0:
+            return _UNKNOWN_ORG
+        names = remotes.stdout.splitlines()
+        remote = "forgejo" if "forgejo" in names else "origin"
+        if remote not in names:
+            return _UNKNOWN_ORG
         result = subprocess.run(
-            ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+            ["git", "-C", str(repo_root), "remote", "get-url", "--all", remote],
             check=False,
             capture_output=True,
             text=True,
