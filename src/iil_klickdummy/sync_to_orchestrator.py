@@ -41,7 +41,7 @@ import pathlib
 import re
 import sys
 
-from .registry import discover_klickdummies, discover_versions
+from .registry import _detect_org, discover_klickdummies, discover_versions
 
 # Gov-Orgs — extra Tag 'gov-data' für Search-Filter
 GOV_ORGS = {"ttz-lif", "meiki-lra"}
@@ -184,27 +184,6 @@ def _dedup_entries(entries: list[dict]) -> list[dict]:
             winner = group[0]
         out.append({k: v for k, v in winner.items() if not k.startswith("_")})
     return out
-
-
-def _detect_org(repo_root: pathlib.Path) -> str:
-    """Versucht Org aus git remote URL zu lesen, sonst Repo-Name als Fallback."""
-    try:
-        import subprocess
-
-        result = subprocess.run(
-            ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode == 0:
-            # match owner/repo aus URL: github.com:OWNER/REPO oder github.com/OWNER/REPO
-            m = re.search(r"github\.com[:/]([^/]+)/", result.stdout)
-            if m:
-                return m.group(1)
-    except (OSError, subprocess.SubprocessError, ImportError):
-        pass
-    return "(unknown-org)"
 
 
 def _detect_repo_name(repo_root: pathlib.Path) -> str:

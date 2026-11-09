@@ -20,11 +20,13 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from html import escape as html_escape
 from importlib.resources import files
+from urllib.parse import urlsplit
 
 try:
     import yaml
@@ -233,6 +235,79 @@ def collect_versions_with_snapshots(
     return out
 
 
+_UNKNOWN_ORG = "(unknown-org)"
+
+
+def _org_from_remote_url(remote: str) -> str:
+    """Read an owner/repo identity from a network Git URL, never a local path.
+
+    Only unambiguous two-component paths are supported. The host is not an
+    allowlist: this is identity discovery, not permission to contact a server.
+    """
+    if any((ord(c) < 32 and c not in "\r\n") or ord(c) == 127 for c in remote):
+        return _UNKNOWN_ORG
+    lines = remote.splitlines()
+    if len(lines) != 1:
+        return _UNKNOWN_ORG
+    remote = lines[0].strip()
+    if (
+        not remote
+        or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in remote)
+        or any(c in remote for c in "\\?#")
+    ):
+        return _UNKNOWN_ORG
+    if "://" in remote:
+        try:
+            url = urlsplit(remote)
+            if (
+                url.scheme not in {"https", "http", "ssh", "git"}
+                or not url.hostname
+                or url.query
+                or url.fragment
+            ):
+                return _UNKNOWN_ORG
+            _ = url.port  # Reject malformed ports without printing the URL.
+        except ValueError:
+            return _UNKNOWN_ORG
+        path = url.path.removeprefix("/")
+    else:
+        # SCP form; a drive letter or local path must not become an owner.
+        match = re.fullmatch(
+            r"(?:[^/@:\s]+@)?(?:\[[0-9a-fA-F:]+\]|[A-Za-z0-9.-]+):([^\s]+)",
+            remote,
+        )
+        if not match or re.match(r"^[A-Za-z]:", remote):
+            return _UNKNOWN_ORG
+        path = match.group(1)
+    parts = path.removesuffix("/").split("/")
+    if len(parts) != 2:
+        return _UNKNOWN_ORG
+    owner, repo = parts[0], parts[1].removesuffix(".git")
+    if any(
+        part in {"", ".", ".."} or not re.fullmatch(r"[A-Za-z0-9_.-]+", part)
+        for part in (owner, repo)
+    ):
+        return _UNKNOWN_ORG
+    return owner
+
+
+def _detect_org(repo_root: pathlib.Path) -> str:
+    """Read origin locally; unavailable/ambiguous identity has one fallback."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        return _UNKNOWN_ORG
+    return (
+        _org_from_remote_url(result.stdout) if result.returncode == 0 else _UNKNOWN_ORG
+    )
+
+
 def discover_cross_repo(
     base: pathlib.Path,
     repos: list[str],
@@ -240,31 +315,14 @@ def discover_cross_repo(
     """Stufe-3 (v1.3): scan über mehrere Repos.
 
     Returns list of (org, repo_name, klickdummy) tuples.
-    org wird aus git remote URL detektiert (Fallback: 'unknown-org').
+    org wird aus git remote URL detektiert (Fallback: '(unknown-org)').
     """
-    import re as _re
-    import subprocess as _sp
-
     out: list[tuple[str, str, KlickdummyMeta]] = []
     for repo in repos:
         repo_root = base / repo
         if not repo_root.exists() or not repo_root.is_dir():
             continue
-        # org-Detect
-        org = "unknown-org"
-        try:
-            res = _sp.run(
-                ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if res.returncode == 0:
-                m = _re.search(r"github\.com[:/]([^/]+)/", res.stdout)
-                if m:
-                    org = m.group(1)
-        except (OSError, _sp.SubprocessError):
-            pass
+        org = _detect_org(repo_root)
         for km in discover_klickdummies(repo_root):
             out.append((org, repo, km))
     return out
